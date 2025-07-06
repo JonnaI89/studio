@@ -22,51 +22,7 @@ import { ManualCheckInForm } from "./manual-check-in-form";
 import { RegisterDriverForm } from "./register-driver-form";
 import { DriverManagementDialog } from "./driver-management-dialog";
 import { PaymentDialog } from "./payment-dialog";
-
-function calculateAge(dob: string): number {
-  if (!dob) return 0;
-
-  const parts = dob.split(/[.\/-]/);
-  let year, month, day;
-
-  if (parts.length === 3) {
-      if (parts[0].length === 4) { // YYYY-MM-DD
-          year = parseInt(parts[0], 10);
-          month = parseInt(parts[1], 10);
-          day = parseInt(parts[2], 10);
-      } else if (parts[2].length === 4) { // DD.MM.YYYY
-          day = parseInt(parts[0], 10);
-          month = parseInt(parts[1], 10);
-          year = parseInt(parts[2], 10);
-      }
-  }
-
-  if (!year || !month || !day) {
-      const parsedDate = new Date(dob);
-      if(!isNaN(parsedDate.getTime())) {
-        year = parsedDate.getFullYear();
-        month = parsedDate.getMonth() + 1;
-        day = parsedDate.getDate();
-      } else {
-        console.warn(`Could not parse date: ${dob}`);
-        return 0;
-      }
-  }
-  
-  const birthDate = new Date(year, month - 1, day);
-  if (isNaN(birthDate.getTime())) {
-    console.warn(`Invalid date constructed: ${dob}`);
-    return 0;
-  }
-  
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age < 0 ? 0 : age;
-}
+import { calculateAge } from "@/lib/utils";
 
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
