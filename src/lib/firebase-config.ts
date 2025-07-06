@@ -6,7 +6,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyATub63xoKR6CrMEq92jqkdebdqoJUa6Rs",
   authDomain: "varnacheck.firebaseapp.com",
   projectId: "varnacheck",
-  storageBucket: "varnacheck.appspot.com",
+  storageBucket: "varnacheck.firebasestorage.app",
   messagingSenderId: "124095126243",
   appId: "1:124095126243:web:f4e51994a8316b367203d6"
 };
