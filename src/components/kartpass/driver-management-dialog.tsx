@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
-import { UserPlus, Download, LoaderCircle, Trash2 } from "lucide-react";
+import { UserPlus, Download, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "../ui/scroll-area";
 
@@ -118,7 +119,8 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
             const newDriverWithAuth: Driver = {
                 ...driverToEdit,
                 ...driverData,
-                id: userRecord.uid, 
+                id: userRecord.uid,
+                rfid: driverData.rfid || driverToEdit.rfid,
             };
             
             await addDriver(newDriverWithAuth);
@@ -234,6 +236,15 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <div className="flex justify-end pt-4 mt-4 border-t">
+            <DialogClose asChild>
+                <Button variant="outline">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tilbake til skanner
+                </Button>
+            </DialogClose>
+        </div>
     </div>
   );
 }
