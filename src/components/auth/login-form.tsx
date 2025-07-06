@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
+import { getDriverById } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,6 +23,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -34,12 +36,20 @@ export function LoginForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      await signIn(values.email, values.password);
-      // Redirect is handled by AuthProvider
+      const user = await signIn(values.email, values.password);
+      const profile = await getDriverById(user.uid);
+
       toast({
         title: "Innlogging Vellykket",
-        description: "Velkommen tilbake!",
+        description: "Omdirigerer...",
       });
+      
+      if (profile?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push(`/driver/${user.uid}`);
+      }
+
     } catch (error) {
       toast({
         variant: "destructive",

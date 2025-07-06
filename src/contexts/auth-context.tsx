@@ -5,7 +5,6 @@ import { onAuthStateChanged } from "@/services/auth-service";
 import { getDriverById } from "@/services/driver-service";
 import type { User } from "firebase/auth";
 import type { Driver } from "@/lib/types";
-import { usePathname, useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 
 interface AuthContextType {
@@ -26,8 +25,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(async (user) => {
@@ -36,15 +33,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(user);
         const driverProfile = await getDriverById(user.uid);
         setProfile(driverProfile);
-
-        // Redirect logic after login
-        if (pathname === '/login') {
-            if (driverProfile?.role === 'admin') {
-                router.push('/admin');
-            } else {
-                router.push(`/driver/${user.uid}`);
-            }
-        }
       } else {
         setUser(null);
         setProfile(null);
@@ -53,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [router, pathname]);
+  }, []);
 
   const value = {
     user,
