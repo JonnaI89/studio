@@ -40,8 +40,20 @@ export function CheckedInTable({ entries }: CheckedInTableProps) {
               <TableCell className="font-medium">{driver.name}</TableCell>
               <TableCell>{driver.club}</TableCell>
               <TableCell>
-                <Badge variant={paymentStatus === 'paid' ? 'default' : 'destructive'}>
-                  {paymentStatus === 'paid' ? 'Betalt' : 'Ubetalt'}
+                <Badge variant={
+                  paymentStatus === 'paid' 
+                    ? 'default' 
+                    : paymentStatus === 'season_pass'
+                    ? 'secondary'
+                    : 'destructive'
+                }>
+                  {
+                    paymentStatus === 'paid'
+                    ? 'Betalt'
+                    : paymentStatus === 'season_pass'
+                    ? 'Årskort'
+                    : 'Ubetalt'
+                  }
                 </Badge>
               </TableCell>
               <TableCell className="text-right">{checkInTime}</TableCell>

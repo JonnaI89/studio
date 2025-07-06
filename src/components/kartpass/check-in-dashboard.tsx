@@ -102,11 +102,36 @@ export function CheckInDashboard() {
     };
   }, [rfidBuffer, toast, driver, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
 
-
-  const handleOpenPayment = () => {
+  const handleSeasonPassCheckIn = () => {
     if (!driver) return;
-    setDriverForPayment(driver);
-    setIsPaymentOpen(true);
+    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    setCheckedInDrivers(prev => {
+        const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driver.id);
+        const newEntry: CheckedInEntry = { driver, checkInTime: time, paymentStatus: 'season_pass' };
+        if (existingEntryIndex > -1) {
+            const updatedList = [...prev];
+            updatedList[existingEntryIndex] = newEntry;
+            return updatedList;
+        }
+        return [...prev, newEntry];
+    });
+
+    toast({
+        title: 'Innsjekk Vellykket (Årskort)',
+        description: `${driver.name} er nå sjekket inn.`,
+    });
+  };
+  
+  const handleCheckIn = () => {
+    if (!driver) return;
+    
+    if (driver.hasSeasonPass) {
+      handleSeasonPassCheckIn();
+    } else {
+      setDriverForPayment(driver);
+      setIsPaymentOpen(true);
+    }
   };
   
   const handlePaymentSuccess = () => {
@@ -250,7 +275,7 @@ export function CheckInDashboard() {
           <DriverInfoCard 
             driver={driver} 
             age={driverAge} 
-            onCheckIn={handleOpenPayment} 
+            onCheckIn={handleCheckIn} 
             onReset={handleReset}
             isCheckedIn={!!currentDriverCheckIn}
             checkInTime={currentDriverCheckIn?.checkInTime ?? null}

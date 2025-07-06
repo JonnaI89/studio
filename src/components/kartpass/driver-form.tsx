@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { CalendarIcon, UserPlus, Trash2, PlusCircle } from "lucide-react";
 import { cn, calculateAge } from "@/lib/utils";
 import { format } from "date-fns";
@@ -36,6 +37,7 @@ const formSchema = z.object({
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
     role: z.enum(['driver', 'admin']),
+    hasSeasonPass: z.boolean().optional(),
     klasse: z.string().optional(),
     startNr: z.string().optional(),
     driverLicense: z.string().optional(),
@@ -74,6 +76,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             dob: new Date(driverToEdit.dob),
             email: driverToEdit.email || "",
             rfid: driverToEdit.rfid || "",
+            hasSeasonPass: driverToEdit.hasSeasonPass || false,
             klasse: driverToEdit.klasse || "",
             startNr: driverToEdit.startNr || "",
             driverLicense: driverToEdit.driverLicense || "",
@@ -88,6 +91,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             email: "",
             club: "",
             role: "driver",
+            hasSeasonPass: false,
             klasse: "",
             startNr: "",
             driverLicense: "",
@@ -129,6 +133,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
             role: values.role,
+            hasSeasonPass: values.hasSeasonPass,
             klasse: values.klasse,
             startNr: values.startNr,
             driverLicense: values.driverLicense,
@@ -346,6 +351,30 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                             )}
                         />
                     </div>
+                     {!isRestrictedView && (
+                        <div className="md:col-span-2">
+                            <FormField
+                                control={form.control}
+                                name="hasSeasonPass"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-base">Årskort</FormLabel>
+                                            <FormDescription>
+                                                Angir om føreren har betalt for årskort. Hvis aktiv, vil betalingssteget hoppes over ved innsjekk.
+                                            </FormDescription>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    )}
                     <Separator />
                     <FormField
                         control={form.control}

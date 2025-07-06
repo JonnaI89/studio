@@ -6,6 +6,7 @@ export type Driver = {
   dob: string; // YYYY-MM-DD
   club: string;
   role: 'admin' | 'driver';
+  hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
   driverLicense?: string;
@@ -21,7 +22,7 @@ export type Driver = {
 export type CheckedInEntry = {
   driver: Driver;
   checkInTime: string;
-  paymentStatus: 'paid' | 'unpaid';
+  paymentStatus: 'paid' | 'unpaid' | 'season_pass';
 };
 
 export type TrainingSignup = {
