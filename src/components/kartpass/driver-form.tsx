@@ -157,6 +157,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                             <Input
                                                 placeholder="Skann eller skriv inn ID"
                                                 {...field}
+                                                value={field.value ?? ''}
                                                 readOnly={!!driverToEdit}
                                                 className={cn(!!driverToEdit && "cursor-not-allowed opacity-70")}
                                             />
@@ -175,7 +176,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                     <FormItem>
                                         <FormLabel>Fullt Navn</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ola Nordmann" {...field} autoFocus />
+                                            <Input placeholder="Ola Nordmann" {...field} value={field.value ?? ''} autoFocus />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -192,6 +193,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                                 type="email"
                                                 placeholder="ola@nordmann.no"
                                                 {...field}
+                                                value={field.value ?? ''}
                                                 readOnly={!!driverToEdit?.email}
                                                 className={cn(!!driverToEdit?.email && "cursor-not-allowed opacity-70")}
                                             />
@@ -254,7 +256,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                     <FormItem>
                                         <FormLabel>Klubb</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Oslo Karting Klubb" {...field} />
+                                            <Input placeholder="Oslo Karting Klubb" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -399,7 +401,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                                     <FormItem>
                                                         <div className="flex items-center gap-2">
                                                             <FormControl>
-                                                                <Input placeholder={`Lisensnummer ${index + 1}`} {...field} />
+                                                                <Input placeholder={`Lisensnummer ${index + 1}`} {...field} value={field.value ?? ''} />
                                                             </FormControl>
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                                                                 <Trash2 className="h-4 w-4 text-destructive" />

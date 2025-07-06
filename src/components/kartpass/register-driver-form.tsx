@@ -125,7 +125,7 @@ export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: Reg
                             <FormItem>
                                 <FormLabel>Fullt Navn</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Ola Nordmann" {...field} autoFocus />
+                                    <Input placeholder="Ola Nordmann" {...field} value={field.value ?? ''} autoFocus />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -138,7 +138,7 @@ export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: Reg
                             <FormItem>
                                 <FormLabel>E-post (for innlogging)</FormLabel>
                                 <FormControl>
-                                    <Input type="email" placeholder="din@epost.no" {...field} />
+                                    <Input type="email" placeholder="din@epost.no" {...field} value={field.value ?? ''} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -198,7 +198,7 @@ export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: Reg
                             <FormItem>
                                 <FormLabel>Klubb</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Oslo Karting Klubb" {...field} />
+                                    <Input placeholder="Oslo Karting Klubb" {...field} value={field.value ?? ''} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -221,7 +221,7 @@ export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: Reg
                                     <FormItem>
                                         <FormLabel>Foresattes Navn</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Kari Nordmann" {...field} />
+                                            <Input placeholder="Kari Nordmann" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -234,7 +234,7 @@ export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: Reg
                                     <FormItem>
                                         <FormLabel>Foresattes Kontaktinfo</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="+47 123 45 678" {...field} />
+                                            <Input placeholder="+47 123 45 678" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
