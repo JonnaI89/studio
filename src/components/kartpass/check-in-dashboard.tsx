@@ -8,7 +8,7 @@ import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus } from "lucide-react";
+import { List, UserPlus, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
 import { CheckedInTable } from "./checked-in-table";
 import { ManualCheckInForm } from "./manual-check-in-form";
 import { RegisterDriverForm } from "./register-driver-form";
+import { DriverManagementDialog } from "./driver-management-dialog";
 
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
@@ -46,6 +47,7 @@ export function CheckInDashboard() {
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isDriverMgmtOpen, setIsDriverMgmtOpen] = useState(false);
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
 
@@ -75,14 +77,14 @@ export function CheckInDashboard() {
       }
     };
 
-    if (!driver && !isRegisterOpen && !isManualCheckInOpen) {
+    if (!driver && !isRegisterOpen && !isManualCheckInOpen && !isDriverMgmtOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidBuffer, toast, driver, drivers, isRegisterOpen, isManualCheckInOpen]);
+  }, [rfidBuffer, toast, driver, drivers, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen]);
 
 
   const handleCheckIn = () => {
@@ -117,6 +119,14 @@ export function CheckInDashboard() {
     });
   };
 
+  const handleUpdateDrivers = (updatedDrivers: Driver[]) => {
+    setDrivers(updatedDrivers);
+     toast({
+        title: "Førerliste Oppdatert",
+        description: `Systemet er oppdatert med ny førerinformasjon.`,
+    });
+  }
+
   const driverAge = driver ? calculateAge(driver.dob) : 0;
 
   return (
@@ -124,6 +134,27 @@ export function CheckInDashboard() {
       <header className="w-full flex justify-between items-center">
         <KartPassLogo />
         <div className="flex items-center gap-2">
+            <Dialog open={isDriverMgmtOpen} onOpenChange={setIsDriverMgmtOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" title="Føreradministrasjon">
+                        <Users className="h-5 w-5" />
+                        <span className="sr-only">Føreradministrasjon</span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                     <DialogHeader>
+                        <DialogTitle>Føreradministrasjon</DialogTitle>
+                        <DialogDescription>
+                          Administrer, rediger og legg til nye førere i systemet.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DriverManagementDialog 
+                        drivers={drivers}
+                        setDrivers={handleUpdateDrivers}
+                    />
+                </DialogContent>
+            </Dialog>
+
            <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" title="Manuell innsjekk">
