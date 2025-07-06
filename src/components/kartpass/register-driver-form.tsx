@@ -86,7 +86,6 @@ export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDr
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
-            licenseStatus: 'Ingen',
         };
 
         if (isUnderage && values.guardianName && values.guardianContact) {

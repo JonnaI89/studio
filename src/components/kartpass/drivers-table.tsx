@@ -12,7 +12,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
-import { Badge } from "../ui/badge";
 
 interface DriversTableProps {
   drivers: Driver[];
@@ -20,18 +19,6 @@ interface DriversTableProps {
 }
 
 export function DriversTable({ drivers, onEdit }: DriversTableProps) {
-
-  const getLicenseVariant = (status: Driver['licenseStatus']) => {
-    switch (status) {
-      case 'Gyldig':
-        return 'default';
-      case 'Utløpt':
-        return 'destructive';
-      case 'Ingen':
-        return 'secondary';
-    }
-  };
-
   return (
     <ScrollArea className="h-[60vh] md:h-[500px] border rounded-md">
       <Table>
@@ -39,7 +26,7 @@ export function DriversTable({ drivers, onEdit }: DriversTableProps) {
           <TableRow>
             <TableHead>Navn</TableHead>
             <TableHead>Klubb</TableHead>
-            <TableHead>Lisensstatus</TableHead>
+            <TableHead>Førerlisens</TableHead>
             <TableHead className="text-right">Handlinger</TableHead>
           </TableRow>
         </TableHeader>
@@ -49,7 +36,7 @@ export function DriversTable({ drivers, onEdit }: DriversTableProps) {
               <TableCell className="font-medium">{driver.name}</TableCell>
               <TableCell>{driver.club}</TableCell>
               <TableCell>
-                 <Badge variant={getLicenseVariant(driver.licenseStatus)}>{driver.licenseStatus}</Badge>
+                 {driver.driverLicense || "Mangler"}
               </TableCell>
               <TableCell className="text-right">
                 <Button variant="outline" size="sm" onClick={() => onEdit(driver)}>

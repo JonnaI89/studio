@@ -21,13 +21,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CalendarIcon, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -49,9 +42,11 @@ const formSchema = z.object({
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
-    licenseStatus: z.enum(['Gyldig', 'Utløpt', 'Ingen']),
+    driverLicense: z.string().optional(),
+    vehicleLicense: z.string().optional(),
     guardianName: z.string().optional(),
     guardianContact: z.string().optional(),
+    guardianLicense: z.string().optional(),
 }).refine(data => {
     if (!data.dob) return true;
     const age = calculateAge(data.dob);
@@ -76,15 +71,20 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
         defaultValues: driverToEdit ? {
             ...driverToEdit,
             dob: new Date(driverToEdit.dob),
+            driverLicense: driverToEdit.driverLicense || "",
+            vehicleLicense: driverToEdit.vehicleLicense || "",
             guardianName: driverToEdit.guardian?.name || "",
             guardianContact: driverToEdit.guardian?.contact || "",
+            guardianLicense: driverToEdit.guardian?.guardianLicense || "",
         } : {
             id: "",
             name: "",
             club: "",
-            licenseStatus: 'Ingen',
+            driverLicense: "",
+            vehicleLicense: "",
             guardianName: "",
             guardianContact: "",
+            guardianLicense: "",
         },
     });
 
@@ -109,13 +109,15 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
-            licenseStatus: values.licenseStatus,
+            driverLicense: values.driverLicense,
+            vehicleLicense: values.vehicleLicense,
         };
 
-        if (isUnderage && values.guardianName && values.guardianContact) {
+        if (isUnderage) {
             newDriver.guardian = {
-                name: values.guardianName,
-                contact: values.guardianContact,
+                name: values.guardianName || '',
+                contact: values.guardianContact || '',
+                guardianLicense: values.guardianLicense,
             };
         }
         
@@ -212,26 +214,30 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                     />
                     <FormField
                         control={form.control}
-                        name="licenseStatus"
+                        name="driverLicense"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Lisensstatus</FormLabel>
-                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Velg lisensstatus" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Gyldig">Gyldig</SelectItem>
-                                        <SelectItem value="Utløpt">Utløpt</SelectItem>
-                                        <SelectItem value="Ingen">Ingen</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <FormLabel>Førerlisens</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Lisensnummer for fører" {...field} value={field.value ?? ''} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
-                        />
+                    />
+                    <FormField
+                        control={form.control}
+                        name="vehicleLicense"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Vognlisens</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Lisensnummer for vogn" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
                 
                 {isUnderage && (
@@ -249,7 +255,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                     <FormItem>
                                         <FormLabel>Foresattes Navn</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Kari Nordmann" {...field} />
+                                            <Input placeholder="Kari Nordmann" {...field} value={field.value ?? ''}/>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -262,7 +268,20 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                     <FormItem>
                                         <FormLabel>Foresattes Kontaktinfo</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="+47 123 45 678" {...field} />
+                                            <Input placeholder="+47 123 45 678" {...field} value={field.value ?? ''}/>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="guardianLicense"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Foresattes Lisens</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Lisensnummer for foresatt" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

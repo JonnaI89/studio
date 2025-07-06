@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, ShieldCheck, Users, Shield, Calendar, Timer, CheckCircle2 } from "lucide-react";
+import { User, Shield, Users, Calendar, Timer, CheckCircle2, CarFront, UserCheck } from "lucide-react";
 import { CheckeredFlagIcon } from "../icons/checkered-flag-icon";
 
 interface DriverInfoCardProps {
@@ -20,17 +20,6 @@ interface DriverInfoCardProps {
 
 export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime }: DriverInfoCardProps) {
   const isUnderage = age < 18;
-
-  const getLicenseVariant = (status: Driver['licenseStatus']) => {
-    switch (status) {
-      case 'Gyldig':
-        return 'default';
-      case 'Utløpt':
-        return 'destructive';
-      case 'Ingen':
-        return 'secondary';
-    }
-  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
@@ -51,27 +40,32 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 text-sm">
           <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={`${age} år`} />
-          <InfoItem icon={<ShieldCheck className="text-primary" />} label="Lisens">
-            <Badge variant={getLicenseVariant(driver.licenseStatus)}>{driver.licenseStatus}</Badge>
-          </InfoItem>
           <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
+          <Separator />
+          <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense || 'Mangler'} />
+          <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense || 'Mangler'} />
         </div>
         
-        {isUnderage && (
+        {isUnderage && driver.guardian && (
           <>
             <Separator />
             <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
               <h3 className="font-semibold flex items-center"><Shield className="mr-2 h-4 w-4 text-amber-600" />Foresattes informasjon</h3>
-              {driver.guardian ? (
-                <>
-                  <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
-                  <InfoItem icon={<Timer className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
-                </>
-              ) : (
-                <p className="text-destructive-foreground bg-destructive p-2 rounded-md">Foresattes detaljer mangler for mindreårig fører.</p>
-              )}
+              <>
+                <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
+                <InfoItem icon={<Timer className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
+                {driver.guardian.guardianLicense && (
+                  <InfoItem icon={<Shield className="text-amber-600" />} label="Foresattlisens" value={driver.guardian.guardianLicense} />
+                )}
+              </>
             </div>
           </>
+        )}
+
+        {isUnderage && !driver.guardian && (
+            <div className="space-y-2 p-3 bg-destructive/20 rounded-lg">
+                <p className="text-destructive-foreground bg-destructive p-2 rounded-md">Foresattes detaljer mangler for mindreårig fører.</p>
+            </div>
         )}
 
         {isCheckedIn && checkInTime && (

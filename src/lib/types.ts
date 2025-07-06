@@ -2,10 +2,12 @@ export type Driver = {
   id: string;
   name: string;
   dob: string; // YYYY-MM-DD
-  licenseStatus: 'Gyldig' | 'Utløpt' | 'Ingen';
   club: string;
+  driverLicense?: string;
+  vehicleLicense?: string;
   guardian?: {
     name: string;
     contact: string;
+    guardianLicense?: string;
   };
 };
