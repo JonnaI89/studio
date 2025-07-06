@@ -49,4 +49,6 @@ export type TrainingSettings = {
 
 export type SiteSettings = {
   logoUrl?: string;
+  weekdayPrice?: number;
+  weekendPrice?: number;
 };

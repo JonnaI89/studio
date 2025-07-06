@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Driver, CheckedInEntry } from "@/lib/types";
+import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
+import { getSiteSettings } from "@/services/settings-service";
 import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
@@ -40,18 +42,23 @@ export function CheckInDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
-  const fetchDrivers = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const fetchedDrivers = await getDrivers();
+      const [fetchedDrivers, fetchedSettings] = await Promise.all([
+        getDrivers(),
+        getSiteSettings(),
+      ]);
       setDrivers(fetchedDrivers);
+      setSiteSettings(fetchedSettings);
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Feil ved henting av data',
         description:
-          (error as Error).message || 'Kunne ikke laste førerlisten fra Firebase.',
+          (error as Error).message || 'Kunne ikke laste data fra Firebase.',
       });
     } finally {
       setIsLoading(false);
@@ -59,8 +66,8 @@ export function CheckInDashboard() {
   }, [toast]);
 
   useEffect(() => {
-    fetchDrivers();
-  }, [fetchDrivers]);
+    fetchData();
+  }, [fetchData]);
 
 
   useEffect(() => {
@@ -169,7 +176,7 @@ export function CheckInDashboard() {
   };
 
   const handleRegisterSuccess = (newDriver: Driver) => {
-    fetchDrivers(); // Refresh the main driver list
+    fetchData(); // Refresh all data
     setDriver(newDriver); // Set the newly registered driver as active
     toast({
       title: 'Fører Registrert',
@@ -230,7 +237,7 @@ export function CheckInDashboard() {
                     </DialogHeader>
                     <DriverManagementDialog 
                         drivers={drivers}
-                        onDatabaseUpdate={fetchDrivers}
+                        onDatabaseUpdate={fetchData}
                     />
                 </DialogContent>
             </Dialog>
@@ -302,6 +309,7 @@ export function CheckInDashboard() {
             onOpenChange={setIsPaymentOpen}
             onConfirm={handlePaymentSuccess}
             driver={driverForPayment}
+            settings={siteSettings}
         />
 
         <Dialog open={isRegisterOpen} onOpenChange={(isOpen) => { if (!isOpen) setNewRfidId(null); setIsRegisterOpen(isOpen); }}>

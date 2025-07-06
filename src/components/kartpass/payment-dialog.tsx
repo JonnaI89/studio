@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -10,17 +11,27 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CreditCard, LoaderCircle } from "lucide-react";
-import type { Driver } from "@/lib/types";
+import type { Driver, SiteSettings } from "@/lib/types";
 
 interface PaymentDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onConfirm: () => void;
   driver: Driver | null;
+  settings: SiteSettings | null;
 }
 
-export function PaymentDialog({ isOpen, onOpenChange, onConfirm, driver }: PaymentDialogProps) {
+export function PaymentDialog({ isOpen, onOpenChange, onConfirm, driver, settings }: PaymentDialogProps) {
   if (!driver) return null;
+
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 for Sunday, 6 for Saturday
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  const price = isWeekend 
+    ? settings?.weekendPrice ?? 350
+    : settings?.weekdayPrice ?? 250;
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -39,7 +50,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onConfirm, driver }: Payme
                 <span>Ikke lukk dette vinduet.</span>
             </div>
             <div className="mt-4 w-full rounded-md border p-4">
-                <p className="font-bold text-xl">Total: 100,- kr</p>
+                <p className="font-bold text-xl">Total: {price},- kr</p>
                 <p className="text-sm text-muted-foreground">Produkt: Dagspass</p>
             </div>
         </div>
