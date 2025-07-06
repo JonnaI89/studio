@@ -179,22 +179,32 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 flex-1 min-h-0">
         <div className="flex justify-between items-center border-b pb-4">
-             <Button onClick={handleImport} variant="outline" disabled={isImporting}>
-                {isImporting ? (
-                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                {isImporting ? 'Importerer...' : 'Importer fra Google Sheet'}
-            </Button>
-            <Button onClick={handleAddNew}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Registrer ny fører
-            </Button>
+            <DialogClose asChild>
+                <Button variant="outline">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tilbake til skanner
+                </Button>
+            </DialogClose>
+            <div className="flex items-center gap-2">
+                 <Button onClick={handleImport} variant="outline" disabled={isImporting}>
+                    {isImporting ? (
+                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    {isImporting ? 'Importerer...' : 'Importer fra Google Sheet'}
+                </Button>
+                <Button onClick={handleAddNew}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Registrer ny fører
+                </Button>
+            </div>
         </div>
-        <DriversTable drivers={drivers} onEdit={handleEdit} onDelete={handleOpenDeleteDialog} />
+        <div className="flex-1 min-h-0">
+          <DriversTable drivers={drivers} onEdit={handleEdit} onDelete={handleOpenDeleteDialog} />
+        </div>
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="max-w-xl">
@@ -236,15 +246,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-
-        <div className="flex justify-end pt-4 mt-4 border-t">
-            <DialogClose asChild>
-                <Button variant="outline">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Tilbake til skanner
-                </Button>
-            </DialogClose>
-        </div>
     </div>
   );
 }

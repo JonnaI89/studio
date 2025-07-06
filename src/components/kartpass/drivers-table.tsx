@@ -22,7 +22,7 @@ interface DriversTableProps {
 
 export function DriversTable({ drivers, onEdit, onDelete }: DriversTableProps) {
   return (
-    <ScrollArea className="h-[60vh] md:h-[500px] border rounded-md">
+    <ScrollArea className="h-full border rounded-md">
       <Table>
         <TableHeader>
           <TableRow>

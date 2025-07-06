@@ -164,7 +164,7 @@ export function CheckInDashboard() {
                         <span className="sr-only">Føreradministrasjon</span>
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                      <DialogHeader>
                         <DialogTitle>Føreradministrasjon</DialogTitle>
                         <DialogDescription>
