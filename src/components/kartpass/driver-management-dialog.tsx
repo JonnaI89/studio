@@ -115,12 +115,13 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
             const authUser = await signUp(driverData.email, password);
 
             const newDriverWithAuth: Driver = {
-                ...driverData,
-                id: authUser.uid,
+                ...driverToEdit, // Preserve all old data
+                ...driverData,   // Overlay with new data from form
+                id: authUser.uid, // Set the new, correct ID
             };
             
             await addDriver(newDriverWithAuth);
-            await deleteDriver(id);
+            await deleteDriver(id); // Remove the old temporary profile
 
         } else {
             const driverToUpdate = { ...driverData, id: id };
@@ -128,6 +129,15 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         }
 
       } else {
+        if (!driverData.email) {
+            toast({
+                variant: "destructive",
+                title: "E-post er påkrevd",
+                description: "E-post må fylles ut for å opprette en ny fører.",
+            });
+            return;
+        }
+
         if (drivers.some(d => d.rfid === driverData.rfid)) {
           toast({
             variant: "destructive",

@@ -32,7 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const formSchema = z.object({
     id: z.string().optional(), // Firebase Auth UID, set after creation
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
-    email: z.string().email({ message: "Gyldig e-post er påkrevd." }),
+    email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
@@ -117,7 +117,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
     function onSubmit(values: FormValues) {
         const driverData: Omit<Driver, 'id'> = {
             rfid: values.rfid,
-            email: values.email,
+            email: values.email || '',
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
@@ -158,8 +158,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                                 placeholder="Skann eller skriv inn ID"
                                                 {...field}
                                                 value={field.value ?? ''}
-                                                readOnly={!!driverToEdit}
-                                                className={cn(!!driverToEdit && "cursor-not-allowed opacity-70")}
+                                                readOnly={!!driverToEdit && !!field.value}
+                                                className={cn(!!driverToEdit && !!field.value && "cursor-not-allowed opacity-70")}
                                             />
                                         </FormControl>
                                         <FormDescription>
