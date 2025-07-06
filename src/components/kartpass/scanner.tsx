@@ -17,10 +17,10 @@ export function Scanner() {
       </div>
 
       <h2 className="text-2xl font-bold mb-2 text-card-foreground">
-        Automatisk skanning...
+        Klar for skanning
       </h2>
       <p className="text-muted-foreground mb-6">
-        Vennligst hold førerens RFID-brikke nær leseren.
+        Venter på input fra USB-leseren...
       </p>
     </div>
   );
