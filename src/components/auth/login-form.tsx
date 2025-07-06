@@ -41,7 +41,7 @@ export function LoginForm() {
 
       if (!profile) {
         // IMPORTANT: Change this email to your own admin email to auto-create your profile on first login.
-        const ADMIN_EMAIL = 'admin@kartpass.no';
+        const ADMIN_EMAIL = 'jingebretsen89@gmail.com';
 
         if (values.email.toLowerCase() === ADMIN_EMAIL) {
           const newAdminProfile: Driver = {
