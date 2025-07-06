@@ -45,17 +45,20 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
 
     setIsUploading(true);
     try {
-      const nameParts = logoFile.name.split('.');
-      if (nameParts.length < 2) {
-          throw new Error("Ugyldig filnavn. Filen må ha en filendelse (f.eks. .jpg, .png).");
-      }
-      const fileExtension = nameParts.pop();
+      // Use a fixed, predictable path for the site logo.
+      // This is more robust than relying on the uploaded file's name/extension.
+      const logoRef = ref(storage, "site_assets/logo");
 
-      const logoRef = ref(storage, `site_assets/logo.${fileExtension}`);
-      await uploadBytes(logoRef, logoFile);
+      // Upload the file to the determined path, including its content type.
+      await uploadBytes(logoRef, logoFile, { contentType: logoFile.type });
+
+      // Get the public URL for the uploaded file.
       const downloadUrl = await getDownloadURL(logoRef);
       
+      // Save the new logo URL to the database.
       await updateSiteSettings({ logoUrl: downloadUrl });
+
+      // Update the UI to show the new logo immediately.
       setCurrentLogoUrl(downloadUrl);
 
       toast({
@@ -67,9 +70,10 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       toast({
         variant: "destructive",
         title: "Opplasting Feilet",
-        description: (error as Error).message || "En feil oppsto under opplasting av logoen.",
+        description: (error as Error).message || "En feil oppsto under opplasting av logoen. Sjekk konsollen for detaljer.",
       });
     } finally {
+      // Ensure the loading state is always reset, regardless of success or failure.
       setIsUploading(false);
       setLogoFile(null);
       if (fileInputRef.current) {
