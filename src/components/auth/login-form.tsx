@@ -5,15 +5,15 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { signIn } from "@/services/auth-service";
-import { getDriverById } from "@/services/driver-service";
+import { signIn, signOut } from "@/services/auth-service";
+import { getDriverById, addDriver } from "@/services/driver-service";
+import type { Driver } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, LogIn } from "lucide-react";
+import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -37,17 +37,45 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      const profile = await getDriverById(user.uid);
+      let profile = await getDriverById(user.uid);
 
-      toast({
-        title: "Innlogging Vellykket",
-        description: "Omdirigerer...",
-      });
-      
+      if (!profile) {
+        // IMPORTANT: Change this email to your own admin email to auto-create your profile on first login.
+        const ADMIN_EMAIL = 'admin@kartpass.no';
+
+        if (values.email.toLowerCase() === ADMIN_EMAIL) {
+          const newAdminProfile: Driver = {
+            id: user.uid,
+            rfid: `admin_${user.uid.slice(0, 8)}`,
+            email: values.email,
+            name: 'Admin',
+            dob: '2000-01-01',
+            club: 'System Admin',
+            role: 'admin',
+          };
+          await addDriver(newAdminProfile);
+          profile = newAdminProfile;
+          toast({
+            title: "Admin-profil Opprettet",
+            description: "En ny admin-profil er opprettet for deg.",
+          });
+        }
+      }
+
       if (profile?.role === 'admin') {
+        toast({ title: "Admin-innlogging Vellykket" });
         router.push('/admin');
-      } else {
+      } else if (profile) {
+        toast({ title: "Innlogging Vellykket" });
         router.push(`/driver/${user.uid}`);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Profil Mangler",
+          description: "Brukeren din er ikke koblet til en profil. Kontakt administrator.",
+        });
+        await signOut();
+        setIsLoading(false);
       }
 
     } catch (error) {
