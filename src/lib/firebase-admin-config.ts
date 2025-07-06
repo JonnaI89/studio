@@ -1,5 +1,3 @@
-'use server';
-
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
 
@@ -21,7 +19,7 @@ const hasCredentials = serviceAccount.clientEmail && serviceAccount.privateKey;
 if (!getApps().length) {
   if (hasCredentials) {
     // If credentials are provided, initialize with them.
-    // This is typically for local development.
+    // This is for local development.
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
