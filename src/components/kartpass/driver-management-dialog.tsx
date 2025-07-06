@@ -14,9 +14,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
-import { UserPlus, Download, LoaderCircle } from "lucide-react";
+import { UserPlus, Download, LoaderCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface DriverManagementDialogProps {
@@ -28,16 +38,44 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   const handleEdit = (driver: Driver) => {
     setDriverToEdit(driver);
     setIsFormOpen(true);
   };
+  
+  const handleOpenDeleteDialog = (driver: Driver) => {
+    setDriverToDelete(driver);
+  };
 
   const handleAddNew = () => {
     setDriverToEdit(null);
     setIsFormOpen(true);
+  };
+  
+  const handleConfirmDelete = async () => {
+    if (!driverToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteDriver(driverToDelete.id);
+      toast({
+        title: "Fører Slettet",
+        description: `${driverToDelete.name} har blitt fjernet fra databasen.`,
+      });
+      onDatabaseUpdate();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Sletting Feilet",
+        description: (error as Error).message || "En ukjent feil oppsto.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDriverToDelete(null);
+    }
   };
 
   const handleImport = async () => {
@@ -143,7 +181,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 Registrer ny fører
             </Button>
         </div>
-        <DriversTable drivers={drivers} onEdit={handleEdit} />
+        <DriversTable drivers={drivers} onEdit={handleEdit} onDelete={handleOpenDeleteDialog} />
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="max-w-xl">
@@ -160,6 +198,28 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 />
             </DialogContent>
         </Dialog>
+        
+        <AlertDialog open={!!driverToDelete} onOpenChange={(isOpen) => !isOpen && setDriverToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Er du helt sikker?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Dette vil permanent slette profilen for <span className="font-bold">{driverToDelete?.name}</span> fra databasen. Selve innloggingskontoen blir ikke fjernet. Handlingen kan ikke angres.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Avbryt</AlertDialogCancel>
+                    <AlertDialogAction 
+                        disabled={isDeleting} 
+                        onClick={handleConfirmDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        {isDeleting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Ja, slett føreren
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }

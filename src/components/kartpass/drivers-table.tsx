@@ -11,15 +11,16 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface DriversTableProps {
   drivers: Driver[];
   onEdit: (driver: Driver) => void;
+  onDelete: (driver: Driver) => void;
 }
 
-export function DriversTable({ drivers, onEdit }: DriversTableProps) {
+export function DriversTable({ drivers, onEdit, onDelete }: DriversTableProps) {
   return (
     <ScrollArea className="h-[60vh] md:h-[500px] border rounded-md">
       <Table>
@@ -44,10 +45,16 @@ export function DriversTable({ drivers, onEdit }: DriversTableProps) {
                  {driver.driverLicense || "Mangler"}
               </TableCell>
               <TableCell className="text-right">
-                <Button variant="outline" size="sm" onClick={() => onEdit(driver)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Rediger
-                </Button>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => onEdit(driver)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Rediger
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => onDelete(driver)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Slett
+                    </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
