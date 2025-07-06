@@ -154,7 +154,12 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                     <FormItem>
                                         <FormLabel>RFID / Fører-ID</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Skann eller skriv inn ID" {...field} disabled={!!driverToEdit} />
+                                            <Input
+                                                placeholder="Skann eller skriv inn ID"
+                                                {...field}
+                                                readOnly={!!driverToEdit}
+                                                className={cn(!!driverToEdit && "cursor-not-allowed opacity-70")}
+                                            />
                                         </FormControl>
                                         <FormDescription>
                                             Denne ID-en brukes for innsjekk.
@@ -183,7 +188,13 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                     <FormItem>
                                         <FormLabel>E-post (for innlogging)</FormLabel>
                                         <FormControl>
-                                            <Input type="email" placeholder="ola@nordmann.no" {...field} disabled={!!driverToEdit} />
+                                            <Input
+                                                type="email"
+                                                placeholder="ola@nordmann.no"
+                                                {...field}
+                                                readOnly={!!driverToEdit}
+                                                className={cn(!!driverToEdit && "cursor-not-allowed opacity-70")}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
