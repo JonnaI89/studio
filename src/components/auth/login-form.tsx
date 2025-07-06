@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,7 +22,6 @@ const formSchema = z.object({
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -40,7 +38,6 @@ export function LoginForm() {
       let profile = await getDriverById(user.uid);
 
       if (!profile) {
-        // IMPORTANT: Change this email to your own admin email to auto-create your profile on first login.
         const ADMIN_EMAIL = 'jingebretsen89@gmail.com';
 
         if (values.email.toLowerCase() === ADMIN_EMAIL) {
@@ -50,7 +47,6 @@ export function LoginForm() {
             email: values.email,
             name: 'Admin',
             dob: '2000-01-01',
-            club: 'System Admin',
             role: 'admin',
           };
           await addDriver(newAdminProfile);
@@ -64,10 +60,8 @@ export function LoginForm() {
 
       if (profile?.role === 'admin') {
         toast({ title: "Admin-innlogging Vellykket" });
-        router.push('/admin');
       } else if (profile) {
         toast({ title: "Innlogging Vellykket" });
-        router.push(`/driver/${user.uid}`);
       } else {
         toast({
           variant: "destructive",
