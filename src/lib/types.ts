@@ -1,9 +1,11 @@
 export type Driver = {
-  id: string;
+  id: string; // This will be the Firebase Auth UID
+  rfid: string;
+  email: string;
   name: string;
   dob: string; // YYYY-MM-DD
   club: string;
-  role?: 'admin' | 'driver';
+  role: 'admin' | 'driver';
   klasse?: string;
   startNr?: string;
   driverLicense?: string;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
 import { addDriver, updateDriver } from "@/services/driver-service";
+import { signUp } from "@/services/auth-service";
 import { importFromSheetsToFirebase } from "@/services/import-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
 import { UserPlus, Download, LoaderCircle } from "lucide-react";
+import { format } from "date-fns";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
@@ -65,25 +67,34 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     }
   };
 
-  const handleSave = async (savedDriver: Driver) => {
+  const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
     try {
-      if (driverToEdit) {
-        await updateDriver(savedDriver);
+      if (driverToEdit && id) {
+        const driverToUpdate = { ...driverData, id: id };
+        await updateDriver(driverToUpdate);
       } else {
-        if (drivers.some(d => d.id === savedDriver.id)) {
+        if (drivers.some(d => d.rfid === driverData.rfid)) {
           toast({
             variant: "destructive",
-            title: "ID Finnes Allerede",
-            description: "En fører med denne ID-en finnes allerede.",
+            title: "RFID Finnes Allerede",
+            description: "En fører med denne RFID-brikken finnes allerede.",
           });
           return;
         }
-        await addDriver(savedDriver);
+
+        const password = format(new Date(driverData.dob), "ddMMyyyy");
+        const authUser = await signUp(driverData.email, password);
+
+        const newDriver: Driver = {
+            ...driverData,
+            id: authUser.uid,
+        };
+        await addDriver(newDriver);
       }
 
       toast({
         title: `Fører ${driverToEdit ? 'oppdatert' : 'lagt til'}`,
-        description: `${savedDriver.name} er lagret i databasen.`,
+        description: `${driverData.name} er lagret i databasen.`,
       });
 
       onDatabaseUpdate();

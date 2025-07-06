@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,31 +22,25 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CalendarIcon, UserPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, calculateAge } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Separator } from "../ui/separator";
-
-function calculateAge(dob: Date): number {
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-        age--;
-    }
-    return age;
-}
+import { signUp } from "@/services/auth-service";
+import { useToast } from "@/hooks/use-toast";
+import { addDriver } from "@/services/driver-service";
 
 const formSchema = z.object({
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
+    email: z.string().email({ message: "Gyldig e-post er påkrevd." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
     guardianName: z.string().optional(),
     guardianContact: z.string().optional(),
 }).refine(data => {
     if (!data.dob) return true;
-    const age = calculateAge(data.dob);
-    if (age < 18) {
+    const age = calculateAge(format(data.dob, 'yyyy-MM-dd'));
+    if (age !== null && age < 18) {
         return !!data.guardianName && data.guardianName.length > 1 && !!data.guardianContact && data.guardianContact.length > 1;
     }
     return true;
@@ -56,15 +51,17 @@ const formSchema = z.object({
 
 interface RegisterDriverFormProps {
     rfid: string;
-    onRegister: (newDriver: Driver) => void;
+    onRegisterSuccess: (newDriver: Driver) => void;
     closeDialog: () => void;
 }
 
-export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDriverFormProps) {
+export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: RegisterDriverFormProps) {
+    const { toast } = useToast();
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
+            email: "",
             club: "",
             guardianName: "",
             guardianContact: "",
@@ -76,28 +73,45 @@ export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDr
     const handleDobChange = (date: Date | undefined) => {
         if (date) {
             form.setValue("dob", date, { shouldValidate: true });
-            setIsUnderage(calculateAge(date) < 18);
+            const age = calculateAge(format(date, 'yyyy-MM-dd'));
+            setIsUnderage(age !== null && age < 18);
         }
     };
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        const newDriver: Driver = {
-            id: rfid,
-            name: values.name,
-            dob: format(values.dob, "yyyy-MM-dd"),
-            club: values.club,
-            role: 'driver',
-        };
-
-        if (isUnderage && values.guardianName && values.guardianContact) {
-            newDriver.guardian = {
-                name: values.guardianName,
-                contact: values.guardianContact,
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        const password = format(values.dob, "ddMMyyyy");
+        try {
+            const authUser = await signUp(values.email, password);
+            
+            const newDriver: Driver = {
+                id: authUser.uid, // Use Firebase Auth UID as the document ID
+                rfid: rfid,
+                email: values.email,
+                name: values.name,
+                dob: format(values.dob, "yyyy-MM-dd"),
+                club: values.club,
+                role: 'driver',
             };
+
+            if (isUnderage && values.guardianName && values.guardianContact) {
+                newDriver.guardian = {
+                    name: values.guardianName,
+                    contact: values.guardianContact,
+                };
+            }
+            
+            await addDriver(newDriver);
+            onRegisterSuccess(newDriver);
+            closeDialog();
+
+        } catch (error: any) {
+            console.error("Registration failed", error);
+            toast({
+                variant: 'destructive',
+                title: 'Registrering Feilet',
+                description: error.message || "Kunne ikke opprette ny bruker.",
+            });
         }
-        
-        onRegister(newDriver);
-        closeDialog();
     }
 
     return (
@@ -112,6 +126,19 @@ export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDr
                                 <FormLabel>Fullt Navn</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Ola Nordmann" {...field} autoFocus />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>E-post (for innlogging)</FormLabel>
+                                <FormControl>
+                                    <Input type="email" placeholder="din@epost.no" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -157,6 +184,9 @@ export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDr
                                 />
                                 </PopoverContent>
                             </Popover>
+                             <FormDescription>
+                                Passord settes automatisk til DDMMÅÅÅÅ.
+                            </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}

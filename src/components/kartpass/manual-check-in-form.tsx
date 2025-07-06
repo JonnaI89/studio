@@ -19,7 +19,8 @@ export function ManualCheckInForm({ drivers, onDriverSelect, closeDialog }: Manu
   const filteredDrivers = searchQuery
     ? drivers.filter(driver => 
         driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        driver.id.toLowerCase().includes(searchQuery.toLowerCase())
+        driver.rfid.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        driver.email.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
 
@@ -31,7 +32,7 @@ export function ManualCheckInForm({ drivers, onDriverSelect, closeDialog }: Manu
   return (
     <div className="flex flex-col gap-4">
       <Input
-        placeholder="Søk etter navn eller ID..."
+        placeholder="Søk etter navn, e-post eller RFID..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         autoFocus

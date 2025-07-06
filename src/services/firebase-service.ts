@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/firebase-config';
-import { collection, doc, getDocs, setDoc, updateDoc, writeBatch, query, orderBy, getDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy } from 'firebase/firestore';
 import type { Driver } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
@@ -39,13 +39,27 @@ export async function getFirebaseDriverById(id: string): Promise<Driver | null> 
     }
 }
 
+export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | null> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const q = query(collection(db, DRIVERS_COLLECTION), where("rfid", "==", rfid));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs[0].data() as Driver;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching driver with RFID ${rfid} from Firestore: `, error);
+        throw new Error("Kunne ikke hente fører med RFID fra Firebase.");
+    }
+}
 
 export async function addFirebaseDriver(driver: Driver): Promise<void> {
     try {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
-        // Use the driver's custom ID as the document ID in Firestore
+        // The driver's auth UID is the document ID
         await setDoc(doc(db, DRIVERS_COLLECTION, driver.id), driver);
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
@@ -75,6 +89,8 @@ export async function batchAddFirebaseDrivers(drivers: Driver[]): Promise<void> 
         const batch = writeBatch(db);
 
         drivers.forEach((driver) => {
+            // In batch import, we assume the provided ID is the intended document ID.
+            // This might need adjustment if UIDs are to be generated. For now, it uses the sheet's ID.
             const docRef = doc(db, DRIVERS_COLLECTION, driver.id);
             batch.set(docRef, driver);
         });

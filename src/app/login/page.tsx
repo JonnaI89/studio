@@ -1,8 +1,7 @@
-import { Button } from '@/components/ui/button';
+import { LoginForm } from '@/components/auth/login-form';
 import { KartPassLogo } from '@/components/icons/kart-pass-logo';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, User } from 'lucide-react';
+import { User } from 'lucide-react';
 
 export default function LoginPage() {
   return (
@@ -14,19 +13,11 @@ export default function LoginPage() {
             <Card>
                 <CardHeader className="text-center">
                     <User className="mx-auto h-12 w-12 text-primary mb-4" />
-                    <CardTitle>Fører-innlogging</CardTitle>
-                    <CardDescription>Denne funksjonaliteten er under utvikling.</CardDescription>
+                    <CardTitle>Logg Inn</CardTitle>
+                    <CardDescription>Logg inn for å få tilgang til systemet.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                    <p className="text-center text-sm text-muted-foreground">
-                        Her vil du kunne logge inn med brukernavn og passord for å få tilgang til din personlige førerside.
-                    </p>
-                     <Button asChild variant="outline">
-                        <Link href="/">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Tilbake til forsiden
-                        </Link>
-                    </Button>
+                <CardContent>
+                    <LoginForm />
                 </CardContent>
             </Card>
         </div>

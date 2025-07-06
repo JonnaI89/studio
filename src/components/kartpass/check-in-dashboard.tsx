@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Driver, CheckedInEntry } from "@/lib/types";
-import { getDrivers, addDriver } from "@/services/driver-service";
+import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
@@ -61,20 +61,28 @@ export function CheckInDashboard() {
 
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (rfidBuffer.trim()) {
           const scannedId = rfidBuffer.trim();
-          const foundDriver = drivers.find(d => d.id === scannedId);
-
-          if (foundDriver) {
-            setDriver(foundDriver);
-          } else {
-            setNewRfidId(scannedId);
-            setIsRegisterOpen(true);
-          }
           setRfidBuffer('');
+          
+          try {
+            const foundDriver = await getDriverByRfid(scannedId);
+            if (foundDriver) {
+              setDriver(foundDriver);
+            } else {
+              setNewRfidId(scannedId);
+              setIsRegisterOpen(true);
+            }
+          } catch(error) {
+             toast({
+              variant: 'destructive',
+              title: 'Feil ved søk',
+              description: (error as Error).message,
+            });
+          }
         }
       } else if (e.key === 'Backspace') {
         setRfidBuffer(prev => prev.slice(0, -1));
@@ -90,7 +98,7 @@ export function CheckInDashboard() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidBuffer, toast, driver, drivers, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen]);
+  }, [rfidBuffer, toast, driver, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen]);
 
 
   const handleOpenPayment = () => {
@@ -132,23 +140,13 @@ export function CheckInDashboard() {
     setDriver(selectedDriver);
   };
 
-  const handleRegisterDriver = async (newDriver: Driver) => {
-    try {
-      await addDriver(newDriver);
-      await fetchDrivers(); 
-      setDriver(newDriver);
-      toast({
-        title: 'Fører Registrert',
-        description: `${newDriver.name} er lagt til i databasen.`,
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Feil ved registrering',
-        description:
-          (error as Error).message || 'Kunne ikke lagre ny fører.',
-      });
-    }
+  const handleRegisterSuccess = (newDriver: Driver) => {
+    fetchDrivers(); // Refresh the main driver list
+    setDriver(newDriver); // Set the newly registered driver as active
+    toast({
+      title: 'Fører Registrert',
+      description: `${newDriver.name} er lagt til og logget inn.`,
+    });
   };
 
   const driverAge = driver ? calculateAge(driver.dob) : null;
@@ -260,7 +258,7 @@ export function CheckInDashboard() {
             {newRfidId && (
               <RegisterDriverForm 
                 rfid={newRfidId}
-                onRegister={handleRegisterDriver}
+                onRegisterSuccess={handleRegisterSuccess}
                 closeDialog={() => setIsRegisterOpen(false)}
               />
             )}

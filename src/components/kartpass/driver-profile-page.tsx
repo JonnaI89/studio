@@ -6,11 +6,12 @@ import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group } from 'lucide-react';
+import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
+import { signOut } from '@/services/auth-service';
+import { useRouter } from 'next/navigation';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -39,13 +40,12 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
+    const router = useRouter();
 
-    const getInitials = (name: string) => {
-        return name.split(' ').map(n => n[0]).join('');
-    }
-    
-    const handleSave = async (updatedDriver: Driver) => {
+    const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
+        if (!id) return;
         try {
+            const updatedDriver: Driver = { ...driverData, id: id };
             await updateDriver(updatedDriver);
             setDriver(updatedDriver);
             setIsEditing(false);
@@ -70,6 +70,11 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
         });
     }
 
+    const handleLogout = async () => {
+        await signOut();
+        router.push('/login');
+    };
+
     const age = calculateAge(driver.dob);
     const isUnderage = age !== null && age < 18;
 
@@ -78,19 +83,20 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
             <Card>
                 <CardHeader>
                      <div className="flex flex-col sm:flex-row items-start gap-6">
-                        <Avatar className="w-24 h-24 border-4 border-primary/20">
-                            <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
-                                {getInitials(driver.name)}
-                            </AvatarFallback>
-                        </Avatar>
                         <div className="flex-1">
                             <CardTitle className="text-3xl">{driver.name}</CardTitle>
                             <CardDescription>Førerprofil og innstillinger</CardDescription>
                         </div>
-                         <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            {isEditing ? 'Avbryt' : 'Rediger Profil'}
-                        </Button>
+                        <div className="flex gap-2">
+                             <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                {isEditing ? 'Avbryt' : 'Rediger Profil'}
+                            </Button>
+                            <Button variant="ghost" onClick={handleLogout}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Logg ut
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>

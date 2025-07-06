@@ -30,11 +30,13 @@ import { Separator } from "../ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const formSchema = z.object({
-    id: z.string().min(1, { message: "RFID/ID er påkrevd." }),
+    id: z.string().optional(), // Firebase Auth UID, set after creation
+    rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
+    email: z.string().email({ message: "Gyldig e-post er påkrevd." }),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
-    role: z.enum(['driver', 'admin']).optional(),
+    role: z.enum(['driver', 'admin']),
     klasse: z.string().optional(),
     startNr: z.string().optional(),
     driverLicense: z.string().optional(),
@@ -55,30 +57,28 @@ const formSchema = z.object({
     path: ["guardianName"],
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface DriverFormProps {
     driverToEdit?: Driver | null;
-    onSave: (newDriver: Driver) => void;
+    onSave: (data: Omit<Driver, 'id'>, id?: string) => void;
     closeDialog: () => void;
+    rfidFromScan?: string;
 }
 
-export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProps) {
-    const form = useForm<z.infer<typeof formSchema>>({
+export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: DriverFormProps) {
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: driverToEdit ? {
             ...driverToEdit,
             dob: new Date(driverToEdit.dob),
-            role: driverToEdit.role || 'driver',
-            klasse: driverToEdit.klasse || "",
-            startNr: driverToEdit.startNr || "",
-            driverLicense: driverToEdit.driverLicense || "",
-            vehicleLicense: driverToEdit.vehicleLicense || "",
-            teamLicense: driverToEdit.teamLicense || "",
             guardianName: driverToEdit.guardian?.name || "",
             guardianContact: driverToEdit.guardian?.contact || "",
             guardianLicenses: driverToEdit.guardian?.licenses?.map(l => ({ value: l })) || [],
         } : {
-            id: "",
+            rfid: rfidFromScan || "",
             name: "",
+            email: "",
             club: "",
             role: "driver",
             klasse: "",
@@ -114,13 +114,14 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
         }
     };
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        const newDriver: Driver = {
-            id: values.id,
+    function onSubmit(values: FormValues) {
+        const driverData: Omit<Driver, 'id'> = {
+            rfid: values.rfid,
+            email: values.email,
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
-            role: values.role || 'driver',
+            role: values.role,
             klasse: values.klasse,
             startNr: values.startNr,
             driverLicense: values.driverLicense,
@@ -129,14 +130,14 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
         };
 
         if (isUnderage && !values.teamLicense) {
-            newDriver.guardian = {
+            driverData.guardian = {
                 name: values.guardianName || '',
                 contact: values.guardianContact || '',
                 licenses: values.guardianLicenses?.map(l => l.value).filter(Boolean),
             };
         }
         
-        onSave(newDriver);
+        onSave(driverData, values.id);
         closeDialog();
     }
 
@@ -148,7 +149,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
-                                name="id"
+                                name="rfid"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>RFID / Fører-ID</FormLabel>
@@ -156,7 +157,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                             <Input placeholder="Skann eller skriv inn ID" {...field} disabled={!!driverToEdit} />
                                         </FormControl>
                                         <FormDescription>
-                                            Denne ID-en kan ikke endres.
+                                            Denne ID-en brukes for innsjekk.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
@@ -170,6 +171,19 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                         <FormLabel>Fullt Navn</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Ola Nordmann" {...field} autoFocus />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>E-post (for innlogging)</FormLabel>
+                                        <FormControl>
+                                            <Input type="email" placeholder="ola@nordmann.no" {...field} disabled={!!driverToEdit} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -215,6 +229,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                         />
                                         </PopoverContent>
                                     </Popover>
+                                    <FormDescription>
+                                        Passord settes til DDMMÅÅÅÅ ved nyregistrering.
+                                    </FormDescription>
                                     <FormMessage />
                                     </FormItem>
                                 )}
@@ -249,9 +266,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                         <SelectItem value="admin">Admin</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <FormDescription>
-                                        Admin-brukere har tilgang til å administrere systemet.
-                                    </FormDescription>
                                     <FormMessage />
                                     </FormItem>
                                 )}
