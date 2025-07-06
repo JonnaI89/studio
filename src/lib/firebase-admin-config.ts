@@ -1,25 +1,37 @@
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
 
-// This configuration reuses the service account credentials provided for Google Sheets,
-// ensuring the Admin SDK has the necessary permissions to create users,
-// especially during local development.
-
 if (!getApps().length) {
+    const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
+    const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
+
+    if (!clientEmail || !privateKey) {
+        throw new Error(
+            'FATAL: Missing Google Service Account credentials in .env.local. ' +
+            'Please ensure GOOGLE_SHEETS_CLIENT_EMAIL and GOOGLE_SHEETS_PRIVATE_KEY are set correctly.'
+        );
+    }
+    
+    // The private key from a .env file often has its newlines escaped as "\\n".
+    // We need to replace these with actual newline characters "\n".
+    const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+
     const serviceAccount = {
-      // The project ID from your client-side Firebase config
       project_id: "varnacheck",
-      // The credentials from environment variables, using snake_case as required by the Admin SDK
-      client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      client_email: clientEmail,
+      private_key: formattedPrivateKey,
     };
 
-    // This setup assumes a development environment where credentials are provided via .env.local.
-    // If client_email or private_key are missing, this will now throw a clearer error instead of failing silently.
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-      storageBucket: 'varnacheck.appspot.com',
-    });
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+            storageBucket: 'varnacheck.appspot.com',
+        });
+    } catch (error: any) {
+        // Add more detailed error logging to help debug credential issues
+        console.error("Firebase Admin SDK Initialization Error:", error.message);
+        throw new Error(`Failed to initialize Firebase Admin SDK. Check your credentials. Original error: ${error.message}`);
+    }
 }
 
 export const authAdmin = admin.auth();
