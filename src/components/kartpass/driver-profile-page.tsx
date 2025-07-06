@@ -136,6 +136,38 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
         <div className="space-y-8">
             <Card>
                 <CardHeader>
+                    <CardTitle>Treningspåmelding</CardTitle>
+                    <CardDescription>Velg en uthevet treningsdag fra kalenderen og trykk på knappen for å melde deg på.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                    <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        month={currentDisplayMonth}
+                        onMonthChange={setCurrentDisplayMonth}
+                        modifiers={{
+                            training: trainingDays,
+                            disabled: (date) => date < new Date() && !isSameDay(date, new Date())
+                        }}
+                        modifiersClassNames={{
+                            training: 'training-day',
+                        }}
+                        className="rounded-md border"
+                    />
+                </CardContent>
+                <CardFooter>
+                     <Button onClick={handleTrainingSignup} disabled={!isTrainingDaySelected}>
+                        <Bike className="mr-2 h-4 w-4" />
+                        {isTrainingDaySelected && selectedDate
+                            ? `Meld på til ${format(selectedDate, 'dd.MM.yyyy')}`
+                            : 'Velg en treningsdag'}
+                    </Button>
+                </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
                      <div className="flex flex-col sm:flex-row items-start gap-6">
                         <div className="flex-1">
                             <CardTitle className="text-3xl">{driver.name}</CardTitle>
@@ -214,38 +246,6 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                     </CardContent>
                 </Card>
             )}
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Treningspåmelding</CardTitle>
-                    <CardDescription>Velg en uthevet treningsdag fra kalenderen og trykk på knappen for å melde deg på.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center">
-                    <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        month={currentDisplayMonth}
-                        onMonthChange={setCurrentDisplayMonth}
-                        modifiers={{
-                            training: trainingDays,
-                            disabled: (date) => date < new Date() && !isSameDay(date, new Date())
-                        }}
-                        modifiersClassNames={{
-                            training: 'training-day',
-                        }}
-                        className="rounded-md border"
-                    />
-                </CardContent>
-                <CardFooter>
-                     <Button onClick={handleTrainingSignup} disabled={!isTrainingDaySelected}>
-                        <Bike className="mr-2 h-4 w-4" />
-                        {isTrainingDaySelected && selectedDate
-                            ? `Meld på til ${format(selectedDate, 'dd.MM.yyyy')}`
-                            : 'Velg en treningsdag'}
-                    </Button>
-                </CardFooter>
-            </Card>
         </div>
     );
 }
