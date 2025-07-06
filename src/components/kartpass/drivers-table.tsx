@@ -35,7 +35,7 @@ export function DriversTable({ drivers, onEdit }: DriversTableProps) {
           {drivers.map((driver) => (
             <TableRow key={driver.id}>
               <TableCell className="font-medium">
-                <Link href={`/driver/${driver.id}`} className="hover:underline text-primary">
+                <Link href={`/admin/driver/${driver.id}`} className="hover:underline text-primary">
                   {driver.name}
                 </Link>
               </TableCell>
