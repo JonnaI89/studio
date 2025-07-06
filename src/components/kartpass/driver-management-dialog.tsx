@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { addDriver, updateDriver } from "@/services/driver-service";
+import { addDriver, updateDriver, deleteDriver } from "@/services/driver-service";
 import { signUp } from "@/services/auth-service";
 import { importFromSheetsToFirebase } from "@/services/import-service";
 import { useToast } from "@/hooks/use-toast";
@@ -70,8 +70,25 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
     try {
       if (driverToEdit && id) {
-        const driverToUpdate = { ...driverData, id: id };
-        await updateDriver(driverToUpdate);
+        const wasEmailAdded = !driverToEdit.email && driverData.email;
+        
+        if (wasEmailAdded) {
+            const password = format(new Date(driverData.dob), "ddMMyyyy");
+            const authUser = await signUp(driverData.email, password);
+
+            const newDriverWithAuth: Driver = {
+                ...driverData,
+                id: authUser.uid,
+            };
+            
+            await addDriver(newDriverWithAuth);
+            await deleteDriver(id);
+
+        } else {
+            const driverToUpdate = { ...driverData, id: id };
+            await updateDriver(driverToUpdate);
+        }
+
       } else {
         if (drivers.some(d => d.rfid === driverData.rfid)) {
           toast({

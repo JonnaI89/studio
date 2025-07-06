@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/firebase-config';
-import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc } from 'firebase/firestore';
 import type { Driver } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
@@ -78,6 +78,18 @@ export async function updateFirebaseDriver(driver: Driver): Promise<void> {
     } catch (error) {
         console.error("Error updating driver in Firestore: ", error);
         throw new Error("Kunne ikke oppdatere fører i Firebase.");
+    }
+}
+
+export async function deleteFirebaseDriver(id: string): Promise<void> {
+    try {
+        if (!db) {
+            throw new Error("Firestore is not initialized. Check your Firebase config.");
+        }
+        await deleteDoc(doc(db, DRIVERS_COLLECTION, id));
+    } catch (error) {
+        console.error(`Error deleting driver with ID ${id} from Firestore: `, error);
+        throw new Error("Kunne ikke slette fører fra Firebase.");
     }
 }
 

@@ -192,8 +192,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                                 type="email"
                                                 placeholder="ola@nordmann.no"
                                                 {...field}
-                                                readOnly={!!driverToEdit}
-                                                className={cn(!!driverToEdit && "cursor-not-allowed opacity-70")}
+                                                readOnly={!!driverToEdit?.email}
+                                                className={cn(!!driverToEdit?.email && "cursor-not-allowed opacity-70")}
                                             />
                                         </FormControl>
                                         <FormMessage />
