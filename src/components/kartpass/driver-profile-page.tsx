@@ -13,6 +13,7 @@ import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { PasswordChangeForm } from '../auth/password-change-form';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -146,6 +147,20 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                     )}
                 </CardContent>
             </Card>
+
+            {!isEditing && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Endre Passord</CardTitle>
+                        <CardDescription>
+                            Oppdater passordet du bruker for å logge inn. Passordet må være minst 6 tegn.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <PasswordChangeForm />
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>
