@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Upload } from "lucide-react";
-import { uploadAndSaveLogo } from "@/services/settings-service";
+import { LoaderCircle, Save } from "lucide-react";
+import { updateSiteSettings } from "@/services/settings-service";
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 
@@ -18,55 +18,28 @@ interface SiteSettingsEditorProps {
 
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [currentLogoUrl, setCurrentLogoUrl] = useState(initialSettings.logoUrl);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(initialSettings.logoUrl || "");
+  const [currentDisplayLogo, setCurrentDisplayLogo] = useState(initialSettings.logoUrl);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setLogoFile(e.target.files[0]);
-    } else {
-      setLogoFile(null);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!logoFile) {
-      toast({
-        variant: "destructive",
-        title: "Ingen fil valgt",
-        description: "Vennligst velg en bildefil for å laste opp.",
-      });
-      return;
-    }
-
-    setIsUploading(true);
+  const handleSave = async () => {
+    setIsLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('logoFile', logoFile);
-
-      const result = await uploadAndSaveLogo(formData);
-      
-      setCurrentLogoUrl(result.logoUrl);
-
+      await updateSiteSettings({ logoUrl: logoUrl });
+      setCurrentDisplayLogo(logoUrl);
       toast({
         title: "Logo Oppdatert",
-        description: "Den nye logoen er lastet opp og lagret.",
+        description: "Den nye logo-URLen er lagret.",
       });
     } catch (error) {
-      console.error("Logo upload failed:", error);
+      console.error("Logo URL save failed:", error);
       toast({
         variant: "destructive",
-        title: "Opplasting Feilet",
-        description: (error as Error).message || "En feil oppsto under opplasting av logoen. Sjekk konsollen for detaljer.",
+        title: "Lagring Feilet",
+        description: (error as Error).message || "En feil oppsto under lagring av URL.",
       });
     } finally {
-      setIsUploading(false);
-      setLogoFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      setIsLoading(false);
     }
   };
 
@@ -82,31 +55,31 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
          <div className="space-y-2">
             <Label>Nåværende Logo</Label>
             <div className="p-4 border rounded-md flex justify-center items-center bg-muted/40 min-h-[100px]">
-                {currentLogoUrl ? (
-                    <Image src={currentLogoUrl} alt="Nåværende logo" width={200} height={100} className="object-contain" />
+                {currentDisplayLogo ? (
+                    <Image src={currentDisplayLogo} alt="Nåværende logo" width={200} height={100} className="object-contain" />
                 ) : (
-                    <p className="text-sm text-muted-foreground">Ingen logo er lastet opp.</p>
+                    <p className="text-sm text-muted-foreground">Ingen logo er angitt.</p>
                 )}
             </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="logo-upload">Last Opp Ny Logo</Label>
+          <Label htmlFor="logo-url">Logo URL</Label>
           <Input
-            id="logo-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            ref={fileInputRef}
-            disabled={isUploading}
+            id="logo-url"
+            type="url"
+            placeholder="https://eksempel.com/logo.png"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            disabled={isLoading}
           />
         </div>
-        <Button onClick={handleUpload} disabled={isUploading || !logoFile}>
-          {isUploading ? (
+        <Button onClick={handleSave} disabled={isLoading}>
+          {isLoading ? (
             <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Upload className="mr-2 h-4 w-4" />
+            <Save className="mr-2 h-4 w-4" />
           )}
-          {isUploading ? 'Laster opp...' : 'Lagre ny logo'}
+          {isLoading ? 'Lagrer...' : 'Lagre Logo URL'}
         </Button>
       </CardContent>
     </Card>
