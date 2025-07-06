@@ -32,7 +32,7 @@ export function TrainingSignupsDialog() {
         toast({
           variant: "destructive",
           title: "Feil ved henting av påmeldinger",
-          description: "Kunne ikke hente påmeldinger. Det kan hende du må opprette et Firestore-indeks. Sjekk konsollen for en link.",
+          description: (error as Error).message || "En ukjent feil oppsto.",
         });
         setSignups([]);
       } finally {

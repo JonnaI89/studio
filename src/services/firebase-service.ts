@@ -130,11 +130,33 @@ export async function addFirebaseTrainingSignup(signup: Omit<TrainingSignup, 'id
 export async function getFirebaseTrainingSignupsByDate(date: string): Promise<TrainingSignup[]> {
     try {
         if (!db) throw new Error("Firestore not initialized.");
-        const q = query(collection(db, TRAINING_SIGNUPS_COLLECTION), where("trainingDate", "==", date), orderBy("driverKlasse"), orderBy("driverName"));
+        
+        // The original query with multiple orderBy clauses required a composite index in Firestore.
+        // To avoid requiring manual user intervention in the Firebase Console, we can
+        // remove the ordering from the query and sort the results in the code instead.
+        const q = query(collection(db, TRAINING_SIGNUPS_COLLECTION), where("trainingDate", "==", date));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as TrainingSignup);
+        
+        const signups = querySnapshot.docs.map(doc => doc.data() as TrainingSignup);
+
+        // Sort the results by klasse (class), then by name
+        signups.sort((a, b) => {
+            const klasseA = a.driverKlasse || "Ukjent Klasse";
+            const klasseB = b.driverKlasse || "Ukjent Klasse";
+            
+            if (klasseA < klasseB) return -1;
+            if (klasseA > klasseB) return 1;
+            
+            // If klasse is the same, sort by name
+            if (a.driverName < b.driverName) return -1;
+            if (a.driverName > b.driverName) return 1;
+
+            return 0;
+        });
+
+        return signups;
     } catch (error) {
         console.error(`Error fetching signups for date ${date}: `, error);
-        throw new Error("Kunne ikke hente påmeldinger.");
+        throw new Error("En feil oppstod under henting av påmeldinger. Vennligst prøv igjen.");
     }
 }
