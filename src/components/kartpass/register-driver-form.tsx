@@ -144,6 +144,9 @@ export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDr
                                 <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
                                     mode="single"
+                                    captionLayout="dropdown-buttons"
+                                    fromYear={1920}
+                                    toYear={new Date().getFullYear()}
                                     selected={field.value}
                                     onSelect={(date) => handleDobChange(date)}
                                     disabled={(date) =>
