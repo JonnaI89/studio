@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
+import Link from "next/link";
 
 interface DriversTableProps {
   drivers: Driver[];
@@ -33,7 +34,11 @@ export function DriversTable({ drivers, onEdit }: DriversTableProps) {
         <TableBody>
           {drivers.map((driver) => (
             <TableRow key={driver.id}>
-              <TableCell className="font-medium">{driver.name}</TableCell>
+              <TableCell className="font-medium">
+                <Link href={`/driver/${driver.id}`} className="hover:underline text-primary">
+                  {driver.name}
+                </Link>
+              </TableCell>
               <TableCell>{driver.club}</TableCell>
               <TableCell>
                  {driver.driverLicense || "Mangler"}

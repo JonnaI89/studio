@@ -3,7 +3,8 @@
 import { 
     getFirebaseDrivers, 
     addFirebaseDriver, 
-    updateFirebaseDriver 
+    updateFirebaseDriver,
+    getFirebaseDriverById
 } from './firebase-service';
 import type { Driver } from '@/lib/types';
 
@@ -12,6 +13,10 @@ import type { Driver } from '@/lib/types';
 
 export async function getDrivers(): Promise<Driver[]> {
     return getFirebaseDrivers();
+}
+
+export async function getDriverById(id: string): Promise<Driver | null> {
+    return getFirebaseDriverById(id);
 }
 
 export async function addDriver(driver: Driver): Promise<void> {

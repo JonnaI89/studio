@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/firebase-config';
-import { collection, doc, getDocs, setDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, updateDoc, writeBatch, query, orderBy, getDoc } from 'firebase/firestore';
 import type { Driver } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
@@ -21,6 +21,24 @@ export async function getFirebaseDrivers(): Promise<Driver[]> {
         throw new Error("Kunne ikke hente førere fra Firebase.");
     }
 }
+
+export async function getFirebaseDriverById(id: string): Promise<Driver | null> {
+    try {
+        if (!db) {
+            throw new Error("Firestore is not initialized. Check your Firebase config.");
+        }
+        const driverRef = doc(db, DRIVERS_COLLECTION, id);
+        const docSnap = await getDoc(driverRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as Driver;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching driver with ID ${id} from Firestore: `, error);
+        throw new Error("Kunne ikke hente fører fra Firebase.");
+    }
+}
+
 
 export async function addFirebaseDriver(driver: Driver): Promise<void> {
     try {

@@ -3,6 +3,8 @@ export type Driver = {
   name: string;
   dob: string; // YYYY-MM-DD
   club: string;
+  klasse?: string;
+  startNr?: string;
   driverLicense?: string;
   vehicleLicense?: string;
   guardian?: {

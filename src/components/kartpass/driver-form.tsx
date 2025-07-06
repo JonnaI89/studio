@@ -42,6 +42,8 @@ const formSchema = z.object({
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
+    klasse: z.string().optional(),
+    startNr: z.string().optional(),
     driverLicense: z.string().optional(),
     vehicleLicense: z.string().optional(),
     guardianName: z.string().optional(),
@@ -71,6 +73,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
         defaultValues: driverToEdit ? {
             ...driverToEdit,
             dob: new Date(driverToEdit.dob),
+            klasse: driverToEdit.klasse || "",
+            startNr: driverToEdit.startNr || "",
             driverLicense: driverToEdit.driverLicense || "",
             vehicleLicense: driverToEdit.vehicleLicense || "",
             guardianName: driverToEdit.guardian?.name || "",
@@ -80,6 +84,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             id: "",
             name: "",
             club: "",
+            klasse: "",
+            startNr: "",
             driverLicense: "",
             vehicleLicense: "",
             guardianName: "",
@@ -109,6 +115,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
+            klasse: values.klasse,
+            startNr: values.startNr,
             driverLicense: values.driverLicense,
             vehicleLicense: values.vehicleLicense,
         };
@@ -128,7 +136,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormField
                         control={form.control}
                         name="id"
@@ -139,7 +147,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                     <Input placeholder="Skann eller skriv inn ID" {...field} disabled={!!driverToEdit} />
                                 </FormControl>
                                 <FormDescription>
-                                    Denne ID-en brukes til å identifisere føreren. Kan ikke endres.
+                                    Denne ID-en kan ikke endres.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -212,6 +220,32 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                             </FormItem>
                         )}
                     />
+                     <FormField
+                        control={form.control}
+                        name="klasse"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Klasse</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="F.eks. Rotax, KZ2" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="startNr"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Startnummer</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="F.eks. 42" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                     <FormField
                         control={form.control}
                         name="driverLicense"
@@ -242,51 +276,53 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                 
                 {isUnderage && (
                     <>
-                        <Separator />
+                        <Separator className="my-6" />
                         <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                             <h3 className="font-semibold text-amber-600">Fører er under 18 år</h3>
                             <p className="text-sm text-muted-foreground">
                                 Informasjon om foresatt er påkrevd.
                             </p>
-                            <FormField
-                                control={form.control}
-                                name="guardianName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Foresattes Navn</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Kari Nordmann" {...field} value={field.value ?? ''}/>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="guardianContact"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Foresattes Kontaktinfo</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="+47 123 45 678" {...field} value={field.value ?? ''}/>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="guardianLicense"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Foresattes Lisens</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Lisensnummer for foresatt" {...field} value={field.value ?? ''} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="guardianName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Foresattes Navn</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Kari Nordmann" {...field} value={field.value ?? ''}/>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="guardianContact"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Foresattes Kontaktinfo</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="+47 123 45 678" {...field} value={field.value ?? ''}/>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name="guardianLicense"
+                                    render={({ field }) => (
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Foresattes Lisens</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Lisensnummer for foresatt" {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                         </div>
                     </>
                 )}
