@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
 import { addDriver, updateDriver } from "@/services/driver-service";
+import { importFromSheetsToFirebase } from "@/services/import-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Download, LoaderCircle } from "lucide-react";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
@@ -24,6 +25,7 @@ interface DriverManagementDialogProps {
 export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverManagementDialogProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
 
   const handleEdit = (driver: Driver) => {
@@ -36,13 +38,38 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     setIsFormOpen(true);
   };
 
+  const handleImport = async () => {
+    if (!confirm("Er du sikker på at du vil importere alle førere fra Google Sheet? Dette kan overskrive eksisterende data i Firebase med samme ID.")) {
+      return;
+    }
+    setIsImporting(true);
+    try {
+        const result = await importFromSheetsToFirebase();
+        if (result.success) {
+            toast({
+                title: "Import Vellykket",
+                description: `${result.count} førere ble importert fra Google Sheets til Firebase.`,
+            });
+            onDatabaseUpdate(); // Refresh the list
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Import Feilet",
+            description: (error as Error).message || "En ukjent feil oppsto under importen.",
+        });
+    } finally {
+        setIsImporting(false);
+    }
+  };
+
   const handleSave = async (savedDriver: Driver) => {
     try {
       if (driverToEdit) {
-        // Update existing driver
         await updateDriver(savedDriver);
       } else {
-        // Add new driver
         if (drivers.some(d => d.id === savedDriver.id)) {
           toast({
             variant: "destructive",
@@ -59,7 +86,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         description: `${savedDriver.name} er lagret i databasen.`,
       });
 
-      onDatabaseUpdate(); // Trigger refetch in parent
+      onDatabaseUpdate();
       setIsFormOpen(false);
       setDriverToEdit(null);
 
@@ -74,7 +101,15 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
 
   return (
     <div className="flex flex-col gap-4">
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center border-b pb-4">
+             <Button onClick={handleImport} variant="outline" disabled={isImporting}>
+                {isImporting ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {isImporting ? 'Importerer...' : 'Importer fra Google Sheet'}
+            </Button>
             <Button onClick={handleAddNew}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 Registrer ny fører

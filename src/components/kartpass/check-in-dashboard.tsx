@@ -62,7 +62,7 @@ export function CheckInDashboard() {
         variant: 'destructive',
         title: 'Feil ved henting av data',
         description:
-          (error as Error).message || 'Kunne ikke laste førerlisten.',
+          (error as Error).message || 'Kunne ikke laste førerlisten fra Firebase.',
       });
     } finally {
       setIsLoading(false);
@@ -225,7 +225,7 @@ export function CheckInDashboard() {
         {isLoading ? (
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
                 <LoaderCircle className="h-10 w-10 animate-spin" />
-                <p className="text-lg">Laster data fra Google Sheet...</p>
+                <p className="text-lg">Laster data fra Firebase...</p>
             </div>
         ) : driver ? (
           <DriverInfoCard 
