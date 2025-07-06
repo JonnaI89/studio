@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import type { Driver } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Camera, Group } from 'lucide-react';
+import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 
 interface DriverProfilePageProps {
@@ -39,7 +39,6 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('');
@@ -63,16 +62,6 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
         }
     };
     
-    const handleImageUploadClick = () => {
-        // In a real app, this would trigger the file input.
-        // For now, it just shows a toast.
-        toast({
-            title: "Bildeopplasting",
-            description: "Funksjonalitet for bildeopplasting er ikke implementert enda."
-        });
-        // fileInputRef.current?.click();
-    };
-
     const handleTrainingSignup = () => {
         // Placeholder for actual signup logic
         toast({
@@ -89,24 +78,11 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
             <Card>
                 <CardHeader>
                      <div className="flex flex-col sm:flex-row items-start gap-6">
-                        <div className="relative group">
-                             <Avatar className="w-24 h-24 border-4 border-primary/20">
-                                <AvatarImage src={driver.profileImageUrl} alt={driver.name} />
-                                <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
-                                    {getInitials(driver.name)}
-                                </AvatarFallback>
-                            </Avatar>
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                className="absolute inset-0 m-auto h-10 w-10 rounded-full opacity-0 group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white"
-                                onClick={handleImageUploadClick}
-                            >
-                                <Camera className="h-5 w-5" />
-                                <span className="sr-only">Endre bilde</span>
-                            </Button>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
-                        </div>
+                        <Avatar className="w-24 h-24 border-4 border-primary/20">
+                            <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
+                                {getInitials(driver.name)}
+                            </AvatarFallback>
+                        </Avatar>
                         <div className="flex-1">
                             <CardTitle className="text-3xl">{driver.name}</CardTitle>
                             <CardDescription>Førerprofil og innstillinger</CardDescription>

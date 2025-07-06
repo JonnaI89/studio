@@ -1,7 +1,7 @@
 "use client";
 
 import type { Driver } from "@/lib/types";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,6 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
     <Card className="w-full animate-in fade-in zoom-in-95 shadow-xl">
       <CardHeader className="text-center">
         <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-primary/20">
-          <AvatarImage src={driver.profileImageUrl} alt={driver.name} data-ai-hint="driver portrait" />
           <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
             {getInitials(driver.name)}
           </AvatarFallback>

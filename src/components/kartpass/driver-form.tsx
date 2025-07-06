@@ -121,7 +121,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             driverLicense: values.driverLicense,
             vehicleLicense: values.vehicleLicense,
             teamLicense: values.teamLicense,
-            profileImageUrl: driverToEdit?.profileImageUrl, // Keep existing image
         };
 
         if (isUnderage && !values.teamLicense) {
