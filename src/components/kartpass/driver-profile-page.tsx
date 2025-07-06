@@ -12,6 +12,7 @@ import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Troph
 import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -41,6 +42,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
+    const { isAdmin } = useAuth();
 
     const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;
@@ -106,6 +108,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                                 driverToEdit={driver}
                                 onSave={handleSave}
                                 closeDialog={() => setIsEditing(false)}
+                                isRestrictedView={!isAdmin}
                             />
                         </div>
                     ) : (

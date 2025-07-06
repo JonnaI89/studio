@@ -63,9 +63,10 @@ interface DriverFormProps {
     onSave: (data: Omit<Driver, 'id'>, id?: string) => void;
     closeDialog: () => void;
     rfidFromScan?: string;
+    isRestrictedView?: boolean;
 }
 
-export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: DriverFormProps) {
+export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, isRestrictedView = false }: DriverFormProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: driverToEdit ? {
@@ -152,28 +153,30 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="rfid"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>RFID / Fører-ID</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            placeholder="Skann eller skriv inn ID"
-                                            {...field}
-                                            value={field.value ?? ''}
-                                            readOnly={!!driverToEdit?.rfid}
-                                            className={cn(!!driverToEdit?.rfid && "cursor-not-allowed opacity-70")}
-                                        />
-                                    </FormControl>
-                                    <FormDescription>
-                                        Denne ID-en brukes for innsjekk.
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {!isRestrictedView && (
+                            <FormField
+                                control={form.control}
+                                name="rfid"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>RFID / Fører-ID</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Skann eller skriv inn ID"
+                                                {...field}
+                                                value={field.value ?? ''}
+                                                readOnly={!!driverToEdit?.rfid}
+                                                className={cn(!!driverToEdit?.rfid && "cursor-not-allowed opacity-70")}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Denne ID-en brukes for innsjekk.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <FormField
                             control={form.control}
                             name="name"
@@ -267,27 +270,29 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan }: 
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="role"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Rolle</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Velg en rolle" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="driver">Fører</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {!isRestrictedView && (
+                            <FormField
+                                control={form.control}
+                                name="role"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Rolle</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Velg en rolle" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        <SelectItem value="driver">Fører</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <FormField
                             control={form.control}
                             name="klasse"

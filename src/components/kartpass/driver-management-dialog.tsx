@@ -207,6 +207,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                       driverToEdit={driverToEdit}
                       onSave={handleSave}
                       closeDialog={() => setIsFormOpen(false)}
+                      isRestrictedView={false}
                   />
                 </ScrollArea>
             </DialogContent>
