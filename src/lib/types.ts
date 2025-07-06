@@ -33,3 +33,16 @@ export type TrainingSignup = {
   trainingDate: string; // YYYY-MM-DD
   signedUpAt: string; // ISO string
 };
+
+export type TrainingRule = {
+  id: string;
+  month: number; // 0-11
+  daysOfWeek: number[]; // 0-6 (Sun-Sat)
+  description?: string;
+};
+
+export type TrainingSettings = {
+  id: 'main'; // Singleton document ID
+  year: number;
+  rules: TrainingRule[];
+};

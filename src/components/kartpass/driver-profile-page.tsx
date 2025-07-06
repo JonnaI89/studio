@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Driver } from '@/lib/types';
+import type { Driver, TrainingSettings } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,12 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
-import { getMonth, getYear, isTuesday, isThursday, isSaturday, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format } from 'date-fns';
+import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format } from 'date-fns';
 import { addTrainingSignup } from '@/services/training-service';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
+    trainingSettings: TrainingSettings | null;
 }
 
 interface InfoItemProps {
@@ -41,7 +42,7 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     )
 }
 
-export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
+export function DriverProfilePage({ initialDriver, trainingSettings }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
@@ -53,30 +54,29 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [trainingDays, setTrainingDays] = useState<Date[]>([]);
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
+        if (!trainingSettings) return [];
+
         const month = getMonth(monthDate);
         const year = getYear(monthDate);
-        
+
+        if (year !== trainingSettings.year) return [];
+
+        const ruleForMonth = trainingSettings.rules.find(r => r.month === month);
+        if (!ruleForMonth) return [];
+
         const start = startOfMonth(monthDate);
         const end = endOfMonth(monthDate);
-        
-        if (year !== getYear(new Date())) return []; 
-        
         const daysInMonth = eachDayOfInterval({ start, end });
 
-        // June is month 5 (0-indexed)
-        if (month === 5) { 
-            return daysInMonth.filter(day => isTuesday(day) || isThursday(day) || isSaturday(day));
-        }
-        // July is month 6
-        if (month === 6) { 
-            return daysInMonth.filter(day => isSaturday(day));
-        }
-        return [];
+        // date-fns getDay(): 0 for Sunday, 1 for Monday, etc.
+        return daysInMonth.filter(day => ruleForMonth.daysOfWeek.includes(day.getDay()));
     };
 
     useEffect(() => {
-        setTrainingDays(getTrainingDaysForMonth(currentDisplayMonth));
-    }, [currentDisplayMonth]);
+        if (trainingSettings) {
+           setTrainingDays(getTrainingDaysForMonth(currentDisplayMonth));
+        }
+    }, [currentDisplayMonth, trainingSettings]);
 
     const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;

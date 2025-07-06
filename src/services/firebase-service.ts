@@ -2,10 +2,13 @@
 
 import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc } from 'firebase/firestore';
-import type { Driver, TrainingSignup } from '@/lib/types';
+import type { Driver, TrainingSignup, TrainingSettings } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
 const TRAINING_SIGNUPS_COLLECTION = 'trainingSignups';
+const SETTINGS_COLLECTION = 'settings';
+const TRAINING_SCHEDULE_DOC = 'training_schedule';
+
 
 export async function getFirebaseDrivers(): Promise<Driver[]> {
     try {
@@ -158,5 +161,32 @@ export async function getFirebaseTrainingSignupsByDate(date: string): Promise<Tr
     } catch (error) {
         console.error(`Error fetching signups for date ${date}: `, error);
         throw new Error("En feil oppstod under henting av påmeldinger. Vennligst prøv igjen.");
+    }
+}
+
+export async function getFirebaseTrainingSettings(): Promise<TrainingSettings> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const docRef = doc(db, SETTINGS_COLLECTION, TRAINING_SCHEDULE_DOC);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as TrainingSettings;
+        }
+        // Return a default/empty state if not found, ensuring the app works on first run.
+        return { id: 'main', year: new Date().getFullYear(), rules: [] };
+    } catch (error) {
+        console.error("Error fetching training settings from Firestore: ", error);
+        throw new Error("Kunne ikke hente treningsinnstillinger.");
+    }
+}
+
+export async function updateFirebaseTrainingSettings(settings: TrainingSettings): Promise<void> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const docRef = doc(db, SETTINGS_COLLECTION, TRAINING_SCHEDULE_DOC);
+        await setDoc(docRef, settings);
+    } catch (error) {
+        console.error("Error updating training settings in Firestore: ", error);
+        throw new Error("Kunne ikke lagre treningsinnstillinger.");
     }
 }
