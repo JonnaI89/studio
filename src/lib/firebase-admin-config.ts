@@ -36,4 +36,4 @@ if (!getApps().length) {
 }
 
 export const authAdmin = admin.auth();
-export const storageAdmin = admin.storage().bucket();
+export const storageAdmin = admin.storage().bucket(storageBucket);
