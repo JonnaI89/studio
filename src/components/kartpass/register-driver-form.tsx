@@ -133,7 +133,7 @@ export function RegisterDriverForm({ rfid, onRegister, closeDialog }: RegisterDr
                                     )}
                                     >
                                     {field.value ? (
-                                        format(field.value, "PPP")
+                                        format(field.value, "dd.MM.yyyy")
                                     ) : (
                                         <span>Velg en dato</span>
                                     )}

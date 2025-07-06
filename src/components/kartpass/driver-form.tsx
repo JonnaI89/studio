@@ -186,7 +186,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                             )}
                                             >
                                             {field.value ? (
-                                                format(field.value, "PPP")
+                                                format(field.value, "dd.MM.yyyy")
                                             ) : (
                                                 <span>Velg en dato</span>
                                             )}
