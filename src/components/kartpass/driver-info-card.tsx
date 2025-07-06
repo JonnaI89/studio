@@ -91,8 +91,8 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
           <CheckeredFlagIcon className="mr-2 h-6 w-6" />
           {isCheckedIn ? 'Innsjekket' : 'Sjekk inn fører'}
         </Button>
-         <Button variant="ghost" onClick={onReset} className="w-full text-muted-foreground">
-            Skann en annen fører
+         <Button variant="outline" onClick={onReset} className="w-full">
+            Skann neste fører
         </Button>
       </CardFooter>
     </Card>

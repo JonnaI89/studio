@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Driver } from "@/lib/types";
 import { mockDrivers } from "@/lib/mock-data";
 import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
-import { Button } from "@/components/ui/button";
 
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
@@ -20,13 +19,11 @@ function calculateAge(dob: string): number {
 }
 
 export function CheckInDashboard() {
-  const [isScanning, setIsScanning] = useState(false);
   const [driver, setDriver] = useState<Driver | null>(null);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
 
-  const handleScan = () => {
-    setIsScanning(true);
+  const handleScan = useCallback(() => {
     setDriver(null);
     setIsCheckedIn(false);
     setCheckInTime(null);
@@ -35,9 +32,12 @@ export function CheckInDashboard() {
       const randomDriver =
         mockDrivers[Math.floor(Math.random() * mockDrivers.length)];
       setDriver(randomDriver);
-      setIsScanning(false);
     }, 2000);
-  };
+  }, []);
+
+  useEffect(() => {
+    handleScan();
+  }, [handleScan]);
 
   const handleCheckIn = () => {
     setIsCheckedIn(true);
@@ -45,9 +45,7 @@ export function CheckInDashboard() {
   };
   
   const handleReset = () => {
-    setDriver(null);
-    setIsCheckedIn(false);
-    setCheckInTime(null);
+    handleScan();
   }
 
   const driverAge = driver ? calculateAge(driver.dob) : 0;
@@ -58,16 +56,8 @@ export function CheckInDashboard() {
         <KartPassLogo />
       </header>
 
-      <div className="w-full">
-        {!driver && !isScanning && (
-            <Scanner onScan={handleScan} isScanning={isScanning} />
-        )}
-
-        {isScanning && (
-             <Scanner onScan={handleScan} isScanning={isScanning} />
-        )}
-        
-        {driver && !isScanning && (
+      <div className="w-full min-h-[550px] flex items-center justify-center">
+        {driver ? (
           <DriverInfoCard 
             driver={driver} 
             age={driverAge} 
@@ -76,6 +66,8 @@ export function CheckInDashboard() {
             isCheckedIn={isCheckedIn}
             checkInTime={checkInTime}
           />
+        ) : (
+          <Scanner />
         )}
       </div>
     </div>
