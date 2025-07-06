@@ -46,3 +46,7 @@ export type TrainingSettings = {
   year: number;
   rules: TrainingRule[];
 };
+
+export type SiteSettings = {
+  logoUrl?: string;
+};

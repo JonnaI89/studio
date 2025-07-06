@@ -2,12 +2,13 @@
 
 import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc } from 'firebase/firestore';
-import type { Driver, TrainingSignup, TrainingSettings } from '@/lib/types';
+import type { Driver, TrainingSignup, TrainingSettings, SiteSettings } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
 const TRAINING_SIGNUPS_COLLECTION = 'trainingSignups';
 const SETTINGS_COLLECTION = 'settings';
 const TRAINING_SCHEDULE_DOC = 'training_schedule';
+const SITE_CONFIG_DOC = 'site_config';
 
 
 export async function getFirebaseDrivers(): Promise<Driver[]> {
@@ -200,5 +201,31 @@ export async function updateFirebaseTrainingSettings(settings: TrainingSettings)
     } catch (error) {
         console.error("Error updating training settings in Firestore: ", error);
         throw new Error("Kunne ikke lagre treningsinnstillinger.");
+    }
+}
+
+export async function getFirebaseSiteSettings(): Promise<SiteSettings> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const docRef = doc(db, SETTINGS_COLLECTION, SITE_CONFIG_DOC);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as SiteSettings;
+        }
+        return {};
+    } catch (error) {
+        console.error("Error fetching site settings from Firestore: ", error);
+        throw new Error("Kunne ikke hente nettstedsinnstillinger.");
+    }
+}
+
+export async function updateFirebaseSiteSettings(settings: SiteSettings): Promise<void> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const docRef = doc(db, SETTINGS_COLLECTION, SITE_CONFIG_DOC);
+        await setDoc(docRef, settings, { merge: true });
+    } catch (error) {
+        console.error("Error updating site settings in Firestore: ", error);
+        throw new Error("Kunne ikke lagre nettstedsinnstillinger.");
     }
 }

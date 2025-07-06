@@ -3,9 +3,12 @@ import { KartPassLogo } from '@/components/icons/kart-pass-logo';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User, LogIn } from 'lucide-react';
-import { KnaVarnaLogo } from '@/components/icons/kna-varna-logo';
+import { getSiteSettings } from '@/services/settings-service';
+import Image from 'next/image';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const settings = await getSiteSettings();
+
   return (
     <div className="flex flex-col min-h-screen bg-muted/40">
       <header className="w-full flex justify-end p-4 sm:p-6 absolute top-0">
@@ -37,7 +40,13 @@ export default function LandingPage() {
       </main>
       <footer className="w-full p-8 flex flex-col items-center justify-center gap-4">
         <p className="text-sm text-muted-foreground">Powered by</p>
-        <KnaVarnaLogo className="w-48 h-auto text-destructive" />
+        {settings.logoUrl ? (
+          <Image src={settings.logoUrl} alt="Klubb-logo" width={240} height={120} className="w-48 h-auto object-contain" />
+        ) : (
+           <div className="h-12 w-48 flex items-center justify-center">
+             {/* Placeholder or nothing if no logo is uploaded */}
+           </div>
+        )}
       </footer>
     </div>
   );
