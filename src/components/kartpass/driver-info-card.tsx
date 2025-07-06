@@ -26,7 +26,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   }
 
   return (
-    <Card className="w-full max-w-md animate-in fade-in zoom-in-95 shadow-xl">
+    <Card className="w-full animate-in fade-in zoom-in-95 shadow-xl">
       <CardHeader className="text-center">
         <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-primary/20">
           <AvatarImage src={`https://placehold.co/100x100.png`} alt={driver.name} data-ai-hint="driver portrait" />
@@ -102,13 +102,15 @@ interface InfoItemProps {
 
 function InfoItem({ icon, label, value, children }: InfoItemProps) {
     return (
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
-                <span className="h-6 w-6">{icon}</span>
+                <span className="h-6 w-6 shrink-0">{icon}</span>
                 <span className="text-muted-foreground">{label}</span>
             </div>
-            {value && <span className="font-semibold">{value}</span>}
-            {children}
+            <div className="text-right">
+                {value && <span className="font-semibold break-words">{value}</span>}
+                {children}
+            </div>
         </div>
     )
 }

@@ -130,7 +130,7 @@ export function CheckInDashboard() {
   const driverAge = driver ? calculateAge(driver.dob) : 0;
 
   return (
-    <div className="w-full max-w-md flex flex-col items-center gap-8">
+    <div className="w-full max-w-lg flex flex-col items-center gap-8">
       <header className="w-full flex justify-between items-center">
         <KartPassLogo />
         <div className="flex items-center gap-2">
