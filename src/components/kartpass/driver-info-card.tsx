@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Shield, Users, Calendar, Timer, CheckCircle2, CarFront, UserCheck, CreditCard } from "lucide-react";
+import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard } from "lucide-react";
 
 interface DriverInfoCardProps {
   driver: Driver;
@@ -53,7 +53,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
               <h3 className="font-semibold flex items-center"><Shield className="mr-2 h-4 w-4 text-amber-600" />Foresattes informasjon</h3>
               <>
                 <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
-                <InfoItem icon={<Timer className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
+                <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
                 {driver.guardian.guardianLicense && (
                   <InfoItem icon={<Shield className="text-amber-600" />} label="Foresattlisens" value={driver.guardian.guardianLicense} />
                 )}
@@ -108,7 +108,7 @@ interface InfoItemProps {
 
 function InfoItem({ icon, label, value, children }: InfoItemProps) {
     return (
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
                 <span className="h-6 w-6 shrink-0">{icon}</span>
                 <span className="text-muted-foreground">{label}</span>
