@@ -28,6 +28,7 @@ import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
 import { UserPlus, Download, LoaderCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
@@ -110,14 +111,14 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
       if (driverToEdit && id) {
         const wasEmailAdded = !driverToEdit.email && driverData.email;
         
-        if (wasEmailAdded) {
+        if (wasEmailAdded && driverData.email) {
             const password = format(new Date(driverData.dob), "ddMMyyyy");
             const authUser = await signUp(driverData.email, password);
 
             const newDriverWithAuth: Driver = {
-                ...driverToEdit, // Preserve all old data
-                ...driverData,   // Overlay with new data from form
-                id: authUser.uid, // Set the new, correct ID
+                ...driverToEdit,
+                ...driverData,
+                id: authUser.uid, 
             };
             
             await addDriver(newDriverWithAuth);
@@ -201,11 +202,13 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                         {driverToEdit ? 'Oppdater informasjonen for føreren.' : 'Fyll ut detaljene for den nye føreren.'}
                     </DialogDescription>
                 </DialogHeader>
-                <DriverForm
-                    driverToEdit={driverToEdit}
-                    onSave={handleSave}
-                    closeDialog={() => setIsFormOpen(false)}
-                />
+                <ScrollArea className="max-h-[70vh] pr-4">
+                  <DriverForm
+                      driverToEdit={driverToEdit}
+                      onSave={handleSave}
+                      closeDialog={() => setIsFormOpen(false)}
+                  />
+                </ScrollArea>
             </DialogContent>
         </Dialog>
         
