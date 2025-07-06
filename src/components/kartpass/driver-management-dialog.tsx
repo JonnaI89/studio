@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
 import { addDriver, updateDriver, deleteDriver } from "@/services/driver-service";
-import { signUp } from "@/services/auth-service";
+import { createAuthUser } from "@/services/admin-service";
 import { importFromSheetsToFirebase } from "@/services/import-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -113,12 +113,12 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         
         if (wasEmailAdded && driverData.email) {
             const password = format(new Date(driverData.dob), "ddMMyyyy");
-            const authUser = await signUp(driverData.email, password);
+            const userRecord = await createAuthUser(driverData.email, password);
 
             const newDriverWithAuth: Driver = {
                 ...driverToEdit,
                 ...driverData,
-                id: authUser.uid, 
+                id: userRecord.uid, 
             };
             
             await addDriver(newDriverWithAuth);
@@ -149,11 +149,11 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         }
 
         const password = format(new Date(driverData.dob), "ddMMyyyy");
-        const authUser = await signUp(driverData.email, password);
+        const userRecord = await createAuthUser(driverData.email, password);
 
         const newDriver: Driver = {
             ...driverData,
-            id: authUser.uid,
+            id: userRecord.uid,
         };
         await addDriver(newDriver);
       }

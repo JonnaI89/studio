@@ -26,7 +26,7 @@ import { cn, calculateAge } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Separator } from "../ui/separator";
-import { signUp } from "@/services/auth-service";
+import { createAuthUser } from "@/services/admin-service";
 import { useToast } from "@/hooks/use-toast";
 import { addDriver } from "@/services/driver-service";
 
@@ -81,10 +81,10 @@ export function RegisterDriverForm({ rfid, onRegisterSuccess, closeDialog }: Reg
     async function onSubmit(values: z.infer<typeof formSchema>) {
         const password = format(values.dob, "ddMMyyyy");
         try {
-            const authUser = await signUp(values.email, password);
+            const userRecord = await createAuthUser(values.email, password);
             
             const newDriver: Driver = {
-                id: authUser.uid, // Use Firebase Auth UID as the document ID
+                id: userRecord.uid, // Use Firebase Auth UID as the document ID
                 rfid: rfid,
                 email: values.email,
                 name: values.name,
