@@ -1,5 +1,3 @@
-'use server';
-
 import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc } from 'firebase/firestore';
 import type { Driver, TrainingSignup, TrainingSettings, SiteSettings } from '@/lib/types';
