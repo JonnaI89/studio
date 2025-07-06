@@ -130,6 +130,18 @@ export async function addFirebaseTrainingSignup(signup: Omit<TrainingSignup, 'id
     }
 }
 
+export async function deleteFirebaseTrainingSignup(id: string): Promise<void> {
+    try {
+        if (!db) {
+            throw new Error("Firestore is not initialized. Check your Firebase config.");
+        }
+        await deleteDoc(doc(db, TRAINING_SIGNUPS_COLLECTION, id));
+    } catch (error) {
+        console.error(`Error deleting training signup with ID ${id} from Firestore: `, error);
+        throw new Error("Kunne ikke fjerne påmelding fra Firebase.");
+    }
+}
+
 export async function getFirebaseTrainingSignupsByDate(date: string): Promise<TrainingSignup[]> {
     try {
         if (!db) throw new Error("Firestore not initialized.");

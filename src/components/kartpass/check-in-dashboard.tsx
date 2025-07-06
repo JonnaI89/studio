@@ -205,7 +205,7 @@ export function CheckInDashboard() {
                           Velg en dato i kalenderen for å se hvem som er påmeldt, sortert etter klasse.
                         </DialogDescription>
                     </DialogHeader>
-                    <TrainingSignupsDialog />
+                    <TrainingSignupsDialog checkedInEntries={checkedInDrivers}/>
                 </DialogContent>
             </Dialog>
 

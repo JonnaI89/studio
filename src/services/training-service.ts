@@ -4,7 +4,8 @@ import {
     addFirebaseTrainingSignup, 
     getFirebaseTrainingSignupsByDate,
     getFirebaseTrainingSettings,
-    updateFirebaseTrainingSettings
+    updateFirebaseTrainingSettings,
+    deleteFirebaseTrainingSignup
 } from './firebase-service';
 import type { TrainingSignup, TrainingSettings } from '@/lib/types';
 
@@ -22,4 +23,8 @@ export async function getTrainingSettings(): Promise<TrainingSettings> {
 
 export async function updateTrainingSettings(settings: TrainingSettings): Promise<void> {
     return updateFirebaseTrainingSettings(settings);
+}
+
+export async function deleteTrainingSignup(signupId: string): Promise<void> {
+    return deleteFirebaseTrainingSignup(signupId);
 }
