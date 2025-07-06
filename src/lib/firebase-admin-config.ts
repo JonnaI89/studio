@@ -22,7 +22,7 @@ if (!getApps().length) {
     // If credentials are provided, initialize with them.
     // This is for local development.
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
       storageBucket: storageBucket,
     });
   } else {
