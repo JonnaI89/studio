@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Driver } from "@/lib/types";
-import { mockDrivers } from "@/lib/mock-data";
+import { mockDrivers as initialDrivers } from "@/lib/mock-data";
 import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { CheckedInTable } from "./checked-in-table";
 import { ManualCheckInForm } from "./manual-check-in-form";
+import { RegisterDriverForm } from "./register-driver-form";
 
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
@@ -44,6 +45,9 @@ export function CheckInDashboard() {
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [newRfidId, setNewRfidId] = useState<string | null>(null);
+  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
 
 
   useEffect(() => {
@@ -51,18 +55,16 @@ export function CheckInDashboard() {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (rfidBuffer.trim()) {
-          const foundDriver = mockDrivers.find(d => d.id === rfidBuffer.trim());
+          const scannedId = rfidBuffer.trim();
+          const foundDriver = drivers.find(d => d.id === scannedId);
 
           if (foundDriver) {
             setDriver(foundDriver);
             setIsCheckedIn(false);
             setCheckInTime(null);
           } else {
-            toast({
-              title: "Ukjent RFID",
-              description: `Finner ingen fører med ID: ${rfidBuffer}`,
-              variant: "destructive",
-            });
+            setNewRfidId(scannedId);
+            setIsRegisterOpen(true);
           }
           setRfidBuffer('');
         }
@@ -73,14 +75,14 @@ export function CheckInDashboard() {
       }
     };
 
-    if (!driver) {
+    if (!driver && !isRegisterOpen && !isManualCheckInOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidBuffer, toast, driver]);
+  }, [rfidBuffer, toast, driver, drivers, isRegisterOpen, isManualCheckInOpen]);
 
 
   const handleCheckIn = () => {
@@ -104,6 +106,17 @@ export function CheckInDashboard() {
     setCheckInTime(null);
   };
 
+  const handleRegisterDriver = (newDriver: Driver) => {
+    setDrivers(prev => [...prev, newDriver]);
+    setDriver(newDriver);
+    setIsCheckedIn(false);
+    setCheckInTime(null);
+    toast({
+        title: "Fører Registrert",
+        description: `${newDriver.name} er lagt til i systemet.`,
+    });
+  };
+
   const driverAge = driver ? calculateAge(driver.dob) : 0;
 
   return (
@@ -113,7 +126,7 @@ export function CheckInDashboard() {
         <div className="flex items-center gap-2">
            <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" title="Manuell innsjekk">
                 <UserPlus className="h-5 w-5" />
                 <span className="sr-only">Manuell innsjekk</span>
               </Button>
@@ -126,7 +139,7 @@ export function CheckInDashboard() {
                 </DialogDescription>
               </DialogHeader>
               <ManualCheckInForm 
-                drivers={mockDrivers} 
+                drivers={drivers} 
                 onDriverSelect={handleManualSelect}
                 closeDialog={() => setIsManualCheckInOpen(false)}
               />
@@ -135,7 +148,7 @@ export function CheckInDashboard() {
 
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" title="Vis innsjekkede">
                 <List className="h-5 w-5" />
                 <span className="sr-only">Vis innsjekkede førere</span>
               </Button>
@@ -164,7 +177,26 @@ export function CheckInDashboard() {
             checkInTime={checkInTime}
           />
         ) : (
-          <Scanner />
+          <>
+            <Scanner />
+            <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+              <DialogContent className="max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Registrer Ny Fører</DialogTitle>
+                  <DialogDescription>
+                    Denne RFID-brikken er ikke gjenkjent. Vennligst fyll ut detaljene under for å registrere en ny fører.
+                  </DialogDescription>
+                </DialogHeader>
+                {newRfidId && (
+                  <RegisterDriverForm 
+                    rfid={newRfidId}
+                    onRegister={handleRegisterDriver}
+                    closeDialog={() => setIsRegisterOpen(false)}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       </div>
     </div>
