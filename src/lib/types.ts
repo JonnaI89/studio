@@ -23,3 +23,12 @@ export type CheckedInEntry = {
   checkInTime: string;
   paymentStatus: 'paid' | 'unpaid';
 };
+
+export type TrainingSignup = {
+  id: string; // auto-generated doc id
+  driverId: string;
+  driverName: string;
+  driverKlasse: string | undefined;
+  trainingDate: string; // YYYY-MM-DD
+  signedUpAt: string; // ISO string
+};

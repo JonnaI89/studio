@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
 import { getMonth, getYear, isTuesday, isThursday, isSaturday, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format } from 'date-fns';
+import { addTrainingSignup } from '@/services/training-service';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -99,13 +100,28 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     
     const isTrainingDaySelected = selectedDate && trainingDays.some(trainingDay => isSameDay(trainingDay, selectedDate));
     
-    const handleTrainingSignup = () => {
+    const handleTrainingSignup = async () => {
         if (!isTrainingDaySelected || !selectedDate) return;
-        // Placeholder for actual signup logic
-        toast({
-            title: "Påmelding Vellykket!",
-            description: `${driver.name} er nå påmeldt til trening ${format(selectedDate, 'dd.MM.yyyy')}.`,
-        });
+        
+        try {
+            await addTrainingSignup({
+                driverId: driver.id,
+                driverName: driver.name,
+                driverKlasse: driver.klasse,
+                trainingDate: format(selectedDate, 'yyyy-MM-dd'),
+                signedUpAt: new Date().toISOString(),
+            });
+            toast({
+                title: "Påmelding Vellykket!",
+                description: `${driver.name} er nå påmeldt til trening ${format(selectedDate, 'dd.MM.yyyy')}.`,
+            });
+        } catch (error) {
+             toast({
+                variant: 'destructive',
+                title: 'Påmelding Feilet',
+                description: (error as Error).message || "En feil oppsto under påmelding.",
+            });
+        }
     }
 
     const handleLogout = async () => {
@@ -130,10 +146,12 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                                 <Pencil className="mr-2 h-4 w-4" />
                                 {isEditing ? 'Avbryt' : 'Rediger Profil'}
                             </Button>
-                            <Button variant="ghost" onClick={handleLogout}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Logg ut
-                            </Button>
+                            {!isAdmin && (
+                                <Button variant="ghost" onClick={handleLogout}>
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    Logg ut
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </CardHeader>

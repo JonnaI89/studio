@@ -2,9 +2,10 @@
 
 import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc } from 'firebase/firestore';
-import type { Driver } from '@/lib/types';
+import type { Driver, TrainingSignup } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
+const TRAINING_SIGNUPS_COLLECTION = 'trainingSignups';
 
 export async function getFirebaseDrivers(): Promise<Driver[]> {
     try {
@@ -111,5 +112,29 @@ export async function batchAddFirebaseDrivers(drivers: Driver[]): Promise<void> 
     } catch (error) {
         console.error("Error batch adding drivers to Firestore: ", error);
         throw new Error("Kunne ikke utføre masseimport til Firebase.");
+    }
+}
+
+export async function addFirebaseTrainingSignup(signup: Omit<TrainingSignup, 'id'>): Promise<string> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const newDocRef = doc(collection(db, TRAINING_SIGNUPS_COLLECTION));
+        await setDoc(newDocRef, { ...signup, id: newDocRef.id });
+        return newDocRef.id;
+    } catch (error) {
+        console.error("Error adding training signup to Firestore: ", error);
+        throw new Error("Kunne ikke legge til treningspåmelding.");
+    }
+}
+
+export async function getFirebaseTrainingSignupsByDate(date: string): Promise<TrainingSignup[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const q = query(collection(db, TRAINING_SIGNUPS_COLLECTION), where("trainingDate", "==", date), orderBy("driverKlasse"), orderBy("driverName"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as TrainingSignup);
+    } catch (error) {
+        console.error(`Error fetching signups for date ${date}: `, error);
+        throw new Error("Kunne ikke hente påmeldinger.");
     }
 }

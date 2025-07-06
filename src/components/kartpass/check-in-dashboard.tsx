@@ -8,7 +8,7 @@ import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { RegisterDriverForm } from "./register-driver-form";
 import { DriverManagementDialog } from "./driver-management-dialog";
 import { PaymentDialog } from "./payment-dialog";
 import { calculateAge } from "@/lib/utils";
+import { TrainingSignupsDialog } from "./training-signups-dialog";
 
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
@@ -32,6 +33,7 @@ export function CheckInDashboard() {
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isDriverMgmtOpen, setIsDriverMgmtOpen] = useState(false);
+  const [isSignupsOpen, setIsSignupsOpen] = useState(false);
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,14 +93,14 @@ export function CheckInDashboard() {
       }
     };
 
-    if (!driver && !isRegisterOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen) {
+    if (!driver && !isRegisterOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen && !isSignupsOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidBuffer, toast, driver, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen]);
+  }, [rfidBuffer, toast, driver, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
 
 
   const handleOpenPayment = () => {
@@ -157,6 +159,24 @@ export function CheckInDashboard() {
       <header className="w-full flex justify-between items-center">
         <KartPassLogo />
         <div className="flex items-center gap-2">
+            <Dialog open={isSignupsOpen} onOpenChange={setIsSignupsOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" title="Påmeldte til trening" disabled={isLoading}>
+                        <CalendarDays className="h-5 w-5" />
+                        <span className="sr-only">Påmeldte til trening</span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                     <DialogHeader>
+                        <DialogTitle>Påmeldte til Trening</DialogTitle>
+                        <DialogDescription>
+                          Velg en dato i kalenderen for å se hvem som er påmeldt, sortert etter klasse.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <TrainingSignupsDialog />
+                </DialogContent>
+            </Dialog>
+
             <Dialog open={isDriverMgmtOpen} onOpenChange={setIsDriverMgmtOpen}>
                 <DialogTrigger asChild>
                     <Button variant="outline" size="icon" title="Føreradministrasjon" disabled={isLoading}>
