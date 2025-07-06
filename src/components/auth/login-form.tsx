@@ -60,8 +60,10 @@ export function LoginForm() {
 
       if (profile?.role === 'admin') {
         toast({ title: "Admin-innlogging Vellykket" });
+        window.location.href = '/admin';
       } else if (profile) {
         toast({ title: "Innlogging Vellykket" });
+        window.location.href = `/driver/${user.uid}`;
       } else {
         toast({
           variant: "destructive",
