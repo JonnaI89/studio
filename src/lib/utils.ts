@@ -6,61 +6,53 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function calculateAge(dobString: string): number | null {
-  if (!dobString) {
+  if (!dobString || typeof dobString !== 'string') {
     return null;
   }
 
-  const parts = dobString.split(/[.\/-]/);
-  
-  if (parts.length !== 3) {
-    const fallbackDate = new Date(dobString);
-    if(isNaN(fallbackDate.getTime())) {
-      console.warn('Invalid date format:', dobString);
-      return null;
-    }
-    
-    const today = new Date();
-    let age = today.getFullYear() - fallbackDate.getFullYear();
-    const m = today.getMonth() - fallbackDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < fallbackDate.getDate())) {
-      age--;
-    }
-    return age < 0 ? null : age;
-  }
-
+  const dateStr = dobString.trim();
+  let parts;
   let year, month, day;
-  
-  if (parts[0].length === 4) { // YYYY-MM-DD
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10);
-    day = parseInt(parts[2], 10);
-  } 
-  else if (parts[2].length === 4) { // DD.MM.YYYY
-    day = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10);
-    year = parseInt(parts[2], 10);
+
+  // Try parsing YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+  parts = dateStr.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+  if (parts) {
+    year = parseInt(parts[1], 10);
+    month = parseInt(parts[2], 10);
+    day = parseInt(parts[3], 10);
   } else {
-    console.warn('Unrecognized date format:', dobString);
+    // Try parsing DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
+    parts = dateStr.match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{4})$/);
+    if (parts) {
+      day = parseInt(parts[1], 10);
+      month = parseInt(parts[2], 10);
+      year = parseInt(parts[3], 10);
+    } else {
+      console.warn('Unrecognized date format:', dateStr);
+      return null; // Format not recognized
+    }
+  }
+
+  if (isNaN(year) || isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+     console.warn('Invalid date parts after parsing:', dateStr);
     return null;
   }
 
-  if (isNaN(year) || isNaN(month) || isNaN(day) || month < 1 || month > 12) {
-    console.warn('Invalid date parts after parsing:', dobString);
-    return null;
+  // month is 1-based, Date constructor needs 0-based
+  const birthDate = new Date(year, month - 1, day);
+
+  // Additional validation to see if the constructed date is valid (e.g., for Feb 30)
+  if (birthDate.getFullYear() !== year || birthDate.getMonth() !== month - 1 || birthDate.getDate() !== day) {
+      console.warn('Constructed invalid date (e.g. Feb 30):', dateStr);
+      return null;
   }
-
-  const birthDate = new Date(Date.UTC(year, month - 1, day));
-
-  if (isNaN(birthDate.getTime())) {
-    console.warn('Constructed invalid date:', dobString);
-    return null;
-  }
-
+  
   const today = new Date();
-  let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
-  const m = today.getUTCMonth() - birthDate.getUTCMonth();
-  if (m < 0 || (m === 0 && today.getUTCDate() < birthDate.getUTCDate())) {
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
+
   return age < 0 ? null : age;
 }
