@@ -86,3 +86,10 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .training-day:not(.rdp-day_outside) {
+    @apply font-bold rounded-md;
+    border: 2px solid hsl(var(--accent));
+  }
+}

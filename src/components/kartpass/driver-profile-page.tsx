@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Driver } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut } from 'lucide-react';
+import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
+import { Calendar } from '@/components/ui/calendar';
+import { getMonth, getYear, isTuesday, isThursday, isSaturday, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format } from 'date-fns';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -44,6 +46,36 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const { toast } = useToast();
     const router = useRouter();
     const { isAdmin } = useAuth();
+    
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+    const [currentDisplayMonth, setCurrentDisplayMonth] = useState(new Date());
+    const [trainingDays, setTrainingDays] = useState<Date[]>([]);
+
+    const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
+        const month = getMonth(monthDate);
+        const year = getYear(monthDate);
+        
+        const start = startOfMonth(monthDate);
+        const end = endOfMonth(monthDate);
+        
+        if (year !== getYear(new Date())) return []; 
+        
+        const daysInMonth = eachDayOfInterval({ start, end });
+
+        // June is month 5 (0-indexed)
+        if (month === 5) { 
+            return daysInMonth.filter(day => isTuesday(day) || isThursday(day) || isSaturday(day));
+        }
+        // July is month 6
+        if (month === 6) { 
+            return daysInMonth.filter(day => isSaturday(day));
+        }
+        return [];
+    };
+
+    useEffect(() => {
+        setTrainingDays(getTrainingDaysForMonth(currentDisplayMonth));
+    }, [currentDisplayMonth]);
 
     const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;
@@ -65,11 +97,14 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
         }
     };
     
+    const isTrainingDaySelected = selectedDate && trainingDays.some(trainingDay => isSameDay(trainingDay, selectedDate));
+    
     const handleTrainingSignup = () => {
+        if (!isTrainingDaySelected || !selectedDate) return;
         // Placeholder for actual signup logic
         toast({
             title: "Påmelding Vellykket!",
-            description: `${driver.name} er nå påmeldt til dagens trening.`,
+            description: `${driver.name} er nå påmeldt til trening ${format(selectedDate, 'dd.MM.yyyy')}.`,
         });
     }
 
@@ -115,7 +150,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                     ) : (
                         <div className="space-y-2">
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-                                <InfoItem icon={<Calendar />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
+                                <InfoItem icon={<CalendarIcon />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
                                 <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
                                 <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                 <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
@@ -165,15 +200,31 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Treningspåmelding</CardTitle>
-                    <CardDescription>Meld deg på tilgjengelige treningsøkter.</CardDescription>
+                    <CardDescription>Velg en uthevet treningsdag fra kalenderen og trykk på knappen for å melde deg på.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">Her vil du i fremtiden se en liste over tilgjengelige treninger og løp.</p>
+                <CardContent className="flex justify-center">
+                    <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        month={currentDisplayMonth}
+                        onMonthChange={setCurrentDisplayMonth}
+                        modifiers={{
+                            training: trainingDays,
+                            disabled: (date) => date < new Date() && !isSameDay(date, new Date())
+                        }}
+                        modifiersClassNames={{
+                            training: 'training-day',
+                        }}
+                        className="rounded-md border"
+                    />
                 </CardContent>
                 <CardFooter>
-                     <Button onClick={handleTrainingSignup}>
+                     <Button onClick={handleTrainingSignup} disabled={!isTrainingDaySelected}>
                         <Bike className="mr-2 h-4 w-4" />
-                        Meld deg på Dagens Trening
+                        {isTrainingDaySelected && selectedDate
+                            ? `Meld på til ${format(selectedDate, 'dd.MM.yyyy')}`
+                            : 'Velg en treningsdag'}
                     </Button>
                 </CardFooter>
             </Card>
