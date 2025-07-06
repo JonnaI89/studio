@@ -8,7 +8,7 @@ import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List } from "lucide-react";
+import { List, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { CheckedInTable } from "./checked-in-table";
+import { ManualCheckInForm } from "./manual-check-in-form";
 
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
@@ -42,6 +43,7 @@ export function CheckInDashboard() {
   const [rfidBuffer, setRfidBuffer] = useState('');
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
+  const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
 
 
   useEffect(() => {
@@ -96,29 +98,59 @@ export function CheckInDashboard() {
     setRfidBuffer('');
   }
 
+  const handleManualSelect = (selectedDriver: Driver) => {
+    setDriver(selectedDriver);
+    setIsCheckedIn(false);
+    setCheckInTime(null);
+  };
+
   const driverAge = driver ? calculateAge(driver.dob) : 0;
 
   return (
     <div className="w-full max-w-md flex flex-col items-center gap-8">
       <header className="w-full flex justify-between items-center">
         <KartPassLogo />
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="icon">
-              <List className="h-5 w-5" />
-              <span className="sr-only">Vis innsjekkede førere</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Innsjekkede Førere</DialogTitle>
-              <DialogDescription>
-                Liste over alle førere som har sjekket inn i denne økten.
-              </DialogDescription>
-            </DialogHeader>
-            <CheckedInTable entries={checkedInDrivers} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+           <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon">
+                <UserPlus className="h-5 w-5" />
+                <span className="sr-only">Manuell innsjekk</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Manuell Innsjekk</DialogTitle>
+                <DialogDescription>
+                  Søk etter en fører for å sjekke dem inn manuelt.
+                </DialogDescription>
+              </DialogHeader>
+              <ManualCheckInForm 
+                drivers={mockDrivers} 
+                onDriverSelect={handleManualSelect}
+                closeDialog={() => setIsManualCheckInOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon">
+                <List className="h-5 w-5" />
+                <span className="sr-only">Vis innsjekkede førere</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Innsjekkede Førere</DialogTitle>
+                <DialogDescription>
+                  Liste over alle førere som har sjekket inn i denne økten.
+                </DialogDescription>
+              </DialogHeader>
+              <CheckedInTable entries={checkedInDrivers} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
       <div className="w-full min-h-[550px] flex items-center justify-center">
