@@ -7,6 +7,17 @@ import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { List } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { CheckedInTable } from "./checked-in-table";
 
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
@@ -19,12 +30,19 @@ function calculateAge(dob: string): number {
   return age;
 }
 
+export type CheckedInEntry = {
+  driver: Driver;
+  checkInTime: string;
+};
+
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [rfidBuffer, setRfidBuffer] = useState('');
   const { toast } = useToast();
+  const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,8 +82,11 @@ export function CheckInDashboard() {
 
 
   const handleCheckIn = () => {
+    if (!driver) return;
+    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setIsCheckedIn(true);
-    setCheckInTime(new Date().toLocaleTimeString('no-NO'));
+    setCheckInTime(time);
+    setCheckedInDrivers(prev => [...prev, { driver, checkInTime: time }]);
   };
   
   const handleReset = () => {
@@ -79,8 +100,25 @@ export function CheckInDashboard() {
 
   return (
     <div className="w-full max-w-md flex flex-col items-center gap-8">
-      <header>
+      <header className="w-full flex justify-between items-center">
         <KartPassLogo />
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="icon">
+              <List className="h-5 w-5" />
+              <span className="sr-only">Vis innsjekkede førere</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Innsjekkede Førere</DialogTitle>
+              <DialogDescription>
+                Liste over alle førere som har sjekket inn i denne økten.
+              </DialogDescription>
+            </DialogHeader>
+            <CheckedInTable entries={checkedInDrivers} />
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="w-full min-h-[550px] flex items-center justify-center">
