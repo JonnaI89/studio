@@ -21,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, UserPlus, Trash2, PlusCircle } from "lucide-react";
 import { cn, calculateAge } from "@/lib/utils";
 import { format } from "date-fns";
@@ -33,6 +34,7 @@ const formSchema = z.object({
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
+    role: z.enum(['driver', 'admin']).optional(),
     klasse: z.string().optional(),
     startNr: z.string().optional(),
     driverLicense: z.string().optional(),
@@ -65,6 +67,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
         defaultValues: driverToEdit ? {
             ...driverToEdit,
             dob: new Date(driverToEdit.dob),
+            role: driverToEdit.role || 'driver',
             klasse: driverToEdit.klasse || "",
             startNr: driverToEdit.startNr || "",
             driverLicense: driverToEdit.driverLicense || "",
@@ -77,6 +80,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             id: "",
             name: "",
             club: "",
+            role: "driver",
             klasse: "",
             startNr: "",
             driverLicense: "",
@@ -116,6 +120,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
+            role: values.role || 'driver',
             klasse: values.klasse,
             startNr: values.startNr,
             driverLicense: values.driverLicense,
@@ -224,6 +229,30 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                             <Input placeholder="Oslo Karting Klubb" {...field} />
                                         </FormControl>
                                         <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="role"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Rolle</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Velg en rolle" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        <SelectItem value="driver">Fører</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                        Admin-brukere har tilgang til å administrere systemet.
+                                    </FormDescription>
+                                    <FormMessage />
                                     </FormItem>
                                 )}
                             />
