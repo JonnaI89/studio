@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
+import { addDriver, updateDriver } from "@/services/driver-service";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
@@ -17,12 +18,13 @@ import { UserPlus } from "lucide-react";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
-  setDrivers: (drivers: Driver[]) => void;
+  onDatabaseUpdate: () => void;
 }
 
-export function DriverManagementDialog({ drivers, setDrivers }: DriverManagementDialogProps) {
+export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverManagementDialogProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
+  const { toast } = useToast();
 
   const handleEdit = (driver: Driver) => {
     setDriverToEdit(driver);
@@ -34,22 +36,40 @@ export function DriverManagementDialog({ drivers, setDrivers }: DriverManagement
     setIsFormOpen(true);
   };
 
-  const handleSave = (savedDriver: Driver) => {
-    if (driverToEdit) {
-      // Update existing driver
-      const updatedDrivers = drivers.map(d => d.id === savedDriver.id ? savedDriver : d);
-      setDrivers(updatedDrivers);
-    } else {
-      // Add new driver
-      if (drivers.some(d => d.id === savedDriver.id)) {
-        // In a real app, you'd want better error handling here
-        alert("En fører med denne ID-en finnes allerede.");
-        return;
+  const handleSave = async (savedDriver: Driver) => {
+    try {
+      if (driverToEdit) {
+        // Update existing driver
+        await updateDriver(savedDriver);
+      } else {
+        // Add new driver
+        if (drivers.some(d => d.id === savedDriver.id)) {
+          toast({
+            variant: "destructive",
+            title: "ID Finnes Allerede",
+            description: "En fører med denne ID-en finnes allerede.",
+          });
+          return;
+        }
+        await addDriver(savedDriver);
       }
-      setDrivers([...drivers, savedDriver]);
+
+      toast({
+        title: `Fører ${driverToEdit ? 'oppdatert' : 'lagt til'}`,
+        description: `${savedDriver.name} er lagret i databasen.`,
+      });
+
+      onDatabaseUpdate(); // Trigger refetch in parent
+      setIsFormOpen(false);
+      setDriverToEdit(null);
+
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Lagring feilet',
+        description: (error as Error).message || 'En ukjent feil oppsto.',
+      });
     }
-    setIsFormOpen(false);
-    setDriverToEdit(null);
   };
 
   return (

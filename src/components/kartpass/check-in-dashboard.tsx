@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Driver } from "@/lib/types";
-import { mockDrivers as initialDrivers } from "@/lib/mock-data";
+import { getDrivers, addDriver } from "@/services/driver-service";
 import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +49,29 @@ export function CheckInDashboard() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isDriverMgmtOpen, setIsDriverMgmtOpen] = useState(false);
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchDrivers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedDrivers = await getDrivers();
+      setDrivers(fetchedDrivers);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Feil ved henting av data',
+        description:
+          (error as Error).message || 'Kunne ikke laste førerlisten.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchDrivers();
+  }, [fetchDrivers]);
 
 
   useEffect(() => {
@@ -108,24 +130,26 @@ export function CheckInDashboard() {
     setCheckInTime(null);
   };
 
-  const handleRegisterDriver = (newDriver: Driver) => {
-    setDrivers(prev => [...prev, newDriver]);
-    setDriver(newDriver);
-    setIsCheckedIn(false);
-    setCheckInTime(null);
-    toast({
-        title: "Fører Registrert",
-        description: `${newDriver.name} er lagt til i systemet.`,
-    });
+  const handleRegisterDriver = async (newDriver: Driver) => {
+    try {
+      await addDriver(newDriver);
+      await fetchDrivers(); // Refetch to get the latest list including the new one
+      setDriver(newDriver);
+      setIsCheckedIn(false);
+      setCheckInTime(null);
+      toast({
+        title: 'Fører Registrert',
+        description: `${newDriver.name} er lagt til i databasen.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Feil ved registrering',
+        description:
+          (error as Error).message || 'Kunne ikke lagre ny fører.',
+      });
+    }
   };
-
-  const handleUpdateDrivers = (updatedDrivers: Driver[]) => {
-    setDrivers(updatedDrivers);
-     toast({
-        title: "Førerliste Oppdatert",
-        description: `Systemet er oppdatert med ny førerinformasjon.`,
-    });
-  }
 
   const driverAge = driver ? calculateAge(driver.dob) : 0;
 
@@ -136,7 +160,7 @@ export function CheckInDashboard() {
         <div className="flex items-center gap-2">
             <Dialog open={isDriverMgmtOpen} onOpenChange={setIsDriverMgmtOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" title="Føreradministrasjon">
+                    <Button variant="outline" size="icon" title="Føreradministrasjon" disabled={isLoading}>
                         <Users className="h-5 w-5" />
                         <span className="sr-only">Føreradministrasjon</span>
                     </Button>
@@ -150,14 +174,14 @@ export function CheckInDashboard() {
                     </DialogHeader>
                     <DriverManagementDialog 
                         drivers={drivers}
-                        setDrivers={handleUpdateDrivers}
+                        onDatabaseUpdate={fetchDrivers}
                     />
                 </DialogContent>
             </Dialog>
 
            <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="icon" title="Manuell innsjekk">
+              <Button variant="outline" size="icon" title="Manuell innsjekk" disabled={isLoading}>
                 <UserPlus className="h-5 w-5" />
                 <span className="sr-only">Manuell innsjekk</span>
               </Button>
@@ -179,7 +203,7 @@ export function CheckInDashboard() {
 
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="icon" title="Vis innsjekkede">
+              <Button variant="outline" size="icon" title="Vis innsjekkede" disabled={isLoading}>
                 <List className="h-5 w-5" />
                 <span className="sr-only">Vis innsjekkede førere</span>
               </Button>
@@ -198,7 +222,12 @@ export function CheckInDashboard() {
       </header>
 
       <div className="w-full min-h-[550px] flex items-center justify-center">
-        {driver ? (
+        {isLoading ? (
+            <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                <LoaderCircle className="h-10 w-10 animate-spin" />
+                <p className="text-lg">Laster data fra Google Sheet...</p>
+            </div>
+        ) : driver ? (
           <DriverInfoCard 
             driver={driver} 
             age={driverAge} 

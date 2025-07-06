@@ -1,62 +1,102 @@
-import type { Driver } from './types';
+"use client";
 
-export const mockDrivers: Driver[] = [
-  {
-    id: 'rfid-001',
-    name: 'Ola Nordmann',
-    dob: '1995-08-15',
-    club: 'Oslo Karting Klubb',
-    driverLicense: 'DL-12345',
-    vehicleLicense: 'VL-67890',
-  },
-  {
-    id: 'rfid-002',
-    name: 'Kari Bremnes',
-    dob: '2008-04-22',
-    club: 'Bergen Gokart',
-    driverLicense: 'DL-54321',
-    vehicleLicense: 'VL-09876',
-    guardian: {
-      name: 'Lars Bremnes',
-      contact: '+47 987 65 432',
-      guardianLicense: 'GL-ABCDE',
-    },
-  },
-  {
-    id: 'rfid-003',
-    name: 'Aksel Lund Svindal',
-    dob: '1982-12-26',
-    club: 'NMK',
-    driverLicense: 'DL-67890',
-  },
-  {
-    id: 'rfid-004',
-    name: 'Ingrid Larsen',
-    dob: '2010-11-02',
-    club: 'Trondheim Motorsport',
-    vehicleLicense: 'VL-54321',
-    guardian: {
-      name: 'Mona Larsen',
-      contact: '+47 123 45 678',
-    },
-  },
-  {
-    id: 'rfid-005',
-    name: 'Bjørn Hansen',
-    dob: '2001-06-30',
-    club: 'Klubbløs',
-  },
-  {
-    id: 'rfid-006',
-    name: 'Silje Våge',
-    dob: '2009-01-10',
-    club: 'Stavanger Racing',
-    driverLicense: 'DL-11223',
-    vehicleLicense: 'VL-33445',
-     guardian: {
-      name: 'Petter Våge',
-      contact: '+47 456 78 901',
-      guardianLicense: 'GL-FGHIJ',
-    },
-  },
-];
+import { useState } from "react";
+import type { Driver } from "@/lib/types";
+import { addDriver, updateDriver } from "@/services/driver-service";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { DriversTable } from "./drivers-table";
+import { DriverForm } from "./driver-form";
+import { UserPlus } from "lucide-react";
+
+interface DriverManagementDialogProps {
+  drivers: Driver[];
+  onDatabaseUpdate: () => void;
+}
+
+export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverManagementDialogProps) {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
+  const { toast } = useToast();
+
+  const handleEdit = (driver: Driver) => {
+    setDriverToEdit(driver);
+    setIsFormOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setDriverToEdit(null);
+    setIsFormOpen(true);
+  };
+
+  const handleSave = async (savedDriver: Driver) => {
+    try {
+      if (driverToEdit) {
+        // Update existing driver
+        await updateDriver(savedDriver);
+      } else {
+        // Add new driver
+        if (drivers.some(d => d.id === savedDriver.id)) {
+          toast({
+            variant: "destructive",
+            title: "ID Finnes Allerede",
+            description: "En fører med denne ID-en finnes allerede.",
+          });
+          return;
+        }
+        await addDriver(savedDriver);
+      }
+
+      toast({
+        title: `Fører ${driverToEdit ? 'oppdatert' : 'lagt til'}`,
+        description: `${savedDriver.name} er lagret i databasen.`,
+      });
+
+      onDatabaseUpdate(); // Trigger refetch in parent
+      setIsFormOpen(false);
+      setDriverToEdit(null);
+
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Lagring feilet',
+        description: (error as Error).message || 'En ukjent feil oppsto.',
+      });
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+        <div className="flex justify-end">
+            <Button onClick={handleAddNew}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Registrer ny fører
+            </Button>
+        </div>
+        <DriversTable drivers={drivers} onEdit={handleEdit} />
+
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogContent className="max-w-xl">
+                 <DialogHeader>
+                    <DialogTitle>{driverToEdit ? 'Rediger Fører' : 'Registrer Ny Fører'}</DialogTitle>
+                    <DialogDescription>
+                        {driverToEdit ? 'Oppdater informasjonen for føreren.' : 'Fyll ut detaljene for den nye føreren.'}
+                    </DialogDescription>
+                </DialogHeader>
+                <DriverForm
+                    driverToEdit={driverToEdit}
+                    onSave={handleSave}
+                    closeDialog={() => setIsFormOpen(false)}
+                />
+            </DialogContent>
+        </Dialog>
+    </div>
+  );
+}
