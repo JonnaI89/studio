@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard } from "lucide-react";
+import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group } from "lucide-react";
 
 interface DriverInfoCardProps {
   driver: Driver;
@@ -29,7 +29,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
     <Card className="w-full animate-in fade-in zoom-in-95 shadow-xl">
       <CardHeader className="text-center">
         <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-primary/20">
-          <AvatarImage src={`https://placehold.co/100x100.png`} alt={driver.name} data-ai-hint="driver portrait" />
+          <AvatarImage src={driver.profileImageUrl} alt={driver.name} data-ai-hint="driver portrait" />
           <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
             {getInitials(driver.name)}
           </AvatarFallback>
@@ -41,12 +41,13 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         <div className="grid grid-cols-1 gap-4 text-sm">
           <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
           <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
+           {driver.teamLicense && <InfoItem icon={<Group className="text-primary" />} label="Team" value={driver.teamLicense} />}
           <Separator />
           <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense || 'Mangler'} />
           <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense || 'Mangler'} />
         </div>
         
-        {isUnderage && driver.guardian && (
+        {isUnderage && driver.guardian && !driver.teamLicense && (
           <>
             <Separator />
             <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
@@ -54,15 +55,15 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
               <>
                 <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
                 <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
-                {driver.guardian.guardianLicense && (
-                  <InfoItem icon={<Shield className="text-amber-600" />} label="Foresattlisens" value={driver.guardian.guardianLicense} />
-                )}
+                {driver.guardian.licenses?.map((license, index) => (
+                   <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Foresattlisens ${index + 1}`} value={license} />
+                ))}
               </>
             </div>
           </>
         )}
 
-        {isUnderage && !driver.guardian && (
+        {isUnderage && !driver.guardian && !driver.teamLicense && (
             <div className="space-y-2 p-3 bg-destructive/20 rounded-lg">
                 <p className="text-destructive-foreground bg-destructive p-2 rounded-md">Foresattes detaljer mangler for mindreårig fører.</p>
             </div>
@@ -85,7 +86,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
       <CardFooter className="flex flex-col gap-2 pt-4">
         <Button 
           onClick={onCheckIn}
-          disabled={isCheckedIn || (isUnderage && !driver.guardian)}
+          disabled={isCheckedIn || (isUnderage && !driver.guardian && !driver.teamLicense)}
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
         >
           <CreditCard className="mr-2 h-6 w-6" />

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { Driver } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone } from 'lucide-react';
+import { Pencil, User, Calendar, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Camera, Group } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 
 interface DriverProfilePageProps {
@@ -22,13 +23,14 @@ interface InfoItemProps {
 }
 
 function InfoItem({ icon, label, value }: InfoItemProps) {
+    if (!value) return null;
     return (
-        <div className="flex items-center justify-between gap-4 py-2">
-            <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-4 py-3">
+            <div className="flex items-center gap-4">
                 <span className="h-6 w-6 text-muted-foreground">{icon}</span>
-                <span className="text-muted-foreground">{label}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{label}</span>
             </div>
-            <span className="font-semibold text-right break-words">{value || 'Mangler'}</span>
+            <span className="font-semibold text-right break-words">{value}</span>
         </div>
     )
 }
@@ -37,7 +39,12 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const getInitials = (name: string) => {
+        return name.split(' ').map(n => n[0]).join('');
+    }
+    
     const handleSave = async (updatedDriver: Driver) => {
         try {
             await updateDriver(updatedDriver);
@@ -55,6 +62,16 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
             });
         }
     };
+    
+    const handleImageUploadClick = () => {
+        // In a real app, this would trigger the file input.
+        // For now, it just shows a toast.
+        toast({
+            title: "Bildeopplasting",
+            description: "Funksjonalitet for bildeopplasting er ikke implementert enda."
+        });
+        // fileInputRef.current?.click();
+    };
 
     const handleTrainingSignup = () => {
         // Placeholder for actual signup logic
@@ -70,46 +87,71 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     return (
         <div className="space-y-8">
             <Card>
-                <CardHeader className="flex flex-row items-start sm:items-center justify-between">
-                    <div>
-                        <CardTitle className="text-3xl">{driver.name}</CardTitle>
-                        <CardDescription>Førerprofil og innstillinger</CardDescription>
+                <CardHeader>
+                     <div className="flex flex-col sm:flex-row items-start gap-6">
+                        <div className="relative group">
+                             <Avatar className="w-24 h-24 border-4 border-primary/20">
+                                <AvatarImage src={driver.profileImageUrl} alt={driver.name} />
+                                <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
+                                    {getInitials(driver.name)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="absolute inset-0 m-auto h-10 w-10 rounded-full opacity-0 group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white"
+                                onClick={handleImageUploadClick}
+                            >
+                                <Camera className="h-5 w-5" />
+                                <span className="sr-only">Endre bilde</span>
+                            </Button>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
+                        </div>
+                        <div className="flex-1">
+                            <CardTitle className="text-3xl">{driver.name}</CardTitle>
+                            <CardDescription>Førerprofil og innstillinger</CardDescription>
+                        </div>
+                         <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            {isEditing ? 'Avbryt' : 'Rediger Profil'}
+                        </Button>
                     </div>
-                    <Button variant="outline" size="icon" onClick={() => setIsEditing(!isEditing)}>
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Rediger</span>
-                    </Button>
                 </CardHeader>
                 <CardContent>
                     {isEditing ? (
-                        <DriverForm
-                            driverToEdit={driver}
-                            onSave={handleSave}
-                            closeDialog={() => setIsEditing(false)}
-                        />
+                        <div className="pt-4 border-t">
+                             <DriverForm
+                                driverToEdit={driver}
+                                onSave={handleSave}
+                                closeDialog={() => setIsEditing(false)}
+                            />
+                        </div>
                     ) : (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                        <div className="space-y-2">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
                                 <InfoItem icon={<Calendar />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
                                 <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
                                 <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                 <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
                                 <InfoItem icon={<UserCheck />} label="Førerlisens" value={driver.driverLicense} />
                                 <InfoItem icon={<CarFront />} label="Vognlisens" value={driver.vehicleLicense} />
+                                <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />
                             </div>
                            
-                            {isUnderage && (
+                            {isUnderage && !driver.teamLicense && (
                                 <>
-                                <Separator />
+                                <Separator className="my-2"/>
                                 <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
                                   <h3 className="font-semibold flex items-center mb-2"><Shield className="mr-2 h-5 w-5 text-amber-600" />Foresattes Informasjon</h3>
                                    {!driver.guardian || !driver.guardian.name ? (
                                         <p className="text-destructive">Foresattes informasjon mangler.</p>
                                    ) : (
-                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
                                             <InfoItem icon={<User />} label="Navn" value={driver.guardian.name} />
                                             <InfoItem icon={<Phone />} label="Kontakt" value={driver.guardian.contact} />
-                                            <InfoItem icon={<UserCheck />} label="Foresattlisens" value={driver.guardian.guardianLicense} />
+                                            {driver.guardian.licenses?.map((license, index) => (
+                                                <InfoItem key={index} icon={<Shield />} label={`Lisens ${index + 1}`} value={license} />
+                                            ))}
                                        </div>
                                    )}
                                 </div>

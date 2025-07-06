@@ -7,7 +7,7 @@ import type { Driver } from '@/lib/types';
 // It requires credentials in the .env.local file.
 
 const SHEET_ID = process.env.GOOGLE_SHEETS_SHEET_ID;
-const RANGE = 'Drivers!A:I'; 
+const RANGE = 'Drivers!A:J'; 
 
 const getAuth = () => {
   const credentials = {
@@ -30,35 +30,34 @@ const getSheetsApi = () => {
   return google.sheets({ version: 'v4', auth });
 }
 
-const columnOrder: (keyof Driver | `guardian.${keyof NonNullable<Driver['guardian']>}`)[] = [
-    'id', 'name', 'dob', 'club', 'driverLicense', 'vehicleLicense', 
-    'guardian.name', 'guardian.contact', 'guardian.guardianLicense'
-];
+const columnMap: { [key: string]: number } = {
+    id: 0, name: 1, dob: 2, club: 3, driverLicense: 4, vehicleLicense: 5,
+    teamLicense: 6, guardianName: 7, guardianContact: 8, guardianLicenses: 9
+};
 
 const rowToDriver = (row: any[]): Driver => {
-    const driver: Partial<Driver> = {};
-    const guardianData: Partial<NonNullable<Driver['guardian']>> = {};
+    const driver: Driver = {
+        id: row[columnMap.id] || '',
+        name: row[columnMap.name] || '',
+        dob: row[columnMap.dob] || '',
+        club: row[columnMap.club] || '',
+        driverLicense: row[columnMap.driverLicense] || undefined,
+        vehicleLicense: row[columnMap.vehicleLicense] || undefined,
+        teamLicense: row[columnMap.teamLicense] || undefined,
+    };
+    
+    const guardianName = row[columnMap.guardianName];
+    const guardianContact = row[columnMap.guardianContact];
 
-    columnOrder.forEach((key, index) => {
-        const value = row[index] || '';
-        if (key.startsWith('guardian.')) {
-            const guardianKey = key.split('.')[1] as keyof NonNullable<Driver['guardian']>;
-            if (value) {
-                (guardianData as any)[guardianKey] = value;
-            }
-        } else {
-            (driver as any)[key] = value;
-        }
-    });
-
-    if (Object.keys(guardianData).length > 0 && guardianData.name && guardianData.contact) {
+    if (guardianName && guardianContact) {
         driver.guardian = {
-            name: guardianData.name,
-            contact: guardianData.contact,
-            guardianLicense: guardianData.guardianLicense,
+            name: guardianName,
+            contact: guardianContact,
+            licenses: (row[columnMap.guardianLicenses] || '').split(',').map((s: string) => s.trim()).filter(Boolean)
         };
     }
-    return driver as Driver;
+
+    return driver;
 }
 
 export async function getDriversFromSheet(): Promise<Driver[]> {

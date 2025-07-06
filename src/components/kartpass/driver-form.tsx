@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Driver } from "@/lib/types";
@@ -21,22 +21,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, UserPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CalendarIcon, UserPlus, Trash2, PlusCircle } from "lucide-react";
+import { cn, calculateAge } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { Separator } from "../ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-function calculateAge(dob: Date): number {
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-        age--;
-    }
-    return age;
-}
 
 const formSchema = z.object({
     id: z.string().min(1, { message: "RFID/ID er påkrevd." }),
@@ -47,18 +37,19 @@ const formSchema = z.object({
     startNr: z.string().optional(),
     driverLicense: z.string().optional(),
     vehicleLicense: z.string().optional(),
+    teamLicense: z.string().optional(),
     guardianName: z.string().optional(),
     guardianContact: z.string().optional(),
-    guardianLicense: z.string().optional(),
+    guardianLicenses: z.array(z.object({ value: z.string() })).optional(),
 }).refine(data => {
     if (!data.dob) return true;
-    const age = calculateAge(data.dob);
-    if (age < 18) {
+    const age = calculateAge(format(data.dob, "yyyy-MM-dd"));
+    if (age !== null && age < 18 && !data.teamLicense) {
         return !!data.guardianName && data.guardianName.length > 1 && !!data.guardianContact && data.guardianContact.length > 1;
     }
     return true;
 }, {
-    message: "Navn og kontakt for foresatt er påkrevd for førere under 18 år.",
+    message: "Navn og kontakt for foresatt er påkrevd for førere under 18 (med mindre teamlisens er angitt).",
     path: ["guardianName"],
 });
 
@@ -78,9 +69,10 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             startNr: driverToEdit.startNr || "",
             driverLicense: driverToEdit.driverLicense || "",
             vehicleLicense: driverToEdit.vehicleLicense || "",
+            teamLicense: driverToEdit.teamLicense || "",
             guardianName: driverToEdit.guardian?.name || "",
             guardianContact: driverToEdit.guardian?.contact || "",
-            guardianLicense: driverToEdit.guardian?.guardianLicense || "",
+            guardianLicenses: driverToEdit.guardian?.licenses?.map(l => ({ value: l })) || [],
         } : {
             id: "",
             name: "",
@@ -89,18 +81,26 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             startNr: "",
             driverLicense: "",
             vehicleLicense: "",
+            teamLicense: "",
             guardianName: "",
             guardianContact: "",
-            guardianLicense: "",
+            guardianLicenses: [],
         },
     });
 
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "guardianLicenses",
+    });
+
     const dob = form.watch("dob");
+    const teamLicense = form.watch("teamLicense");
     const [isUnderage, setIsUnderage] = useState(false);
     
     useEffect(() => {
         if (dob) {
-            setIsUnderage(calculateAge(dob) < 18);
+            const age = calculateAge(format(dob, "yyyy-MM-dd"));
+            setIsUnderage(age !== null && age < 18);
         }
     }, [dob]);
     
@@ -120,13 +120,15 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
             startNr: values.startNr,
             driverLicense: values.driverLicense,
             vehicleLicense: values.vehicleLicense,
+            teamLicense: values.teamLicense,
+            profileImageUrl: driverToEdit?.profileImageUrl, // Keep existing image
         };
 
-        if (isUnderage) {
+        if (isUnderage && !values.teamLicense) {
             newDriver.guardian = {
                 name: values.guardianName || '',
                 contact: values.guardianContact || '',
-                guardianLicense: values.guardianLicense,
+                licenses: values.guardianLicenses?.map(l => l.value).filter(Boolean),
             };
         }
         
@@ -279,14 +281,31 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                 )}
                             />
                         </div>
+                        <Separator />
+                        <FormField
+                            control={form.control}
+                            name="teamLicense"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Anmelder / Team-lisens</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Lisensnummer for team" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Hvis denne er fylt ut, overstyrer den informasjon om foresatte.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         
                         {isUnderage && (
-                            <>
+                             <div className={cn("transition-opacity", !!teamLicense && "opacity-50 pointer-events-none")}>
                                 <Separator className="my-6" />
                                 <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                                     <h3 className="font-semibold text-amber-600">Fører er under 18 år</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        Informasjon om foresatt er påkrevd.
+                                        Informasjon om foresatt er påkrevd, med mindre team-lisens er angitt.
                                     </p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField
@@ -315,22 +334,40 @@ export function DriverForm({ driverToEdit, onSave, closeDialog }: DriverFormProp
                                                 </FormItem>
                                             )}
                                         />
-                                        <FormField
-                                            control={form.control}
-                                            name="guardianLicense"
-                                            render={({ field }) => (
-                                                <FormItem className="md:col-span-2">
-                                                    <FormLabel>Foresattes Lisens</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Lisensnummer for foresatt" {...field} value={field.value ?? ''} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                    </div>
+                                    <div className="space-y-2 pt-2">
+                                        <FormLabel>Foresattes Lisenser</FormLabel>
+                                        {fields.map((field, index) => (
+                                            <FormField
+                                                key={field.id}
+                                                control={form.control}
+                                                name={`guardianLicenses.${index}.value`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <div className="flex items-center gap-2">
+                                                            <FormControl>
+                                                                <Input placeholder={`Lisensnummer ${index + 1}`} {...field} />
+                                                            </FormControl>
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </div>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        ))}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => append({ value: "" })}
+                                        >
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Legg til lisens
+                                        </Button>
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         )}
                         {form.formState.errors.guardianName && (
                             <FormMessage>{form.formState.errors.guardianName.message}</FormMessage>
