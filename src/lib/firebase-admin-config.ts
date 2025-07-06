@@ -7,14 +7,14 @@ import { getApps } from 'firebase-admin/app';
 
 const serviceAccount = {
   // The project ID from your client-side Firebase config
-  projectId: "varnacheck",
-  // The credentials from environment variables
-  clientEmail: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-  privateKey: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  project_id: "varnacheck",
+  // The credentials from environment variables, using snake_case as required by the Admin SDK
+  client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
+  private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
 // Check if the necessary credentials are provided in the environment.
-const hasCredentials = serviceAccount.clientEmail && serviceAccount.privateKey;
+const hasCredentials = serviceAccount.client_email && serviceAccount.private_key;
 const storageBucket = "varnacheck.appspot.com"; // From firebase-config.ts
 
 if (!getApps().length) {
