@@ -65,7 +65,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     }
 
     const age = calculateAge(driver.dob);
-    const isUnderage = age < 18;
+    const isUnderage = age !== null && age < 18;
 
     return (
         <div className="space-y-8">
@@ -90,7 +90,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                     ) : (
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                                <InfoItem icon={<Calendar />} label="Alder" value={`${age} år`} />
+                                <InfoItem icon={<Calendar />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
                                 <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
                                 <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                 <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />

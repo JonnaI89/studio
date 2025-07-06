@@ -10,7 +10,7 @@ import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck
 
 interface DriverInfoCardProps {
   driver: Driver;
-  age: number;
+  age: number | null;
   onCheckIn: () => void;
   onReset: () => void;
   isCheckedIn: boolean;
@@ -19,7 +19,7 @@ interface DriverInfoCardProps {
 }
 
 export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime, paymentStatus }: DriverInfoCardProps) {
-  const isUnderage = age < 18;
+  const isUnderage = age !== null && age < 18;
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
@@ -39,7 +39,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 text-sm">
-          <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={`${age} år`} />
+          <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
           <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
           <Separator />
           <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense || 'Mangler'} />

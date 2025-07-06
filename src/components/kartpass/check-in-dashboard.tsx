@@ -151,7 +151,7 @@ export function CheckInDashboard() {
     }
   };
 
-  const driverAge = driver ? calculateAge(driver.dob) : 0;
+  const driverAge = driver ? calculateAge(driver.dob) : null;
   const currentDriverCheckIn = checkedInDrivers.find(entry => entry.driver.id === driver?.id);
 
   return (
