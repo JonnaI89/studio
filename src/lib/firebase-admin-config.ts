@@ -15,6 +15,7 @@ const serviceAccount = {
 
 // Check if the necessary credentials are provided in the environment.
 const hasCredentials = serviceAccount.clientEmail && serviceAccount.privateKey;
+const storageBucket = "varnacheck.appspot.com"; // From firebase-config.ts
 
 if (!getApps().length) {
   if (hasCredentials) {
@@ -22,13 +23,17 @@ if (!getApps().length) {
     // This is for local development.
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      storageBucket: storageBucket,
     });
   } else {
     // If no credentials are provided, initialize without arguments.
     // This is for managed environments like Firebase App Hosting or Cloud Functions,
     // where credentials are automatically discovered.
-    admin.initializeApp();
+    admin.initializeApp({
+      storageBucket: storageBucket,
+    });
   }
 }
 
 export const authAdmin = admin.auth();
+export const storageAdmin = admin.storage().bucket();

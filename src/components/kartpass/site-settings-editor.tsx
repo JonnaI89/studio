@@ -8,9 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle, Upload } from "lucide-react";
-import { storage } from "@/lib/firebase-config";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { updateSiteSettings } from "@/services/settings-service";
+import { uploadAndSaveLogo } from "@/services/settings-service";
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 
@@ -45,21 +43,12 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
 
     setIsUploading(true);
     try {
-      // Use a fixed, predictable path for the site logo.
-      // This is more robust than relying on the uploaded file's name/extension.
-      const logoRef = ref(storage, "site_assets/logo");
+      const formData = new FormData();
+      formData.append('logoFile', logoFile);
 
-      // Upload the file to the determined path, including its content type.
-      await uploadBytes(logoRef, logoFile, { contentType: logoFile.type });
-
-      // Get the public URL for the uploaded file.
-      const downloadUrl = await getDownloadURL(logoRef);
+      const result = await uploadAndSaveLogo(formData);
       
-      // Save the new logo URL to the database.
-      await updateSiteSettings({ logoUrl: downloadUrl });
-
-      // Update the UI to show the new logo immediately.
-      setCurrentLogoUrl(downloadUrl);
+      setCurrentLogoUrl(result.logoUrl);
 
       toast({
         title: "Logo Oppdatert",
@@ -73,7 +62,6 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         description: (error as Error).message || "En feil oppsto under opplasting av logoen. Sjekk konsollen for detaljer.",
       });
     } finally {
-      // Ensure the loading state is always reset, regardless of success or failure.
       setIsUploading(false);
       setLogoFile(null);
       if (fileInputRef.current) {
