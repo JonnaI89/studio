@@ -3,6 +3,7 @@ import { KartPassLogo } from '@/components/icons/kart-pass-logo';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User, LogIn } from 'lucide-react';
+import { KnaVarnaLogo } from '@/components/icons/kna-varna-logo';
 
 export default function LandingPage() {
   return (
@@ -34,6 +35,10 @@ export default function LandingPage() {
           </Card>
         </div>
       </main>
+      <footer className="w-full p-8 flex flex-col items-center justify-center gap-4">
+        <p className="text-sm text-muted-foreground">Powered by</p>
+        <KnaVarnaLogo className="w-48 h-auto text-destructive" />
+      </footer>
     </div>
   );
 }
