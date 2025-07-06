@@ -2,7 +2,7 @@ export type Driver = {
   id: string;
   name: string;
   dob: string; // YYYY-MM-DD
-  licenseStatus: 'Valid' | 'Expired' | 'None';
+  licenseStatus: 'Gyldig' | 'Utløpt' | 'Ingen';
   club: string;
   guardian?: {
     name: string;

@@ -23,11 +23,11 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
 
   const getLicenseVariant = (status: Driver['licenseStatus']) => {
     switch (status) {
-      case 'Valid':
+      case 'Gyldig':
         return 'default';
-      case 'Expired':
+      case 'Utløpt':
         return 'destructive';
-      case 'None':
+      case 'Ingen':
         return 'secondary';
     }
   };
@@ -46,29 +46,29 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
           </AvatarFallback>
         </Avatar>
         <CardTitle className="text-3xl font-bold">{driver.name}</CardTitle>
-        <CardDescription>Driver Profile</CardDescription>
+        <CardDescription>Førerprofil</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 text-sm">
-          <InfoItem icon={<Calendar className="text-primary" />} label="Age" value={`${age} years old`} />
-          <InfoItem icon={<ShieldCheck className="text-primary" />} label="License">
+          <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={`${age} år`} />
+          <InfoItem icon={<ShieldCheck className="text-primary" />} label="Lisens">
             <Badge variant={getLicenseVariant(driver.licenseStatus)}>{driver.licenseStatus}</Badge>
           </InfoItem>
-          <InfoItem icon={<Users className="text-primary" />} label="Club" value={driver.club} />
+          <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
         </div>
         
         {isUnderage && (
           <>
             <Separator />
             <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
-              <h3 className="font-semibold flex items-center"><Shield className="mr-2 h-4 w-4 text-amber-600" />Guardian Information</h3>
+              <h3 className="font-semibold flex items-center"><Shield className="mr-2 h-4 w-4 text-amber-600" />Foresattes informasjon</h3>
               {driver.guardian ? (
                 <>
-                  <InfoItem icon={<User className="text-amber-600" />} label="Name" value={driver.guardian.name} />
-                  <InfoItem icon={<Timer className="text-amber-600"/>} label="Contact" value={driver.guardian.contact} />
+                  <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
+                  <InfoItem icon={<Timer className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
                 </>
               ) : (
-                <p className="text-destructive-foreground bg-destructive p-2 rounded-md">Guardian details missing for underage driver.</p>
+                <p className="text-destructive-foreground bg-destructive p-2 rounded-md">Foresattes detaljer mangler for mindreårig fører.</p>
               )}
             </div>
           </>
@@ -77,7 +77,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         {isCheckedIn && checkInTime && (
             <div className="p-3 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded-lg flex items-center justify-center gap-2 animate-in fade-in">
                 <CheckCircle2 className="h-5 w-5"/>
-                <p><span className="font-semibold">Checked-in at:</span> {checkInTime}</p>
+                <p><span className="font-semibold">Innsjekket kl:</span> {checkInTime}</p>
             </div>
         )}
 
@@ -89,10 +89,10 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
         >
           <CheckeredFlagIcon className="mr-2 h-6 w-6" />
-          {isCheckedIn ? 'Checked-in' : 'Check-in Driver'}
+          {isCheckedIn ? 'Innsjekket' : 'Sjekk inn fører'}
         </Button>
          <Button variant="ghost" onClick={onReset} className="w-full text-muted-foreground">
-            Scan another driver
+            Skann en annen fører
         </Button>
       </CardFooter>
     </Card>

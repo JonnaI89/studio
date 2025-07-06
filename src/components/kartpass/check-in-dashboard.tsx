@@ -41,7 +41,7 @@ export function CheckInDashboard() {
 
   const handleCheckIn = () => {
     setIsCheckedIn(true);
-    setCheckInTime(new Date().toLocaleTimeString());
+    setCheckInTime(new Date().toLocaleTimeString('no-NO'));
   };
   
   const handleReset = () => {

@@ -27,10 +27,10 @@ export function Scanner({ onScan, isScanning }: ScannerProps) {
       </div>
 
       <h2 className="text-2xl font-bold mb-2 text-card-foreground">
-        Ready for Check-in
+        Klar for innsjekking
       </h2>
       <p className="text-muted-foreground mb-6">
-        {isScanning ? "Scanning for RFID chip..." : "Click the button below to scan the driver's RFID chip."}
+        {isScanning ? "Skanner etter RFID-brikke..." : "Klikk på knappen under for å skanne førerens RFID-brikke."}
       </p>
 
       <Button
@@ -40,7 +40,7 @@ export function Scanner({ onScan, isScanning }: ScannerProps) {
         className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8 shadow-md transition-transform transform hover:scale-105"
       >
         <ScanLine className="mr-2 h-6 w-6" />
-        {isScanning ? "Scanning..." : "Scan RFID"}
+        {isScanning ? "Skanner..." : "Skann RFID"}
       </Button>
     </div>
   );
