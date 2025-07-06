@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,13 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [currentLogoUrl, setCurrentLogoUrl] = useState(initialSettings.logoUrl);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setLogoFile(e.target.files[0]);
+    } else {
+      setLogoFile(null);
     }
   };
 
@@ -41,7 +45,13 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
 
     setIsUploading(true);
     try {
-      const logoRef = ref(storage, `site_assets/logo.${logoFile.name.split('.').pop()}`);
+      const nameParts = logoFile.name.split('.');
+      if (nameParts.length < 2) {
+          throw new Error("Ugyldig filnavn. Filen må ha en filendelse (f.eks. .jpg, .png).");
+      }
+      const fileExtension = nameParts.pop();
+
+      const logoRef = ref(storage, `site_assets/logo.${fileExtension}`);
       await uploadBytes(logoRef, logoFile);
       const downloadUrl = await getDownloadURL(logoRef);
       
@@ -62,6 +72,9 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     } finally {
       setIsUploading(false);
       setLogoFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -86,7 +99,14 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         </div>
         <div className="space-y-2">
           <Label htmlFor="logo-upload">Last Opp Ny Logo</Label>
-          <Input id="logo-upload" type="file" accept="image/*" onChange={handleFileChange} />
+          <Input
+            id="logo-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            disabled={isUploading}
+          />
         </div>
         <Button onClick={handleUpload} disabled={isUploading || !logoFile}>
           {isUploading ? (
