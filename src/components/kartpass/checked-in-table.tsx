@@ -1,4 +1,4 @@
-import type { CheckedInEntry } from "./check-in-dashboard";
+import type { CheckedInEntry } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 interface CheckedInTableProps {
   entries: CheckedInEntry[];
@@ -29,14 +30,20 @@ export function CheckedInTable({ entries }: CheckedInTableProps) {
           <TableRow>
             <TableHead>Navn</TableHead>
             <TableHead>Klubb</TableHead>
+            <TableHead>Betalingsstatus</TableHead>
             <TableHead className="text-right">Tidspunkt</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {[...entries].reverse().map(({ driver, checkInTime }) => (
+          {[...entries].reverse().map(({ driver, checkInTime, paymentStatus }) => (
             <TableRow key={`${driver.id}-${checkInTime}`}>
               <TableCell className="font-medium">{driver.name}</TableCell>
               <TableCell>{driver.club}</TableCell>
+              <TableCell>
+                <Badge variant={paymentStatus === 'paid' ? 'default' : 'destructive'}>
+                  {paymentStatus === 'paid' ? 'Betalt' : 'Ubetalt'}
+                </Badge>
+              </TableCell>
               <TableCell className="text-right">{checkInTime}</TableCell>
             </TableRow>
           ))}

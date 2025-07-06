@@ -11,3 +11,9 @@ export type Driver = {
     guardianLicense?: string;
   };
 };
+
+export type CheckedInEntry = {
+  driver: Driver;
+  checkInTime: string;
+  paymentStatus: 'paid' | 'unpaid';
+};

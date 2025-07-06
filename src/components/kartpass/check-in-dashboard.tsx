@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Driver } from "@/lib/types";
+import type { Driver, CheckedInEntry } from "@/lib/types";
 import { getDrivers, addDriver } from "@/services/driver-service";
 import { KartPassLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
@@ -21,6 +21,7 @@ import { CheckedInTable } from "./checked-in-table";
 import { ManualCheckInForm } from "./manual-check-in-form";
 import { RegisterDriverForm } from "./register-driver-form";
 import { DriverManagementDialog } from "./driver-management-dialog";
+import { PaymentDialog } from "./payment-dialog";
 
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
@@ -33,15 +34,8 @@ function calculateAge(dob: string): number {
   return age;
 }
 
-export type CheckedInEntry = {
-  driver: Driver;
-  checkInTime: string;
-};
-
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [rfidBuffer, setRfidBuffer] = useState('');
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
@@ -51,6 +45,8 @@ export function CheckInDashboard() {
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
 
   const fetchDrivers = useCallback(async () => {
     setIsLoading(true);
@@ -84,8 +80,6 @@ export function CheckInDashboard() {
 
           if (foundDriver) {
             setDriver(foundDriver);
-            setIsCheckedIn(false);
-            setCheckInTime(null);
           } else {
             setNewRfidId(scannedId);
             setIsRegisterOpen(true);
@@ -99,44 +93,60 @@ export function CheckInDashboard() {
       }
     };
 
-    if (!driver && !isRegisterOpen && !isManualCheckInOpen && !isDriverMgmtOpen) {
+    if (!driver && !isRegisterOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidBuffer, toast, driver, drivers, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen]);
+  }, [rfidBuffer, toast, driver, drivers, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen]);
 
 
-  const handleCheckIn = () => {
+  const handleOpenPayment = () => {
     if (!driver) return;
-    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setIsCheckedIn(true);
-    setCheckInTime(time);
-    setCheckedInDrivers(prev => [...prev, { driver, checkInTime: time }]);
+    setDriverForPayment(driver);
+    setIsPaymentOpen(true);
   };
   
+  const handlePaymentSuccess = () => {
+    if (!driverForPayment) return;
+    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    setCheckedInDrivers(prev => {
+        const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driverForPayment.id);
+        const newEntry: CheckedInEntry = { driver: driverForPayment, checkInTime: time, paymentStatus: 'paid' };
+        if (existingEntryIndex > -1) {
+            const updatedList = [...prev];
+            updatedList[existingEntryIndex] = newEntry;
+            return updatedList;
+        }
+        return [...prev, newEntry];
+    });
+
+    toast({
+        title: 'Betaling Vellykket',
+        description: `${driverForPayment.name} er nå sjekket inn.`,
+    });
+
+    setIsPaymentOpen(false);
+    setDriverForPayment(null);
+  };
+
   const handleReset = () => {
     setDriver(null);
-    setIsCheckedIn(false);
-    setCheckInTime(null);
     setRfidBuffer('');
   }
 
   const handleManualSelect = (selectedDriver: Driver) => {
     setDriver(selectedDriver);
-    setIsCheckedIn(false);
-    setCheckInTime(null);
   };
 
   const handleRegisterDriver = async (newDriver: Driver) => {
     try {
       await addDriver(newDriver);
-      await fetchDrivers(); // Refetch to get the latest list including the new one
+      await fetchDrivers(); 
       setDriver(newDriver);
-      setIsCheckedIn(false);
-      setCheckInTime(null);
       toast({
         title: 'Fører Registrert',
         description: `${newDriver.name} er lagt til i databasen.`,
@@ -152,6 +162,7 @@ export function CheckInDashboard() {
   };
 
   const driverAge = driver ? calculateAge(driver.dob) : 0;
+  const currentDriverCheckIn = checkedInDrivers.find(entry => entry.driver.id === driver?.id);
 
   return (
     <div className="w-full max-w-lg flex flex-col items-center gap-8">
@@ -231,33 +242,40 @@ export function CheckInDashboard() {
           <DriverInfoCard 
             driver={driver} 
             age={driverAge} 
-            onCheckIn={handleCheckIn} 
+            onCheckIn={handleOpenPayment} 
             onReset={handleReset}
-            isCheckedIn={isCheckedIn}
-            checkInTime={checkInTime}
+            isCheckedIn={!!currentDriverCheckIn}
+            checkInTime={currentDriverCheckIn?.checkInTime ?? null}
+            paymentStatus={currentDriverCheckIn?.paymentStatus ?? null}
           />
         ) : (
-          <>
-            <Scanner />
-            <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
-              <DialogContent className="max-w-xl">
-                <DialogHeader>
-                  <DialogTitle>Registrer Ny Fører</DialogTitle>
-                  <DialogDescription>
-                    Denne RFID-brikken er ikke gjenkjent. Vennligst fyll ut detaljene under for å registrere en ny fører.
-                  </DialogDescription>
-                </DialogHeader>
-                {newRfidId && (
-                  <RegisterDriverForm 
-                    rfid={newRfidId}
-                    onRegister={handleRegisterDriver}
-                    closeDialog={() => setIsRegisterOpen(false)}
-                  />
-                )}
-              </DialogContent>
-            </Dialog>
-          </>
+          <Scanner />
         )}
+
+        <PaymentDialog 
+            isOpen={isPaymentOpen}
+            onOpenChange={setIsPaymentOpen}
+            onConfirm={handlePaymentSuccess}
+            driver={driverForPayment}
+        />
+
+        <Dialog open={isRegisterOpen} onOpenChange={(isOpen) => { if (!isOpen) setNewRfidId(null); setIsRegisterOpen(isOpen); }}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Registrer Ny Fører</DialogTitle>
+              <DialogDescription>
+                Denne RFID-brikken er ikke gjenkjent. Vennligst fyll ut detaljene under for å registrere en ny fører.
+              </DialogDescription>
+            </DialogHeader>
+            {newRfidId && (
+              <RegisterDriverForm 
+                rfid={newRfidId}
+                onRegister={handleRegisterDriver}
+                closeDialog={() => setIsRegisterOpen(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

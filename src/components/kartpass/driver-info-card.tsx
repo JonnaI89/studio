@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Shield, Users, Calendar, Timer, CheckCircle2, CarFront, UserCheck } from "lucide-react";
-import { CheckeredFlagIcon } from "../icons/checkered-flag-icon";
+import { User, Shield, Users, Calendar, Timer, CheckCircle2, CarFront, UserCheck, CreditCard } from "lucide-react";
 
 interface DriverInfoCardProps {
   driver: Driver;
@@ -16,9 +15,10 @@ interface DriverInfoCardProps {
   onReset: () => void;
   isCheckedIn: boolean;
   checkInTime: string | null;
+  paymentStatus: 'paid' | 'unpaid' | null;
 }
 
-export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime }: DriverInfoCardProps) {
+export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime, paymentStatus }: DriverInfoCardProps) {
   const isUnderage = age < 18;
 
   const getInitials = (name: string) => {
@@ -69,9 +69,15 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         )}
 
         {isCheckedIn && checkInTime && (
-            <div className="p-3 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded-lg flex items-center justify-center gap-2 animate-in fade-in">
+            <div className={`p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive-foreground'}`}>
                 <CheckCircle2 className="h-5 w-5"/>
-                <p><span className="font-semibold">Innsjekket kl:</span> {checkInTime}</p>
+                <p>
+                  <span className="font-semibold">Innsjekket kl:</span> {checkInTime}
+                  {paymentStatus && <>
+                    <span className="font-semibold ml-2">Status:</span>
+                    {paymentStatus === 'paid' ? ' Betalt' : ' Ubetalt'}
+                  </>}
+                </p>
             </div>
         )}
 
@@ -82,8 +88,8 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
           disabled={isCheckedIn || (isUnderage && !driver.guardian)}
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
         >
-          <CheckeredFlagIcon className="mr-2 h-6 w-6" />
-          {isCheckedIn ? 'Innsjekket' : 'Sjekk inn fører'}
+          <CreditCard className="mr-2 h-6 w-6" />
+          {isCheckedIn ? 'Innsjekket & Betalt' : 'Betal & Sjekk Inn'}
         </Button>
          <Button variant="outline" onClick={onReset} className="w-full">
             Skann neste fører
