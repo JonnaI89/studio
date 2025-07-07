@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut } from 'lucide-react';
+import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
@@ -204,6 +204,7 @@ export function DriverProfilePage({ initialDriver, trainingSettings }: DriverPro
                                 <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
                                 <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                 <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
+                                <InfoItem icon={<Signal />} label="Transponder" value={driver.transponderNr} />
                                 <InfoItem icon={<UserCheck />} label="Førerlisens" value={driver.driverLicense} />
                                 <InfoItem icon={<CarFront />} label="Vognlisens" value={driver.vehicleLicense} />
                                 <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />

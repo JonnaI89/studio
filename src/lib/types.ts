@@ -9,6 +9,7 @@ export type Driver = {
   hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
+  transponderNr?: string;
   driverLicense?: string;
   vehicleLicense?: string;
   teamLicense?: string;

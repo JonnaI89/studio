@@ -40,6 +40,7 @@ const formSchema = z.object({
     hasSeasonPass: z.boolean().optional(),
     klasse: z.string().optional(),
     startNr: z.string().optional(),
+    transponderNr: z.string().optional(),
     driverLicense: z.string().optional(),
     vehicleLicense: z.string().optional(),
     teamLicense: z.string().optional(),
@@ -79,6 +80,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             hasSeasonPass: driverToEdit.hasSeasonPass || false,
             klasse: driverToEdit.klasse || "",
             startNr: driverToEdit.startNr || "",
+            transponderNr: driverToEdit.transponderNr || "",
             driverLicense: driverToEdit.driverLicense || "",
             vehicleLicense: driverToEdit.vehicleLicense || "",
             teamLicense: driverToEdit.teamLicense || "",
@@ -94,6 +96,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             hasSeasonPass: false,
             klasse: "",
             startNr: "",
+            transponderNr: "",
             driverLicense: "",
             vehicleLicense: "",
             teamLicense: "",
@@ -136,6 +139,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             hasSeasonPass: values.hasSeasonPass,
             klasse: values.klasse,
             startNr: values.startNr,
+            transponderNr: values.transponderNr,
             driverLicense: values.driverLicense,
             vehicleLicense: values.vehicleLicense,
             teamLicense: values.teamLicense,
@@ -319,6 +323,19 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <FormLabel>Startnummer</FormLabel>
                                     <FormControl>
                                         <Input placeholder="F.eks. 42" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="transponderNr"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Transponder nr</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Transpondernummer" {...field} value={field.value ?? ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
