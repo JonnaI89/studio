@@ -10,7 +10,7 @@ import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +19,17 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CheckedInTable } from "./checked-in-table";
 import { ManualCheckInForm } from "./manual-check-in-form";
-import { RegisterDriverForm } from "./register-driver-form";
 import { DriverManagementDialog } from "./driver-management-dialog";
 import { PaymentDialog } from "./payment-dialog";
 import { calculateAge } from "@/lib/utils";
@@ -34,7 +42,6 @@ export function CheckInDashboard() {
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isDriverMgmtOpen, setIsDriverMgmtOpen] = useState(false);
   const [isSignupsOpen, setIsSignupsOpen] = useState(false);
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
@@ -43,6 +50,7 @@ export function CheckInDashboard() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [isRfidAlertOpen, setIsRfidAlertOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -84,7 +92,7 @@ export function CheckInDashboard() {
               setDriver(foundDriver);
             } else {
               setNewRfidId(scannedId);
-              setIsRegisterOpen(true);
+              setIsRfidAlertOpen(true);
             }
           } catch(error) {
              toast({
@@ -101,14 +109,14 @@ export function CheckInDashboard() {
       }
     };
 
-    if (!driver && !isRegisterOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen && !isSignupsOpen) {
+    if (!driver && !isRfidAlertOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen && !isSignupsOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidBuffer, toast, driver, isRegisterOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
+  }, [rfidBuffer, toast, driver, isRfidAlertOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
 
   const handleSeasonPassCheckIn = () => {
     if (!driver) return;
@@ -173,15 +181,6 @@ export function CheckInDashboard() {
 
   const handleManualSelect = (selectedDriver: Driver) => {
     setDriver(selectedDriver);
-  };
-
-  const handleRegisterSuccess = (newDriver: Driver) => {
-    fetchData(); // Refresh all data
-    setDriver(newDriver); // Set the newly registered driver as active
-    toast({
-      title: 'Fører Registrert',
-      description: `${newDriver.name} er lagt til og logget inn.`,
-    });
   };
 
   const driverAge = driver ? calculateAge(driver.dob) : null;
@@ -316,24 +315,21 @@ export function CheckInDashboard() {
             driver={driverForPayment}
             settings={siteSettings}
         />
-
-        <Dialog open={isRegisterOpen} onOpenChange={(isOpen) => { if (!isOpen) setNewRfidId(null); setIsRegisterOpen(isOpen); }}>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Registrer Ny Fører</DialogTitle>
-              <DialogDescription>
-                Denne RFID-brikken er ikke gjenkjent. Vennligst fyll ut detaljene under for å registrere en ny fører.
-              </DialogDescription>
-            </DialogHeader>
-            {newRfidId && (
-              <RegisterDriverForm 
-                rfid={newRfidId}
-                onRegisterSuccess={handleRegisterSuccess}
-                closeDialog={() => setIsRegisterOpen(false)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+         <AlertDialog open={isRfidAlertOpen} onOpenChange={setIsRfidAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" />Ukjent RFID-brikke</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        RFID-brikken med ID <span className="font-mono bg-muted p-1 rounded-sm">{newRfidId}</span> er ikke registrert i systemet.
+                        <br /><br />
+                        For å registrere denne føreren, gå til "Føreradministrasjon" (person-ikonet øverst) og velg "Registrer ny fører". Du må fylle inn denne RFID-IDen i skjemaet.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => setIsRfidAlertOpen(false)}>Lukk</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
