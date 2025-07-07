@@ -308,9 +308,22 @@ export async function addFirebaseRaceSignup(signupData: Omit<RaceSignup, 'id'>):
 export async function getFirebaseRaceSignups(raceId: string): Promise<RaceSignup[]> {
     try {
         if (!db) throw new Error("Firestore not initialized.");
-        const q = query(collection(db, RACE_SIGNUPS_COLLECTION), where("raceId", "==", raceId), orderBy("driverName"));
+        const q = query(collection(db, RACE_SIGNUPS_COLLECTION), where("raceId", "==", raceId));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => doc.data() as RaceSignup);
+        const signups = snapshot.docs.map(doc => doc.data() as RaceSignup);
+        
+        // Sort in-memory to avoid needing a composite index in Firestore
+        signups.sort((a, b) => {
+            const klasseA = a.driverKlasse || 'Z-Ukjent Klasse';
+            const klasseB = b.driverKlasse || 'Z-Ukjent Klasse';
+            
+            const klasseCompare = klasseA.localeCompare(klasseB);
+            if (klasseCompare !== 0) return klasseCompare;
+            
+            return a.driverName.localeCompare(b.driverName);
+        });
+
+        return signups;
     } catch (error) {
         console.error(`Error fetching signups for race ${raceId}: `, error);
         throw new Error("Kunne ikke hente påmeldinger for løpet.");
