@@ -19,12 +19,16 @@ export async function createAuthUser(email: string, password: string): Promise<N
   } catch (error: any) {
     console.error("Error creating user with Admin SDK:", error);
     
-    if (error.code === 'auth/email-already-exists') {
-        throw new Error('En bruker med denne e-postadressen finnes allerede.');
+    switch (error.code) {
+        case 'auth/email-already-exists':
+            throw new Error('En bruker med denne e-postadressen finnes allerede.');
+        case 'auth/invalid-password':
+            throw new Error('Passordet må være på minst 6 tegn.');
+        case 'auth/invalid-email':
+            throw new Error('E-postadressen er ugyldig.');
+        default:
+             // Include the original error code for better debugging if it's something unexpected.
+            throw new Error(`Kunne ikke opprette en ny autentisert bruker. Feilkode: ${error.code || 'UKJENT'}`);
     }
-    if (error.code === 'auth/invalid-password') {
-        throw new Error('Passordet må være på minst 6 tegn.');
-    }
-    throw new Error('Kunne ikke opprette en ny autentisert bruker.');
   }
 }
