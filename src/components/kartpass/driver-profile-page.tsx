@@ -9,14 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal, Flag, X, LoaderCircle } from 'lucide-react';
+import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, Signal, Flag, X, LoaderCircle } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
-import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
 import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format, parseISO } from 'date-fns';
+import { LogoutButton } from '../auth/logout-button';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -172,11 +172,6 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
         }
     }
 
-    const handleLogout = async () => {
-        await signOut();
-        router.push('/login');
-    };
-
     const age = calculateAge(driver.dob);
     const isUnderage = age !== null && age < 18;
     const signedUpRaceIds = new Set(driverRaceSignups.map(s => s.raceId));
@@ -249,10 +244,7 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                                 {isEditing ? 'Avbryt' : 'Rediger Profil'}
                             </Button>
                             {!isAdmin && (
-                                <Button variant="ghost" onClick={handleLogout}>
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    Logg ut
-                                </Button>
+                                <LogoutButton />
                             )}
                         </div>
                     </div>

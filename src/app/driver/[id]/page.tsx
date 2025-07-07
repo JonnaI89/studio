@@ -3,11 +3,9 @@ import { getTrainingSettings } from '@/services/training-service';
 import { getRaces, getSignupsByDriver } from '@/services/race-service';
 import { DriverProfilePage } from '@/components/kartpass/driver-profile-page';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 import { KartPassLogo } from '@/components/icons/kart-pass-logo';
 import { RaceSignupHeaderButton } from '@/components/kartpass/race-signup-header-button';
+import { LogoutButton } from '@/components/auth/logout-button';
 
 export default async function Page({ params }: { params: { id: string } }) {
     const driver = await getDriverById(params.id);
@@ -29,12 +27,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                         races={races}
                         driverRaceSignups={driverRaceSignups}
                     />
-                    <Button asChild variant="outline">
-                        <Link href="/">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Tilbake til Innsjekk
-                        </Link>
-                    </Button>
+                    <LogoutButton variant="outline" />
                  </div>
             </header>
            
