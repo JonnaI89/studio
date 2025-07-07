@@ -61,6 +61,7 @@ export type Race = {
   description: string;
   status: 'upcoming' | 'ongoing' | 'completed';
   createdAt: string; // ISO string
+  availableClasses?: string[];
 };
 
 export type RaceSignup = {

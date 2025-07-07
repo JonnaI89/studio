@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal, Flag, CheckCircle } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
@@ -57,6 +58,7 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
     const [currentDisplayMonth, setCurrentDisplayMonth] = useState(new Date());
     const [trainingDays, setTrainingDays] = useState<Date[]>([]);
     const [driverRaceSignups, setDriverRaceSignups] = useState<RaceSignup[]>(initialDriverRaceSignups);
+    const [selectedClasses, setSelectedClasses] = useState<Record<string, string>>({});
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
         if (!trainingSettings) return [];
@@ -123,18 +125,26 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
         }
     }
 
-    const handleRaceSignup = async (race: Race) => {
+    const handleRaceSignup = async (race: Race, selectedClass: string | undefined) => {
+        if (!selectedClass) {
+            toast({
+                variant: 'destructive',
+                title: 'Klasse mangler',
+                description: 'Du må velge en klasse for å melde deg på.'
+            });
+            return;
+        }
         try {
             const newSignup = await addRaceSignup({
                 raceId: race.id,
                 driverId: driver.id,
                 driverName: driver.name,
-                driverKlasse: driver.klasse
+                driverKlasse: selectedClass
             });
             setDriverRaceSignups(prev => [...prev, newSignup]);
             toast({
                 title: "Løpspåmelding Vellykket!",
-                description: `Du er nå påmeldt ${race.name}.`
+                description: `Du er nå påmeldt ${race.name} i klassen ${selectedClass}.`
             });
         } catch(error) {
             toast({
@@ -180,12 +190,29 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                                     <AccordionContent>
                                         <div className="p-2 space-y-4">
                                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
-                                            <Button onClick={() => handleRaceSignup(race)} disabled={signedUpRaceIds.has(race.id)}>
-                                                {signedUpRaceIds.has(race.id) 
-                                                    ? <><CheckCircle className="mr-2 h-4 w-4"/>Påmeldt</> 
-                                                    : <><Flag className="mr-2 h-4 w-4"/>Meld på</>
-                                                }
-                                            </Button>
+                                            
+                                            {race.availableClasses && race.availableClasses.length > 0 ? (
+                                                <div className="flex items-center gap-4">
+                                                    <Select onValueChange={(value) => setSelectedClasses(prev => ({ ...prev, [race.id]: value }))}>
+                                                        <SelectTrigger className="w-[220px]">
+                                                            <SelectValue placeholder="Velg klasse..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {race.availableClasses.map(cls => (
+                                                                <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <Button onClick={() => handleRaceSignup(race, selectedClasses[race.id])} disabled={signedUpRaceIds.has(race.id) || !selectedClasses[race.id]}>
+                                                        {signedUpRaceIds.has(race.id) 
+                                                            ? <><CheckCircle className="mr-2 h-4 w-4"/>Påmeldt</> 
+                                                            : <><Flag className="mr-2 h-4 w-4"/>Meld på</>
+                                                        }
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm font-semibold text-destructive">Påmelding er ikke mulig (ingen klasser definert for dette løpet).</p>
+                                            )}
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>

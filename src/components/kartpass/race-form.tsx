@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Race } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,6 +18,7 @@ const formSchema = z.object({
   name: z.string().min(3, { message: "Navn må være minst 3 tegn." }),
   date: z.date({ required_error: "Dato er påkrevd." }),
   description: z.string().min(10, { message: "Beskrivelse må være minst 10 tegn." }),
+  availableClasses: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -36,9 +37,11 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
       name: raceToEdit.name,
       date: new Date(raceToEdit.date),
       description: raceToEdit.description,
+      availableClasses: raceToEdit.availableClasses?.join('\n') || '',
     } : {
       name: "",
       description: "",
+      availableClasses: "",
     },
   });
 
@@ -46,6 +49,7 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
     const raceData = {
       ...values,
       date: format(values.date, "yyyy-MM-dd"),
+      availableClasses: values.availableClasses?.split('\n').map(s => s.trim()).filter(Boolean) || [],
     };
     onSave(raceData, raceToEdit?.id);
   }
@@ -119,6 +123,27 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
                   disabled={isLoading}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="availableClasses"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tilgjengelige Klasser</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Én klasse per linje, f.eks.&#10;Rotax&#10;KZ2&#10;Cadetti"
+                  className="resize-y min-h-[100px]"
+                  {...field}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <FormDescription>
+                Førere må velge én av disse klassene ved påmelding.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
