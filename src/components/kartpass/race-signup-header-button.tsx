@@ -62,7 +62,7 @@ export function RaceSignupHeaderButton({ driver, races, driverRaceSignups }: Rac
         <>
             <Button variant="default" onClick={() => setIsOpen(true)}>
                 <Flag className="mr-2 h-4 w-4" />
-                Meld på til Løp
+                Påmelding til løp
             </Button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
