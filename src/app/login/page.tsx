@@ -1,7 +1,7 @@
 "use client";
 
 import { LoginForm } from '@/components/auth/login-form';
-import { VarnaCheckLogo } from '@/components/icons/kart-pass-logo';
+import { FoererportalenLogo } from '@/components/icons/kart-pass-logo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User } from 'lucide-react';
 
@@ -10,7 +10,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-muted/40">
         <div className="w-full max-w-md">
             <div className="flex justify-center mb-8">
-                <VarnaCheckLogo />
+                <FoererportalenLogo />
             </div>
             <Card>
                 <CardHeader className="text-center">

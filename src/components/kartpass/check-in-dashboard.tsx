@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
-import { VarnaCheckLogo } from "@/components/icons/kart-pass-logo";
+import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -189,7 +189,7 @@ export function CheckInDashboard() {
   return (
     <div className="w-full max-w-lg flex flex-col items-center gap-8">
       <header className="w-full flex justify-between items-center">
-        <VarnaCheckLogo />
+        <FoererportalenLogo />
         <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="icon" title="Løpsadministrasjon" disabled={isLoading}>
                 <Link href="/admin/races">

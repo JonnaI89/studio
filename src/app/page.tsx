@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { VarnaCheckLogo } from '@/components/icons/kart-pass-logo';
+import { FoererportalenLogo } from '@/components/icons/kart-pass-logo';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User, LogIn } from 'lucide-react';
@@ -20,7 +20,7 @@ export default async function LandingPage() {
       </header>
       <main className="flex flex-1 flex-col items-center justify-center p-8">
         <div className="flex flex-col items-center gap-8 text-center w-full max-w-md">
-          <VarnaCheckLogo />
+          <FoererportalenLogo />
           <Card className="w-full shadow-lg">
             <CardHeader>
               <User className="mx-auto h-12 w-12 text-primary mb-4" />
