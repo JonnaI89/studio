@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Driver, TrainingSettings, Race, RaceSignup } from '@/lib/types';
+import type { Driver, TrainingSettings, Race, RaceSignup, TrainingSignup } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
-import { addTrainingSignup } from '@/services/training-service';
+import { addTrainingSignup, getSignupsByDate, deleteTrainingSignup } from '@/services/training-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal, Flag } from 'lucide-react';
+import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal, Flag, X, LoaderCircle } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
@@ -54,6 +54,8 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [currentDisplayMonth, setCurrentDisplayMonth] = useState(new Date());
     const [trainingDays, setTrainingDays] = useState<Date[]>([]);
+    const [driverSignup, setDriverSignup] = useState<TrainingSignup | null>(null);
+    const [isLoadingSignupStatus, setIsLoadingSignupStatus] = useState(false);
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
         if (!trainingSettings) return [];
@@ -73,6 +75,33 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
            setTrainingDays(getTrainingDaysForMonth(currentDisplayMonth));
         }
     }, [currentDisplayMonth, trainingSettings]);
+    
+    useEffect(() => {
+        const fetchSignupStatus = async () => {
+            if (!selectedDate) {
+                setDriverSignup(null);
+                return;
+            }
+            setIsLoadingSignupStatus(true);
+            try {
+                const dateString = format(selectedDate, "yyyy-MM-dd");
+                const signups = await getSignupsByDate(dateString);
+                const foundSignup = signups.find(s => s.driverId === driver.id) || null;
+                setDriverSignup(foundSignup);
+            } catch (error) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Feil ved henting av påmeldinger',
+                    description: "Kunne ikke sjekke påmeldingsstatus for valgt dato.",
+                });
+            } finally {
+                setIsLoadingSignupStatus(false);
+            }
+        };
+
+        fetchSignupStatus();
+    }, [selectedDate, driver.id, toast]);
+
 
     const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;
@@ -96,27 +125,50 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
     
     const isTrainingDaySelected = selectedDate && trainingDays.some(trainingDay => isSameDay(trainingDay, selectedDate));
     
-    const handleTrainingSignup = async () => {
+    const handleToggleTrainingSignup = async () => {
         if (!isTrainingDaySelected || !selectedDate) return;
-        
-        try {
-            await addTrainingSignup({
-                driverId: driver.id,
-                driverName: driver.name,
-                driverKlasse: driver.klasse,
-                trainingDate: format(selectedDate, 'yyyy-MM-dd'),
-                signedUpAt: new Date().toISOString(),
-            });
-            toast({
-                title: "Påmelding Vellykket!",
-                description: `${driver.name} er nå påmeldt til trening ${format(selectedDate, 'dd.MM.yyyy')}.`,
-            });
-        } catch (error) {
-             toast({
-                variant: 'destructive',
-                title: 'Påmelding Feilet',
-                description: (error as Error).message || "En feil oppsto under påmelding.",
-            });
+
+        setIsLoadingSignupStatus(true);
+        if (driverSignup) {
+            try {
+                await deleteTrainingSignup(driverSignup.id);
+                toast({
+                    title: "Avmelding Vellykket!",
+                    description: `${driver.name} er nå meldt av treningen ${format(selectedDate, 'dd.MM.yyyy')}.`,
+                });
+                setDriverSignup(null);
+            } catch (error) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Avmelding Feilet',
+                    description: (error as Error).message || "En feil oppsto under avmelding.",
+                });
+            } finally {
+                setIsLoadingSignupStatus(false);
+            }
+        } else {
+            try {
+                const newSignup = await addTrainingSignup({
+                    driverId: driver.id,
+                    driverName: driver.name,
+                    driverKlasse: driver.klasse,
+                    trainingDate: format(selectedDate, 'yyyy-MM-dd'),
+                    signedUpAt: new Date().toISOString(),
+                });
+                toast({
+                    title: "Påmelding Vellykket!",
+                    description: `${driver.name} er nå påmeldt til trening ${format(selectedDate, 'dd.MM.yyyy')}.`,
+                });
+                setDriverSignup(newSignup);
+            } catch (error) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Påmelding Feilet',
+                    description: (error as Error).message || "En feil oppsto under påmelding.",
+                });
+            } finally {
+                setIsLoadingSignupStatus(false);
+            }
         }
     }
 
@@ -138,7 +190,7 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
             <Card>
                 <CardHeader>
                     <CardTitle>Treningspåmelding</CardTitle>
-                    <CardDescription>Velg en uthevet treningsdag fra kalenderen og trykk på knappen for å melde deg på.</CardDescription>
+                    <CardDescription>Velg en uthevet treningsdag fra kalenderen og trykk på knappen for å melde deg på eller av.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
                     <Calendar
@@ -158,11 +210,28 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                     />
                 </CardContent>
                 <CardFooter>
-                     <Button onClick={handleTrainingSignup} disabled={!isTrainingDaySelected}>
-                        <Bike className="mr-2 h-4 w-4" />
-                        {isTrainingDaySelected && selectedDate
+                     <Button 
+                        onClick={handleToggleTrainingSignup} 
+                        disabled={!isTrainingDaySelected || isLoadingSignupStatus}
+                        variant={driverSignup ? "destructive" : "default"}
+                        className="w-full sm:w-auto"
+                    >
+                        {isLoadingSignupStatus ? (
+                            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                        ) : driverSignup ? (
+                            <X className="mr-2 h-4 w-4" />
+                        ) : (
+                            <Bike className="mr-2 h-4 w-4" />
+                        )}
+
+                        {isLoadingSignupStatus
+                            ? 'Sjekker status...'
+                            : driverSignup && selectedDate
+                            ? `Meld av fra ${format(selectedDate, 'dd.MM.yyyy')}`
+                            : isTrainingDaySelected && selectedDate
                             ? `Meld på til ${format(selectedDate, 'dd.MM.yyyy')}`
-                            : 'Velg en treningsdag'}
+                            : 'Velg en treningsdag'
+                        }
                     </Button>
                 </CardFooter>
             </Card>

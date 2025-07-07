@@ -119,12 +119,13 @@ export async function batchAddFirebaseDrivers(drivers: Driver[]): Promise<void> 
     }
 }
 
-export async function addFirebaseTrainingSignup(signup: Omit<TrainingSignup, 'id'>): Promise<string> {
+export async function addFirebaseTrainingSignup(signupData: Omit<TrainingSignup, 'id'>): Promise<TrainingSignup> {
     try {
         if (!db) throw new Error("Firestore not initialized.");
         const newDocRef = doc(collection(db, TRAINING_SIGNUPS_COLLECTION));
-        await setDoc(newDocRef, { ...signup, id: newDocRef.id });
-        return newDocRef.id;
+        const newSignup: TrainingSignup = { ...signupData, id: newDocRef.id };
+        await setDoc(newDocRef, newSignup);
+        return newSignup;
     } catch (error) {
         console.error("Error adding training signup to Firestore: ", error);
         throw new Error("Kunne ikke legge til treningspåmelding.");

@@ -9,7 +9,7 @@ import {
 } from './firebase-service';
 import type { TrainingSignup, TrainingSettings } from '@/lib/types';
 
-export async function addTrainingSignup(signupData: Omit<TrainingSignup, 'id'>): Promise<string> {
+export async function addTrainingSignup(signupData: Omit<TrainingSignup, 'id'>): Promise<TrainingSignup> {
     return addFirebaseTrainingSignup(signupData);
 }
 
