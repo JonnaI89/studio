@@ -9,13 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, Signal, Flag, X, LoaderCircle } from 'lucide-react';
+import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, Signal, Flag, X, LoaderCircle, Eye } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
 import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format, parseISO } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { RaceSignupsDialog } from './race-signups-dialog';
+
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -55,6 +58,8 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
     const [trainingDays, setTrainingDays] = useState<Date[]>([]);
     const [driverSignup, setDriverSignup] = useState<TrainingSignup | null>(null);
     const [isLoadingSignupStatus, setIsLoadingSignupStatus] = useState(false);
+    const [viewingSignupsForRace, setViewingSignupsForRace] = useState<Race | null>(null);
+
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
         if (!trainingSettings) return [];
@@ -292,16 +297,23 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                             <div className="space-y-2">
                                 <h3 className="font-semibold flex items-center mb-2"><Flag className="mr-2 h-5 w-5 text-primary" />Påmeldte Løp</h3>
                                 {signedUpRaces.length > 0 ? (
-                                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                                    <div className="border rounded-md divide-y divide-border">
                                         {signedUpRaces.map(race => {
                                             const signup = driverRaceSignups.find(s => s.raceId === race.id);
                                             return (
-                                                <li key={race.id}>
-                                                    {race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')}) - Klasse: {signup?.driverKlasse || 'N/A'}
-                                                </li>
+                                                <div key={race.id} className="flex items-center justify-between p-3 gap-4">
+                                                    <div>
+                                                        <p className="font-medium">{race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')})</p>
+                                                        <p className="text-sm text-muted-foreground">Klasse: {signup?.driverKlasse || 'N/A'}</p>
+                                                    </div>
+                                                    <Button variant="outline" size="sm" onClick={() => setViewingSignupsForRace(race)}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Se påmeldte
+                                                    </Button>
+                                                </div>
                                             );
                                         })}
-                                    </ul>
+                                    </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Du er ikke påmeldt noen løp.</p>
                                 )}
@@ -324,6 +336,18 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                     </CardContent>
                 </Card>
             )}
+            
+            <Dialog open={!!viewingSignupsForRace} onOpenChange={(isOpen) => !isOpen && setViewingSignupsForRace(null)}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Påmeldte til {viewingSignupsForRace?.name}</DialogTitle>
+                        <DialogDescription>
+                            Liste over førere som er påmeldt dette løpet, sortert etter klasse.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {viewingSignupsForRace && <RaceSignupsDialog raceId={viewingSignupsForRace.id} />}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

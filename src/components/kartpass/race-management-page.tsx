@@ -129,7 +129,7 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
               Liste over førere som er påmeldt dette løpet.
             </DialogDescription>
           </DialogHeader>
-          {selectedRace && <RaceSignupsDialog raceId={selectedRace.id} />}
+          {selectedRace && <RaceSignupsDialog raceId={selectedRace.id} showAdminControls={true} />}
         </DialogContent>
       </Dialog>
       

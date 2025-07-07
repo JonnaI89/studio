@@ -12,9 +12,10 @@ import { LoaderCircle, User, Trash2 } from "lucide-react";
 
 interface RaceSignupsDialogProps {
   raceId: string;
+  showAdminControls?: boolean;
 }
 
-export function RaceSignupsDialog({ raceId }: RaceSignupsDialogProps) {
+export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSignupsDialogProps) {
   const [signups, setSignups] = useState<RaceSignup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -100,15 +101,17 @@ export function RaceSignupsDialog({ raceId }: RaceSignupsDialogProps) {
                             <User className="h-4 w-4 text-muted-foreground" />
                             {signup.driverName}
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => setSignupToDelete(signup)}
-                            title={`Fjern påmelding for ${signup.driverName}`}
-                        >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {showAdminControls && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => setSignupToDelete(signup)}
+                                title={`Fjern påmelding for ${signup.driverName}`}
+                            >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        )}
                         </li>
                     ))}
                     </ul>
@@ -117,26 +120,28 @@ export function RaceSignupsDialog({ raceId }: RaceSignupsDialogProps) {
             ))}
             </Accordion>
         </ScrollArea>
-        <AlertDialog open={!!signupToDelete} onOpenChange={(isOpen) => !isOpen && setSignupToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Fjerne påmelding?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Er du sikker på at du vil fjerne påmeldingen for <span className="font-bold">{signupToDelete?.driverName}</span>?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                    <AlertDialogAction 
-                        onClick={handleConfirmDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Ja, fjern påmelding
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        {showAdminControls && (
+            <AlertDialog open={!!signupToDelete} onOpenChange={(isOpen) => !isOpen && setSignupToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Fjerne påmelding?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Er du sikker på at du vil fjerne påmeldingen for <span className="font-bold">{signupToDelete?.driverName}</span>?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleConfirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Ja, fjern påmelding
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        )}
     </div>
   );
 }
