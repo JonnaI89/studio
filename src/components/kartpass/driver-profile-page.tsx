@@ -16,7 +16,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
 import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format, parseISO } from 'date-fns';
-import { LogoutButton } from '../auth/logout-button';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -243,9 +242,6 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                                 <Pencil className="mr-2 h-4 w-4" />
                                 {isEditing ? 'Avbryt' : 'Rediger Profil'}
                             </Button>
-                            {!isAdmin && (
-                                <LogoutButton />
-                            )}
                         </div>
                     </div>
                 </CardHeader>
