@@ -36,7 +36,6 @@ const formSchema = z.object({
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
     dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
-    role: z.enum(['driver', 'admin']),
     hasSeasonPass: z.boolean().optional(),
     klasse: z.string().optional(),
     startNr: z.string().optional(),
@@ -92,7 +91,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             name: "",
             email: "",
             club: "",
-            role: "driver",
             hasSeasonPass: false,
             klasse: "",
             startNr: "",
@@ -135,7 +133,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
             club: values.club,
-            role: values.role,
+            role: driverToEdit?.role === 'admin' ? 'admin' : 'driver',
             hasSeasonPass: values.hasSeasonPass,
             klasse: values.klasse,
             startNr: values.startNr,
@@ -279,29 +277,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 </FormItem>
                             )}
                         />
-                        {!isRestrictedView && (
-                            <FormField
-                                control={form.control}
-                                name="role"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Rolle</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Velg en rolle" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        <SelectItem value="driver">Fører</SelectItem>
-                                        <SelectItem value="admin">Admin</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
                         <FormField
                             control={form.control}
                             name="klasse"
