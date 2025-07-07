@@ -20,6 +20,13 @@ import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
 import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format, parseISO } from 'date-fns';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -59,6 +66,7 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
     const [trainingDays, setTrainingDays] = useState<Date[]>([]);
     const [driverRaceSignups, setDriverRaceSignups] = useState<RaceSignup[]>(initialDriverRaceSignups);
     const [selectedClasses, setSelectedClasses] = useState<Record<string, string>>({});
+    const [isRaceSignupOpen, setIsRaceSignupOpen] = useState(false);
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
         if (!trainingSettings) return [];
@@ -173,70 +181,6 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
         <div className="space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Løpspåmelding</CardTitle>
-                    <CardDescription>Se kommende løp og meld deg på. Dine påmeldinger listes nederst.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {upcomingRaces.length > 0 ? (
-                        <Accordion type="single" collapsible className="w-full">
-                            {upcomingRaces.map(race => (
-                                <AccordionItem value={race.id} key={race.id}>
-                                    <AccordionTrigger>
-                                        <div className='flex justify-between w-full pr-4 items-center'>
-                                            <span>{race.name}</span>
-                                            <span className="text-sm text-muted-foreground">{format(parseISO(race.date), 'dd.MM.yyyy')}</span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <div className="p-2 space-y-4">
-                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
-                                            
-                                            {race.availableClasses && race.availableClasses.length > 0 ? (
-                                                <div className="flex items-center gap-4">
-                                                    <Select onValueChange={(value) => setSelectedClasses(prev => ({ ...prev, [race.id]: value }))}>
-                                                        <SelectTrigger className="w-[220px]">
-                                                            <SelectValue placeholder="Velg klasse..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {race.availableClasses.map(cls => (
-                                                                <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <Button onClick={() => handleRaceSignup(race, selectedClasses[race.id])} disabled={signedUpRaceIds.has(race.id) || !selectedClasses[race.id]}>
-                                                        {signedUpRaceIds.has(race.id) 
-                                                            ? <><CheckCircle className="mr-2 h-4 w-4"/>Påmeldt</> 
-                                                            : <><Flag className="mr-2 h-4 w-4"/>Meld på</>
-                                                        }
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <p className="text-sm font-semibold text-destructive">Påmelding er ikke mulig (ingen klasser definert for dette løpet).</p>
-                                            )}
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                    ) : (
-                        <p className="text-center text-muted-foreground py-4">Ingen kommende løp er lagt til enda.</p>
-                    )}
-                </CardContent>
-                {signedUpRaces.length > 0 && (
-                     <CardFooter className="flex-col items-start gap-2 pt-4 border-t">
-                        <h3 className="font-semibold">Dine påmeldinger:</h3>
-                        <ul className="list-disc list-inside text-sm text-muted-foreground">
-                            {signedUpRaces.map(race => (
-                                <li key={race.id}>{race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')})</li>
-                            ))}
-                        </ul>
-                    </CardFooter>
-                )}
-            </Card>
-
-
-            <Card>
-                <CardHeader>
                     <CardTitle>Treningspåmelding</CardTitle>
                     <CardDescription>Velg en uthevet treningsdag fra kalenderen og trykk på knappen for å melde deg på.</CardDescription>
                 </CardHeader>
@@ -274,7 +218,11 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                             <CardTitle className="text-3xl">{driver.name}</CardTitle>
                             <CardDescription>Førerprofil og innstillinger</CardDescription>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                             <Button variant="default" onClick={() => setIsRaceSignupOpen(true)}>
+                                <Flag className="mr-2 h-4 w-4" />
+                                Meld på til Løp
+                             </Button>
                              <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 {isEditing ? 'Avbryt' : 'Rediger Profil'}
@@ -330,6 +278,25 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                                 </div>
                               </>
                             )}
+
+                            <Separator className="my-4"/>
+                            <div className="space-y-2">
+                                <h3 className="font-semibold flex items-center mb-2"><Flag className="mr-2 h-5 w-5 text-primary" />Påmeldte Løp</h3>
+                                {signedUpRaces.length > 0 ? (
+                                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                                        {signedUpRaces.map(race => {
+                                            const signup = driverRaceSignups.find(s => s.raceId === race.id);
+                                            return (
+                                                <li key={race.id}>
+                                                    {race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')}) - Klasse: {signup?.driverKlasse || 'N/A'}
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Du er ikke påmeldt noen løp.</p>
+                                )}
+                            </div>
                         </div>
                     )}
                 </CardContent>
@@ -348,6 +315,61 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races, driv
                     </CardContent>
                 </Card>
             )}
+
+            <Dialog open={isRaceSignupOpen} onOpenChange={setIsRaceSignupOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Løpspåmelding</DialogTitle>
+                        <DialogDescription>
+                          Se kommende løp og meld deg på.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {upcomingRaces.length > 0 ? (
+                        <Accordion type="single" collapsible className="w-full">
+                            {upcomingRaces.map(race => (
+                                <AccordionItem value={race.id} key={race.id}>
+                                    <AccordionTrigger>
+                                        <div className='flex justify-between w-full pr-4 items-center'>
+                                            <span>{race.name}</span>
+                                            <span className="text-sm text-muted-foreground">{format(parseISO(race.date), 'dd.MM.yyyy')}</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="p-2 space-y-4">
+                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
+                                            
+                                            {race.availableClasses && race.availableClasses.length > 0 ? (
+                                                <div className="flex items-center gap-4">
+                                                    <Select onValueChange={(value) => setSelectedClasses(prev => ({ ...prev, [race.id]: value }))}>
+                                                        <SelectTrigger className="w-[220px]">
+                                                            <SelectValue placeholder="Velg klasse..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {race.availableClasses.map(cls => (
+                                                                <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <Button onClick={() => handleRaceSignup(race, selectedClasses[race.id])} disabled={signedUpRaceIds.has(race.id) || !selectedClasses[race.id]}>
+                                                        {signedUpRaceIds.has(race.id) 
+                                                            ? <><CheckCircle className="mr-2 h-4 w-4"/>Påmeldt</> 
+                                                            : <><Flag className="mr-2 h-4 w-4"/>Meld på</>
+                                                        }
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm font-semibold text-destructive">Påmelding er ikke mulig (ingen klasser definert for dette løpet).</p>
+                                            )}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    ) : (
+                        <p className="text-center text-muted-foreground py-4">Ingen kommende løp er lagt til enda.</p>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
