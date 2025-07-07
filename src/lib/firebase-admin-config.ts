@@ -3,45 +3,22 @@ import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
 
 // This configuration is for server-side operations (Admin SDK).
-// It now uses explicit credentials from environment variables with strict validation.
+// It uses Application Default Credentials, which is the standard and most
+// reliable way for a server running in a Google Cloud environment to authenticate.
+// It automatically finds the necessary credentials from the environment.
 if (!getApps().length) {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY,
-    };
-
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        console.error("Firebase Admin SDK-autentiseringsfeil: Nødvendige miljøvariabler (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) mangler. Appen kan ikke utføre administrative handlinger.");
-        // We don't throw an error here, but admin actions will fail later with a clear message.
-    } else {
-        try {
-            const privateKey = serviceAccount.privateKey.replace(/\\n/g, '\n');
-            
-            if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
-                throw new Error("FIREBASE_PRIVATE_KEY er feilformatert. Mangler '-----BEGIN PRIVATE KEY-----'.");
-            }
-            if (!privateKey.endsWith('-----END PRIVATE KEY-----\n') && !privateKey.endsWith('-----END PRIVATE KEY-----')) {
-                 throw new Error("FIREBASE_PRIVATE_KEY er feilformatert. Mangler '-----END PRIVATE KEY-----'.");
-            }
-
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: serviceAccount.projectId,
-                    clientEmail: serviceAccount.clientEmail,
-                    privateKey: privateKey,
-                }),
-            });
-            console.log("Firebase Admin SDK initialisert med legitimasjon fra miljøvariabler.");
-        } catch(error) {
-             console.error("FATAL: Kunne ikke initialisere Firebase Admin SDK. Sjekk at miljøvariablene er korrekte.", error);
-             // Re-throwing to make it clear initialization failed during startup.
-             throw error; 
-        }
+    try {
+        admin.initializeApp();
+        console.log("Firebase Admin SDK initialisert med Application Default Credentials.");
+    } catch (error) {
+        console.error("FATAL: Kunne ikke initialisere Firebase Admin SDK. Sørg for at applikasjonen kjører i et miljø med korrekte Google Cloud-legitimasjoner.", error);
+        // Throwing here will make it clear during startup if initialization fails.
+        throw new Error("Kritisk feil ved initialisering av Firebase Admin SDK.");
     }
 }
 
-const storageBucketName = `varnacheck.appspot.com`;
+const storageBucketName = 'varnacheck.appspot.com';
 
-export const authAdmin = admin.apps.length ? admin.auth() : null;
-export const storageAdmin = admin.apps.length ? admin.storage().bucket(storageBucketName) : null;
+// Ensure the app is initialized before trying to access services.
+export const authAdmin = getApps().length > 0 ? admin.auth() : null;
+export const storageAdmin = getApps().length > 0 ? admin.storage().bucket(storageBucketName) : null;
