@@ -1,3 +1,4 @@
+
 'use server';
 
 import { google } from 'googleapis';
@@ -11,12 +12,12 @@ const RANGE = 'Drivers!A:J';
 
 const getAuth = () => {
   const credentials = {
-    client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   };
 
   if (!credentials.client_email || !credentials.private_key || !SHEET_ID) {
-    throw new Error("Google Sheets API-legitimasjon er ikke konfigurert for import. Sjekk .env.local-filen.");
+    throw new Error("Google Sheets/Firebase API-legitimasjon er ikke konfigurert for import. Sjekk .env.local-filen (FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, GOOGLE_SHEETS_SHEET_ID).");
   }
   
   return new google.auth.GoogleAuth({

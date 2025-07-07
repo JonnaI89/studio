@@ -1,32 +1,35 @@
+
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
+import type { ServiceAccount } from 'firebase-admin';
 
 // This configuration is for server-side operations (Admin SDK).
-// It will attempt to use Application Default Credentials, which are automatically
-// available in Google Cloud environments like App Hosting and Cloud Workstations.
+// It now requires explicit environment variables for credentials to avoid
+// issues with Application Default Credentials in some environments.
 if (!getApps().length) {
     try {
-        admin.initializeApp({
-            // The projectId and storageBucket should ideally be automatically
-            // discovered from the environment, but we specify them for robustness.
-            projectId: 'varnacheck',
-            storageBucket: 'varnacheck.appspot.com',
-        });
-    } catch (error: any) {
-        console.error("Firebase Admin SDK Initialization Error:", error.message);
-        // Provide a more helpful error message for local development.
-        if (error.code === 'auth/credential-not-found') {
-            throw new Error(
-                'Could not find default credentials. If you are running locally, ' +
-                'set up Application Default Credentials by running ' +
-                '`gcloud auth application-default login` in your terminal. ' +
-                'See https://firebase.google.com/docs/admin/setup#initialize-sdk'
-            );
+        const serviceAccount: ServiceAccount = {
+            projectId: process.env.FIREBASE_PROJECT_ID!,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+        };
+
+        if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+            throw new Error("Firebase Admin credentials (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set in environment variables. Please check your .env.local file.");
         }
-        throw new Error(`Failed to initialize Firebase Admin SDK. Original error: ${error.message}`);
+        
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            storageBucket: `${serviceAccount.projectId}.appspot.com`,
+        });
+
+    } catch (error: any) {
+        console.error("Firebase Admin SDK Initialization Error:", error);
+        throw new Error(`Failed to initialize Firebase Admin SDK. Please ensure your environment variables (FIREBASE_PROJECT_ID, etc.) are correct. Original error: ${error.message}`);
     }
 }
 
+const storageBucketName = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
+
 export const authAdmin = admin.auth();
-// Explicitly get the bucket to ensure it's available.
-export const storageAdmin = admin.storage().bucket('varnacheck.appspot.com');
+export const storageAdmin = admin.storage().bucket(storageBucketName);
