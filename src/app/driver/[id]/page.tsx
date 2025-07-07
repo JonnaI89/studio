@@ -3,7 +3,7 @@ import { getTrainingSettings } from '@/services/training-service';
 import { getRaces, getSignupsByDriver } from '@/services/race-service';
 import { DriverProfilePage } from '@/components/kartpass/driver-profile-page';
 import { notFound } from 'next/navigation';
-import { KartPassLogo } from '@/components/icons/kart-pass-logo';
+import { VarnaCheckLogo } from '@/components/icons/kart-pass-logo';
 import { RaceSignupHeaderButton } from '@/components/kartpass/race-signup-header-button';
 import { LogoutButton } from '@/components/auth/logout-button';
 
@@ -20,7 +20,7 @@ export default async function Page({ params }: { params: { id: string } }) {
     return (
         <div className="container mx-auto p-4 sm:p-8 md:p-12 max-w-4xl">
             <header className="flex justify-between items-center mb-8">
-                 <KartPassLogo />
+                 <VarnaCheckLogo />
                  <div className="flex items-center gap-2">
                     <RaceSignupHeaderButton 
                         driver={driver}

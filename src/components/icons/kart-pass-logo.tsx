@@ -1,11 +1,11 @@
 import * as React from 'react';
 
-export function KartPassLogo(props: React.SVGProps<SVGSVGElement>) {
+export function VarnaCheckLogo(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
-      width="250"
+      width="280"
       height="60"
-      viewBox="0 0 250 60"
+      viewBox="0 0 280 60"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
@@ -34,7 +34,7 @@ export function KartPassLogo(props: React.SVGProps<SVGSVGElement>) {
         fontWeight="bold"
         fill="hsl(var(--foreground))"
       >
-        KartPass
+        VarnaCheck
       </text>
     </svg>
   );
