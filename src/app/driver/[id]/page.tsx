@@ -1,5 +1,6 @@
 import { getDriverById } from '@/services/driver-service';
 import { getTrainingSettings } from '@/services/training-service';
+import { getRaces, getSignupsByDriver } from '@/services/race-service';
 import { DriverProfilePage } from '@/components/kartpass/driver-profile-page';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -10,6 +11,8 @@ import { KartPassLogo } from '@/components/icons/kart-pass-logo';
 export default async function Page({ params }: { params: { id: string } }) {
     const driver = await getDriverById(params.id);
     const trainingSettings = await getTrainingSettings();
+    const races = await getRaces();
+    const driverRaceSignups = await getSignupsByDriver(params.id);
 
     if (!driver) {
         notFound();
@@ -27,7 +30,12 @@ export default async function Page({ params }: { params: { id: string } }) {
                 </Button>
             </header>
            
-            <DriverProfilePage initialDriver={driver} trainingSettings={trainingSettings} />
+            <DriverProfilePage 
+                initialDriver={driver} 
+                trainingSettings={trainingSettings}
+                races={races}
+                driverRaceSignups={driverRaceSignups}
+            />
         </div>
     );
 }

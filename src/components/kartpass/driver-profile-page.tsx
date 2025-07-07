@@ -1,26 +1,30 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Driver, TrainingSettings } from '@/lib/types';
+import type { Driver, TrainingSettings, Race, RaceSignup } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
+import { addTrainingSignup } from '@/services/training-service';
+import { addRaceSignup } from '@/services/race-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Bike, Phone, Group, LogOut, Signal, Flag, CheckCircle } from 'lucide-react';
 import { calculateAge } from '@/lib/utils';
 import { signOut } from '@/services/auth-service';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { Calendar } from '@/components/ui/calendar';
-import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format } from 'date-fns';
-import { addTrainingSignup } from '@/services/training-service';
+import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format, parseISO } from 'date-fns';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
     trainingSettings: TrainingSettings | null;
+    races: Race[];
+    driverRaceSignups: RaceSignup[];
 }
 
 interface InfoItemProps {
@@ -42,7 +46,7 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     )
 }
 
-export function DriverProfilePage({ initialDriver, trainingSettings }: DriverProfilePageProps) {
+export function DriverProfilePage({ initialDriver, trainingSettings, races, driverRaceSignups: initialDriverRaceSignups }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
@@ -52,23 +56,18 @@ export function DriverProfilePage({ initialDriver, trainingSettings }: DriverPro
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [currentDisplayMonth, setCurrentDisplayMonth] = useState(new Date());
     const [trainingDays, setTrainingDays] = useState<Date[]>([]);
+    const [driverRaceSignups, setDriverRaceSignups] = useState<RaceSignup[]>(initialDriverRaceSignups);
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
         if (!trainingSettings) return [];
-
         const month = getMonth(monthDate);
         const year = getYear(monthDate);
-
         if (year !== trainingSettings.year) return [];
-
         const ruleForMonth = trainingSettings.rules.find(r => r.month === month);
         if (!ruleForMonth) return [];
-
         const start = startOfMonth(monthDate);
         const end = endOfMonth(monthDate);
         const daysInMonth = eachDayOfInterval({ start, end });
-
-        // date-fns getDay(): 0 for Sunday, 1 for Monday, etc.
         return daysInMonth.filter(day => ruleForMonth.daysOfWeek.includes(day.getDay()));
     };
 
@@ -124,6 +123,28 @@ export function DriverProfilePage({ initialDriver, trainingSettings }: DriverPro
         }
     }
 
+    const handleRaceSignup = async (race: Race) => {
+        try {
+            const newSignup = await addRaceSignup({
+                raceId: race.id,
+                driverId: driver.id,
+                driverName: driver.name,
+                driverKlasse: driver.klasse
+            });
+            setDriverRaceSignups(prev => [...prev, newSignup]);
+            toast({
+                title: "Løpspåmelding Vellykket!",
+                description: `Du er nå påmeldt ${race.name}.`
+            });
+        } catch(error) {
+            toast({
+                variant: 'destructive',
+                title: 'Påmelding til løp feilet',
+                description: (error as Error).message,
+            });
+        }
+    };
+
     const handleLogout = async () => {
         await signOut();
         router.push('/login');
@@ -131,9 +152,62 @@ export function DriverProfilePage({ initialDriver, trainingSettings }: DriverPro
 
     const age = calculateAge(driver.dob);
     const isUnderage = age !== null && age < 18;
+    const signedUpRaceIds = new Set(driverRaceSignups.map(s => s.raceId));
+    const upcomingRaces = races.filter(r => r.status === 'upcoming');
+
+    const signedUpRaces = races
+        .filter(r => signedUpRaceIds.has(r.id))
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <div className="space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Løpspåmelding</CardTitle>
+                    <CardDescription>Se kommende løp og meld deg på. Dine påmeldinger listes nederst.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {upcomingRaces.length > 0 ? (
+                        <Accordion type="single" collapsible className="w-full">
+                            {upcomingRaces.map(race => (
+                                <AccordionItem value={race.id} key={race.id}>
+                                    <AccordionTrigger>
+                                        <div className='flex justify-between w-full pr-4 items-center'>
+                                            <span>{race.name}</span>
+                                            <span className="text-sm text-muted-foreground">{format(parseISO(race.date), 'dd.MM.yyyy')}</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="p-2 space-y-4">
+                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
+                                            <Button onClick={() => handleRaceSignup(race)} disabled={signedUpRaceIds.has(race.id)}>
+                                                {signedUpRaceIds.has(race.id) 
+                                                    ? <><CheckCircle className="mr-2 h-4 w-4"/>Påmeldt</> 
+                                                    : <><Flag className="mr-2 h-4 w-4"/>Meld på</>
+                                                }
+                                            </Button>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    ) : (
+                        <p className="text-center text-muted-foreground py-4">Ingen kommende løp er lagt til enda.</p>
+                    )}
+                </CardContent>
+                {signedUpRaces.length > 0 && (
+                     <CardFooter className="flex-col items-start gap-2 pt-4 border-t">
+                        <h3 className="font-semibold">Dine påmeldinger:</h3>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground">
+                            {signedUpRaces.map(race => (
+                                <li key={race.id}>{race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')})</li>
+                            ))}
+                        </ul>
+                    </CardFooter>
+                )}
+            </Card>
+
+
             <Card>
                 <CardHeader>
                     <CardTitle>Treningspåmelding</CardTitle>

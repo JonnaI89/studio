@@ -10,7 +10,7 @@ import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -192,6 +192,11 @@ export function CheckInDashboard() {
       <header className="w-full flex justify-between items-center">
         <KartPassLogo />
         <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="icon" title="Løpsadministrasjon" disabled={isLoading}>
+                <Link href="/admin/races">
+                    <Flag className="h-5 w-5" />
+                </Link>
+            </Button>
             <Button asChild variant="outline" size="icon" title="Nettstedinnstillinger" disabled={isLoading}>
                 <Link href="/admin/site-settings">
                     <ImageIcon className="h-5 w-5" />

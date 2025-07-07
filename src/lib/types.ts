@@ -53,3 +53,21 @@ export type SiteSettings = {
   weekdayPrice?: number;
   weekendPrice?: number;
 };
+
+export type Race = {
+  id: string; // Firestore document ID
+  name: string;
+  date: string; // YYYY-MM-DD
+  description: string;
+  status: 'upcoming' | 'ongoing' | 'completed';
+  createdAt: string; // ISO string
+};
+
+export type RaceSignup = {
+  id: string; // Firestore document ID
+  raceId: string;
+  driverId: string;
+  driverName: string;
+  driverKlasse: string | undefined;
+  signedUpAt: string; // ISO string
+};

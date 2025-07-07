@@ -1,12 +1,14 @@
 import { db } from '@/lib/firebase-config';
-import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc } from 'firebase/firestore';
-import type { Driver, TrainingSignup, TrainingSettings, SiteSettings } from '@/lib/types';
+import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup } from '@/lib/types';
 
 const DRIVERS_COLLECTION = 'drivers';
 const TRAINING_SIGNUPS_COLLECTION = 'trainingSignups';
 const SETTINGS_COLLECTION = 'settings';
 const TRAINING_SCHEDULE_DOC = 'training_schedule';
 const SITE_CONFIG_DOC = 'site_config';
+const RACES_COLLECTION = 'races';
+const RACE_SIGNUPS_COLLECTION = 'raceSignups';
 
 
 export async function getFirebaseDrivers(): Promise<Driver[]> {
@@ -145,15 +147,11 @@ export async function getFirebaseTrainingSignupsByDate(date: string): Promise<Tr
     try {
         if (!db) throw new Error("Firestore not initialized.");
         
-        // The original query with multiple orderBy clauses required a composite index in Firestore.
-        // To avoid requiring manual user intervention in the Firebase Console, we can
-        // remove the ordering from the query and sort the results in the code instead.
         const q = query(collection(db, TRAINING_SIGNUPS_COLLECTION), where("trainingDate", "==", date));
         const querySnapshot = await getDocs(q);
         
         const signups = querySnapshot.docs.map(doc => doc.data() as TrainingSignup);
 
-        // Sort the results by klasse (class), then by name
         signups.sort((a, b) => {
             const klasseA = a.driverKlasse || "Ukjent Klasse";
             const klasseB = b.driverKlasse || "Ukjent Klasse";
@@ -161,7 +159,6 @@ export async function getFirebaseTrainingSignupsByDate(date: string): Promise<Tr
             if (klasseA < klasseB) return -1;
             if (klasseA > klasseB) return 1;
             
-            // If klasse is the same, sort by name
             if (a.driverName < b.driverName) return -1;
             if (a.driverName > b.driverName) return 1;
 
@@ -183,7 +180,6 @@ export async function getFirebaseTrainingSettings(): Promise<TrainingSettings> {
         if (docSnap.exists()) {
             return docSnap.data() as TrainingSettings;
         }
-        // Return a default/empty state if not found, ensuring the app works on first run.
         return { id: 'main', year: new Date().getFullYear(), rules: [] };
     } catch (error) {
         console.error("Error fetching training settings from Firestore: ", error);
@@ -225,5 +221,120 @@ export async function updateFirebaseSiteSettings(settings: SiteSettings): Promis
     } catch (error) {
         console.error("Error updating site settings in Firestore: ", error);
         throw new Error("Kunne ikke lagre nettstedsinnstillinger.");
+    }
+}
+
+// Races
+export async function createFirebaseRace(raceData: Omit<Race, 'id' | 'createdAt' | 'status'>): Promise<Race> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const raceWithMetadata = {
+            ...raceData,
+            status: 'upcoming' as const,
+            createdAt: new Date().toISOString(),
+        };
+        const docRef = await addDoc(collection(db, RACES_COLLECTION), raceWithMetadata);
+        const newRace: Race = { ...raceWithMetadata, id: docRef.id };
+        await setDoc(docRef, newRace);
+        return newRace;
+    } catch (error) {
+        console.error("Error creating race in Firestore: ", error);
+        throw new Error("Kunne ikke opprette nytt løp.");
+    }
+}
+
+export async function getFirebaseRaces(): Promise<Race[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const racesQuery = query(collection(db, RACES_COLLECTION), orderBy("date", "desc"));
+        const racesSnapshot = await getDocs(racesQuery);
+        return racesSnapshot.docs.map(doc => doc.data() as Race);
+    } catch (error) {
+        console.error("Error fetching races from Firestore: ", error);
+        throw new Error("Kunne ikke hente løp.");
+    }
+}
+
+export async function updateFirebaseRace(race: Race): Promise<void> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const raceRef = doc(db, RACES_COLLECTION, race.id);
+        await setDoc(raceRef, race, { merge: true });
+    } catch (error) {
+        console.error("Error updating race in Firestore: ", error);
+        throw new Error("Kunne ikke oppdatere løp.");
+    }
+}
+
+export async function deleteFirebaseRace(id: string): Promise<void> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        await deleteDoc(doc(db, RACES_COLLECTION, id));
+    } catch (error) {
+        console.error(`Error deleting race with ID ${id} from Firestore: `, error);
+        throw new Error("Kunne ikke slette løp.");
+    }
+}
+
+// Race Signups
+export async function addFirebaseRaceSignup(signupData: Omit<RaceSignup, 'id'>): Promise<RaceSignup> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+
+        const q = query(
+            collection(db, RACE_SIGNUPS_COLLECTION),
+            where("raceId", "==", signupData.raceId),
+            where("driverId", "==", signupData.driverId)
+        );
+        const existingSignup = await getDocs(q);
+        if (!existingSignup.empty) {
+            throw new Error("Føreren er allerede påmeldt dette løpet.");
+        }
+
+        const signupWithMetadata = {
+            ...signupData,
+            signedUpAt: new Date().toISOString(),
+        };
+        const docRef = await addDoc(collection(db, RACE_SIGNUPS_COLLECTION), signupWithMetadata);
+        const newSignup: RaceSignup = { ...signupWithMetadata, id: docRef.id };
+        await setDoc(docRef, newSignup);
+        return newSignup;
+    } catch (error) {
+        console.error("Error adding race signup to Firestore: ", error);
+        throw error;
+    }
+}
+
+export async function getFirebaseRaceSignups(raceId: string): Promise<RaceSignup[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const q = query(collection(db, RACE_SIGNUPS_COLLECTION), where("raceId", "==", raceId), orderBy("driverName"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data() as RaceSignup);
+    } catch (error) {
+        console.error(`Error fetching signups for race ${raceId}: `, error);
+        throw new Error("Kunne ikke hente påmeldinger for løpet.");
+    }
+}
+
+export async function getFirebaseRaceSignupsByDriver(driverId: string): Promise<RaceSignup[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const q = query(collection(db, RACE_SIGNUPS_COLLECTION), where("driverId", "==", driverId));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data() as RaceSignup);
+    } catch (error) {
+        console.error(`Error fetching signups for driver ${driverId}: `, error);
+        throw new Error("Kunne ikke hente førerens påmeldinger.");
+    }
+}
+
+export async function deleteFirebaseRaceSignup(id: string): Promise<void> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        await deleteDoc(doc(db, RACE_SIGNUPS_COLLECTION, id));
+    } catch (error) {
+        console.error(`Error deleting race signup with ID ${id}: `, error);
+        throw new Error("Kunne ikke fjerne påmelding.");
     }
 }
