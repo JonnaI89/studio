@@ -47,6 +47,7 @@ export function LoginForm() {
             email: values.email,
             name: 'Admin',
             dob: '2000-01-01',
+            club: 'System Admin',
             role: 'admin',
           };
           await addDriver(newAdminProfile);
