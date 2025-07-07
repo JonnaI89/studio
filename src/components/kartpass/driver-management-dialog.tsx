@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { addDriver, updateDriver, deleteDriver } from "@/services/driver-service";
-import { signUp, signOut } from "@/services/auth-service";
-import { importFromSheetsToFirebase } from "@/services/import-service";
+import { updateDriver, deleteDriver, createDriverAndUser } from "@/services/driver-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +26,7 @@ import {
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
 import { UserPlus, Download, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
-import { format } from "date-fns";
 import { ScrollArea } from "../ui/scroll-area";
-import { useRouter } from "next/navigation";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
@@ -44,7 +40,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleEdit = (driver: Driver) => {
     setDriverToEdit(driver);
@@ -100,11 +95,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
             title: `Fører oppdatert`,
             description: `${driverData.name} er lagret i databasen.`,
         });
-
-        onDatabaseUpdate();
-        setIsFormOpen(false);
-        setDriverToEdit(null);
-        
       } else {
         // This is a new driver registration.
         if (!driverData.email) {
@@ -125,41 +115,24 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
           return;
         }
 
-        const password = format(new Date(driverData.dob), "ddMMyyyy");
-        
-        // This now uses the CLIENT-SIDE SDK
-        const newUser = await signUp(driverData.email, password);
-
-        const newDriver: Driver = {
-            ...driverData,
-            id: newUser.uid,
-            role: 'driver',
-        };
-        await addDriver(newDriver);
+        const newDriver = await createDriverAndUser(driverData);
         
         toast({
             title: 'Fører Opprettet!',
-            description: `Profil for ${newDriver.name} er opprettet. Du blir nå logget ut. Vennligst logg inn igjen.`,
+            description: `Profil for ${newDriver.name} er opprettet.`,
         });
-
-        // Sign out the new user (and the current admin session) and force re-login.
-        await signOut();
-        router.push('/login');
       }
+
+      onDatabaseUpdate();
+      setIsFormOpen(false);
+      setDriverToEdit(null);
 
     } catch (error) {
       const errorMessage = (error as Error).message;
-      let userFriendlyMessage = errorMessage;
-      if (errorMessage.includes('auth/email-already-in-use')) {
-        userFriendlyMessage = 'Denne e-postadressen er allerede i bruk av en annen fører.';
-      } else if (errorMessage.includes('auth/weak-password')) {
-        userFriendlyMessage = 'Passordet er for svakt. Det må være minst 6 tegn.';
-      }
-
       toast({
         variant: 'destructive',
         title: 'Lagring feilet',
-        description: userFriendlyMessage || 'En ukjent feil oppsto.',
+        description: errorMessage || 'En ukjent feil oppsto.',
       });
     }
   };
