@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
+import type { Driver, CheckedInEntry, SiteSettings, Race } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate } from "@/services/checkin-service";
@@ -10,7 +10,7 @@ import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2 } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2, Bike } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,11 @@ import { TrainingSignupsDialog } from "./training-signups-dialog";
 import Link from "next/link";
 import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
 
-export function CheckInDashboard() {
+interface CheckInDashboardProps {
+    todaysRaces?: Race[];
+}
+
+export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const [driver, setDriver] = useState<Driver | null>(null);
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
@@ -53,9 +57,18 @@ export function CheckInDashboard() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isRfidAlertOpen, setIsRfidAlertOpen] = useState(false);
   const [isOneTimeLicenseOpen, setIsOneTimeLicenseOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Race | 'training' | null>(null);
 
   const rfidInputBuffer = useRef<string>('');
   const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (todaysRaces && todaysRaces.length === 1) {
+      setSelectedEvent(todaysRaces[0]);
+    } else if (!todaysRaces || todaysRaces.length === 0) {
+      setSelectedEvent('training');
+    }
+  }, [todaysRaces]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -99,7 +112,6 @@ export function CheckInDashboard() {
               };
           }
           
-          // Fallback for a regular driver who has been deleted
           return {
               driver: {
                   id: historyEntry.driverId,
@@ -200,6 +212,20 @@ export function CheckInDashboard() {
           });
       }, 3500);
   };
+  
+  const getEventDetails = () => {
+    if (selectedEvent === 'training') {
+        return { eventType: 'training' as const };
+    }
+    if (selectedEvent) { 
+        return {
+            eventType: 'race' as const,
+            eventId: selectedEvent.id,
+            eventName: selectedEvent.name,
+        };
+    }
+    return { eventType: 'training' as const };
+  };
 
   const handleSeasonPassCheckIn = () => {
     if (!driver) return;
@@ -224,7 +250,8 @@ export function CheckInDashboard() {
         driverKlasse: driver.klasse,
         checkinDate: date,
         checkinTime: time,
-        paymentStatus: 'season_pass'
+        paymentStatus: 'season_pass',
+        ...getEventDetails()
     }).catch(err => {
         console.error("Failed to record check-in", err);
         toast({
@@ -276,7 +303,8 @@ export function CheckInDashboard() {
         driverKlasse: driverForPayment.klasse,
         checkinDate: date,
         checkinTime: time,
-        paymentStatus: 'paid'
+        paymentStatus: 'paid',
+        ...getEventDetails()
     }).catch(err => {
         console.error("Failed to record check-in", err);
         toast({
@@ -320,7 +348,8 @@ export function CheckInDashboard() {
         driverKlasse: oneTimeDriver.klasse,
         checkinDate: date,
         checkinTime: time,
-        paymentStatus: 'one_time_license'
+        paymentStatus: 'one_time_license',
+        ...getEventDetails()
     }).catch(err => {
         console.error("Failed to record one-time license check-in", err);
         toast({
@@ -352,13 +381,45 @@ export function CheckInDashboard() {
     setDriver(selectedDriver);
   };
 
+  if (todaysRaces && todaysRaces.length > 1 && !selectedEvent) {
+    return (
+      <div className="w-full max-w-lg flex flex-col items-center gap-8 text-center">
+        <FoererportalenLogo />
+        <Card className="w-full shadow-lg">
+          <CardHeader>
+            <CardTitle>Velg Arrangement</CardTitle>
+            <CardDescription>
+              Det er flere arrangementer i dag. Velg hvilket du vil sjekke inn til.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {todaysRaces.map(race => (
+              <Button key={race.id} onClick={() => setSelectedEvent(race)} size="lg">
+                <Flag className="mr-2 h-5 w-5" />
+                {race.name}
+              </Button>
+            ))}
+            <Button onClick={() => setSelectedEvent('training')} variant="outline" size="lg">
+              <Bike className="mr-2 h-5 w-5" />
+              Vanlig Trening
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const driverAge = driver ? calculateAge(driver.dob) : null;
   const currentDriverCheckIn = checkedInDrivers.find(entry => entry.driver.id === driver?.id);
+  const eventName = selectedEvent === 'training' ? 'dagens trening' : selectedEvent?.name;
 
   return (
     <div className="w-full max-w-lg flex flex-col items-center gap-8">
       <header className="w-full flex justify-between items-center">
-        <FoererportalenLogo />
+        <div>
+            <FoererportalenLogo />
+            {eventName && <p className="text-sm text-muted-foreground -mt-2">Innsjekk for: <span className="font-semibold">{eventName}</span></p>}
+        </div>
         <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="icon" title="Løpsadministrasjon" disabled={isLoading}>
                 <Link href="/admin/races">
@@ -472,7 +533,7 @@ export function CheckInDashboard() {
       </header>
 
       <div className="w-full min-h-[550px] flex items-center justify-center">
-        {isLoading ? (
+        {isLoading || !selectedEvent ? (
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
                 <LoaderCircle className="h-10 w-10 animate-spin" />
                 <p className="text-lg">Laster data fra Firebase...</p>
@@ -493,7 +554,7 @@ export function CheckInDashboard() {
               <ScanLine className="mx-auto h-24 w-24 text-primary animate-pulse" />
               <CardTitle className="text-2xl pt-4">Venter på skanning...</CardTitle>
               <CardDescription>
-                Hold RFID-brikken over leseren for å sjekke inn.
+                Hold RFID-brikken over leseren for å sjekke inn til {eventName}.
               </CardDescription>
             </CardHeader>
             <CardContent>

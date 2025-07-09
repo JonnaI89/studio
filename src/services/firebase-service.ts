@@ -258,6 +258,18 @@ export async function getFirebaseRaces(): Promise<Race[]> {
     }
 }
 
+export async function getFirebaseRacesForDate(date: string): Promise<Race[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const q = query(collection(db, RACES_COLLECTION), where("date", "==", date));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data() as Race);
+    } catch (error) {
+        console.error(`Error fetching races for date ${date}: `, error);
+        throw new Error("Kunne ikke hente løp for dato.");
+    }
+}
+
 export async function updateFirebaseRace(race: Race): Promise<void> {
     try {
         if (!db) throw new Error("Firestore not initialized.");

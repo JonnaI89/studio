@@ -34,6 +34,9 @@ export type CheckinHistoryEntry = {
   checkinDate: string; // YYYY-MM-DD
   checkinTime: string; // HH:MM:SS
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
+  eventType: 'training' | 'race';
+  eventId?: string; // e.g., raceId
+  eventName?: string; // e.g., raceName
 };
 
 export type TrainingSignup = {
