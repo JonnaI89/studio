@@ -367,3 +367,19 @@ export async function addFirebaseCheckinHistory(entryData: Omit<CheckinHistoryEn
         throw new Error("Kunne ikke lagre innsjekking i historikken.");
     }
 }
+
+export async function getFirebaseCheckinHistoryForDate(date: string): Promise<CheckinHistoryEntry[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const q = query(
+            collection(db, CHECKIN_HISTORY_COLLECTION), 
+            where("checkinDate", "==", date),
+            orderBy("checkinTime", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as CheckinHistoryEntry);
+    } catch (error) {
+        console.error(`Error fetching check-in history for date ${date}: `, error);
+        throw new Error("Kunne ikke hente innsjekkingshistorikk for i dag. Dette kan kreve en konfigurasjonsendring i databasen (sammensatt indeks).");
+    }
+}

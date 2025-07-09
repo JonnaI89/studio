@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
-import { recordCheckin } from "@/services/checkin-service";
+import { recordCheckin, getCheckinsForDate } from "@/services/checkin-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -60,12 +60,63 @@ export function CheckInDashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [fetchedDrivers, fetchedSettings] = await Promise.all([
+      const today = new Date().toISOString().split('T')[0];
+      const [fetchedDrivers, fetchedSettings, fetchedCheckins] = await Promise.all([
         getDrivers(),
         getSiteSettings(),
+        getCheckinsForDate(today),
       ]);
+      
       setDrivers(fetchedDrivers);
       setSiteSettings(fetchedSettings);
+      
+      const reconstructedCheckins: CheckedInEntry[] = fetchedCheckins.map(historyEntry => {
+          const driverProfile = fetchedDrivers.find(d => d.id === historyEntry.driverId);
+          
+          if (driverProfile) {
+              return {
+                  driver: driverProfile,
+                  checkInTime: historyEntry.checkinTime,
+                  paymentStatus: historyEntry.paymentStatus,
+              };
+          }
+
+          if (historyEntry.paymentStatus === 'one_time_license') {
+              return {
+                  driver: {
+                      id: historyEntry.driverId,
+                      name: historyEntry.driverName,
+                      rfid: `onetime_${historyEntry.driverId}`,
+                      club: 'Engangslisens',
+                      dob: '2000-01-01',
+                      email: '',
+                      role: 'driver',
+                      hasSeasonPass: false,
+                      klasse: historyEntry.driverKlasse,
+                  },
+                  checkInTime: historyEntry.checkinTime,
+                  paymentStatus: historyEntry.paymentStatus,
+              };
+          }
+          
+          // Fallback for a regular driver who has been deleted
+          return {
+              driver: {
+                  id: historyEntry.driverId,
+                  name: `${historyEntry.driverName} (Slettet)`,
+                  rfid: 'unknown',
+                  club: 'Ukjent',
+                  dob: '2000-01-01',
+                  email: '',
+                  role: 'driver',
+              },
+              checkInTime: historyEntry.checkinTime,
+              paymentStatus: historyEntry.paymentStatus,
+          };
+      });
+
+      setCheckedInDrivers(reconstructedCheckins);
+
     } catch (error) {
       toast({
         variant: 'destructive',
