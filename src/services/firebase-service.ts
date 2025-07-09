@@ -373,13 +373,17 @@ export async function getFirebaseCheckinHistoryForDate(date: string): Promise<Ch
         if (!db) throw new Error("Firestore not initialized.");
         const q = query(
             collection(db, CHECKIN_HISTORY_COLLECTION), 
-            where("checkinDate", "==", date),
-            orderBy("checkinTime", "desc")
+            where("checkinDate", "==", date)
         );
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as CheckinHistoryEntry);
+        const entries = querySnapshot.docs.map(doc => doc.data() as CheckinHistoryEntry);
+        
+        // Sort in-memory to avoid needing a composite index
+        entries.sort((a, b) => b.checkinTime.localeCompare(a.checkinTime));
+
+        return entries;
     } catch (error) {
         console.error(`Error fetching check-in history for date ${date}: `, error);
-        throw new Error("Kunne ikke hente innsjekkingshistorikk for i dag. Dette kan kreve en konfigurasjonsendring i databasen (sammensatt indeks).");
+        throw new Error("Kunne ikke hente innsjekkingshistorikk for i dag.");
     }
 }
