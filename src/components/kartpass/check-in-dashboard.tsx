@@ -10,7 +10,7 @@ import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2, Bike, Trash2, Menu } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2, Bike, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +18,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +37,7 @@ import { calculateAge } from "@/lib/utils";
 import { TrainingSignupsDialog } from "./training-signups-dialog";
 import Link from "next/link";
 import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface CheckInDashboardProps {
     todaysRaces?: Race[];
@@ -440,7 +433,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
 
   if (todaysRaces && todaysRaces.length > 1 && !selectedEvent) {
     return (
-      <div className="w-full flex-1 flex flex-col justify-center items-center">
+      <div className="w-full flex-1 flex flex-col justify-center items-center p-4 sm:p-8">
         <div className="w-full max-w-lg flex flex-col items-center gap-8 text-center">
           <FoererportalenLogo />
           <Card className="w-full shadow-lg">
@@ -473,109 +466,96 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const eventName = selectedEvent === 'training' ? 'dagens trening' : selectedEvent?.name;
 
   return (
-    <div className="w-full flex flex-col items-center gap-8">
-      <header className="w-full flex justify-between items-start">
-        <div>
-            <FoererportalenLogo />
-            {eventName && <p className="text-sm text-muted-foreground -mt-2">Innsjekk for: <span className="font-semibold">{eventName}</span></p>}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="lg" disabled={isLoading}>
-                        <Menu className="mr-2 h-5 w-5" />
-                        Meny
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Innsjekk</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setIsCheckinsOpen(true)}>
-                        <List className="mr-2 h-4 w-4" />
-                        Vis Innsjekkede
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setIsManualCheckInOpen(true)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Manuell registrering
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setIsOneTimeLicenseOpen(true)}>
-                        <FilePlus2 className="mr-2 h-4 w-4" />
-                        Engangslisens
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Administrasjon</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setIsDriverMgmtOpen(true)}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Føreradministrasjon
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setIsSignupsOpen(true)}>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        Påmeldte (Trening)
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Innstillinger</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin/races">
-                            <Flag className="mr-2 h-4 w-4" />
-                            Løpsinnstillinger
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                         <Link href="/admin/training-settings">
-                            <Bike className="mr-2 h-4 w-4" />
-                            Treningsinnstillinger
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin/site-settings">
-                            <ImageIcon className="mr-2 h-4 w-4" />
-                            Generelle Innstillinger
-                        </Link>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-      </header>
-
-      <div className="w-full max-w-lg min-h-[550px] flex items-center justify-center">
-        {isLoading || !selectedEvent ? (
-            <div className="flex flex-col items-center gap-4 text-muted-foreground">
-                <LoaderCircle className="h-10 w-10 animate-spin" />
-                <p className="text-lg">Laster data fra Firebase...</p>
+    <div className="w-full flex-1 flex flex-col">
+        <header className="container mx-auto px-4 sm:px-6 md:px-8">
+            <div className="w-full flex justify-between items-start py-8">
+                <div>
+                    <FoererportalenLogo />
+                </div>
             </div>
-        ) : driver ? (
-          <DriverInfoCard 
-            driver={driver} 
-            age={driverAge} 
-            onCheckIn={handleCheckIn} 
-            onReset={handleReset}
-            isCheckedIn={!!currentDriverCheckIn}
-            checkInTime={currentDriverCheckIn?.checkInTime ?? null}
-            paymentStatus={currentDriverCheckIn?.paymentStatus ?? null}
-          />
-        ) : (
-          <Card className="w-full animate-in fade-in-50 shadow-lg">
-            <CardHeader className="text-center">
-              <ScanLine className="mx-auto h-24 w-24 text-primary animate-pulse" />
-              <CardTitle className="text-2xl pt-4">Venter på skanning...</CardTitle>
-              <CardDescription>
-                Hold RFID-brikken over leseren for å sjekke inn til {eventName}.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-center text-muted-foreground">
-                Hvis skanningen ikke fungerer, sørg for at leseren er i "Keyboard/HID"-modus.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        </header>
 
-        {/* Dialogs controlled from menu */}
+        <nav className="sticky top-0 z-20 w-full bg-background/95 backdrop-blur-sm border-b shadow-sm">
+            <div className="container mx-auto flex h-16 items-center justify-center gap-1 px-4 flex-wrap">
+                <Button variant="ghost" onClick={() => setIsCheckinsOpen(true)} disabled={isLoading}>
+                    <List className="mr-2 h-4 w-4" />
+                    Innsjekkede
+                </Button>
+                <Button variant="ghost" onClick={() => setIsManualCheckInOpen(true)} disabled={isLoading}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Manuell Reg.
+                </Button>
+                <Button variant="ghost" onClick={() => setIsOneTimeLicenseOpen(true)} disabled={isLoading}>
+                    <FilePlus2 className="mr-2 h-4 w-4" />
+                    Engangslisens
+                </Button>
+                <Separator orientation="vertical" className="h-6 mx-2" />
+                <Button variant="ghost" onClick={() => setIsDriverMgmtOpen(true)} disabled={isLoading}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Føreradmin
+                </Button>
+                <Button variant="ghost" onClick={() => setIsSignupsOpen(true)} disabled={isLoading}>
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    Påmeldte
+                </Button>
+                <Separator orientation="vertical" className="h-6 mx-2" />
+                <Button variant="ghost" asChild disabled={isLoading}>
+                    <Link href="/admin/races">
+                        <Flag className="mr-2 h-4 w-4" />
+                        Løp
+                    </Link>
+                </Button>
+                <Button variant="ghost" asChild disabled={isLoading}>
+                    <Link href="/admin/training-settings">
+                        <Bike className="mr-2 h-4 w-4" />
+                        Trening
+                    </Link>
+                </Button>
+                <Button variant="ghost" asChild disabled={isLoading}>
+                    <Link href="/admin/site-settings">
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Nettsted
+                    </Link>
+                </Button>
+            </div>
+        </nav>
+
+        <main className="flex-1 flex w-full justify-center">
+            <div className="w-full max-w-lg min-h-[500px] flex items-center justify-center my-8 px-4">
+                {isLoading || !selectedEvent ? (
+                    <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                        <LoaderCircle className="h-10 w-10 animate-spin" />
+                        <p className="text-lg">Laster data fra Firebase...</p>
+                    </div>
+                ) : driver ? (
+                <DriverInfoCard 
+                    driver={driver} 
+                    age={driverAge} 
+                    onCheckIn={handleCheckIn} 
+                    onReset={handleReset}
+                    isCheckedIn={!!currentDriverCheckIn}
+                    checkInTime={currentDriverCheckIn?.checkInTime ?? null}
+                    paymentStatus={currentDriverCheckIn?.paymentStatus ?? null}
+                />
+                ) : (
+                <Card className="w-full animate-in fade-in-50 shadow-lg">
+                    <CardHeader className="text-center">
+                    <ScanLine className="mx-auto h-24 w-24 text-primary animate-pulse" />
+                    <CardTitle className="text-2xl pt-4">Venter på skanning...</CardTitle>
+                    <CardDescription>
+                        Hold RFID-brikken over leseren for å sjekke inn til {eventName}.
+                    </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    <p className="text-xs text-center text-muted-foreground">
+                        Hvis skanningen ikke fungerer, sørg for at leseren er i "Keyboard/HID"-modus.
+                    </p>
+                    </CardContent>
+                </Card>
+                )}
+            </div>
+        </main>
+
         <Dialog open={isCheckinsOpen} onOpenChange={setIsCheckinsOpen}>
             <DialogContent className="max-w-xl">
               <DialogHeader>
@@ -652,7 +632,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                     <AlertDialogDescription>
                         RFID-brikken med ID <span className="font-mono bg-muted p-1 rounded-sm">{newRfidId}</span> er ikke registrert i systemet.
                         <br /><br />
-                        For å registrere denne føreren, gå til "Føreradministrasjon" (tannhjul-ikonet øverst) og velg "Registrer ny fører". Du må fylle inn denne RFID-IDen i skjemaet.
+                        For å registrere denne føreren, gå til "Føreradministrasjon" og velg "Registrer ny fører". Du må fylle inn denne RFID-IDen i skjemaet.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

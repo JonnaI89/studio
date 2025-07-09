@@ -7,7 +7,7 @@ export default async function AdminPage() {
   const todaysRaces = await getRacesForDate(today);
 
   return (
-    <main className="flex min-h-screen flex-col p-4 sm:p-8 md:p-12">
+    <main className="flex min-h-screen flex-col">
       <CheckInDashboard todaysRaces={todaysRaces} />
     </main>
   );
