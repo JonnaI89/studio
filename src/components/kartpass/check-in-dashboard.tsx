@@ -66,6 +66,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const [isRfidAlertOpen, setIsRfidAlertOpen] = useState(false);
   const [isOneTimeLicenseOpen, setIsOneTimeLicenseOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Race | 'training' | null>(null);
+  const [isCheckinsOpen, setIsCheckinsOpen] = useState(false);
 
   const rfidInputBuffer = useRef<string>('');
   const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -471,7 +472,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
             {eventName && <p className="text-sm text-muted-foreground -mt-2">Innsjekk for: <span className="font-semibold">{eventName}</span></p>}
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Dialog>
+            <Dialog open={isCheckinsOpen} onOpenChange={setIsCheckinsOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" disabled={isLoading}>
                     <List className="mr-2 h-4 w-4" />

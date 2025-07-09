@@ -20,7 +20,7 @@ export function ManualCheckInForm({ drivers, onDriverSelect, closeDialog }: Manu
     ? drivers.filter(driver => 
         driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         driver.rfid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        driver.email.toLowerCase().includes(searchQuery.toLowerCase())
+        (driver.email || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
 
