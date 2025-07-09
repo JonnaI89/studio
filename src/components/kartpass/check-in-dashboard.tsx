@@ -6,11 +6,10 @@ import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
-import { Scanner } from "./scanner";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { CheckedInTable } from "./checked-in-table";
 import { ManualCheckInForm } from "./manual-check-in-form";
 import { DriverManagementDialog } from "./driver-management-dialog";
@@ -50,6 +51,8 @@ export function CheckInDashboard() {
   const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isRfidAlertOpen, setIsRfidAlertOpen] = useState(false);
+  const [rfidQuery, setRfidQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -76,74 +79,31 @@ export function CheckInDashboard() {
     fetchData();
   }, [fetchData]);
 
+  const handleRfidSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const rfidToSearch = rfidQuery.trim();
+    if (!rfidToSearch) return;
 
-  useEffect(() => {
-    let rfidBuffer = '';
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    const processRfid = async (scannedId: string) => {
-        if (!scannedId.trim()) return;
-
-        try {
-            const foundDriver = await getDriverByRfid(scannedId.trim());
-            if (foundDriver) {
-                setDriver(foundDriver);
-            } else {
-                setNewRfidId(scannedId.trim());
-                setIsRfidAlertOpen(true);
-            }
-        } catch(error) {
-           toast({
-            variant: 'destructive',
-            title: 'Feil ved søk',
-            description: (error as Error).message,
-          });
+    setIsSearching(true);
+    try {
+        const foundDriver = await getDriverByRfid(rfidToSearch);
+        if (foundDriver) {
+            setDriver(foundDriver);
+        } else {
+            setNewRfidId(rfidToSearch);
+            setIsRfidAlertOpen(true);
         }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            processRfid(rfidBuffer);
-            rfidBuffer = '';
-            return;
-        }
-
-        // Ignore control keys like Shift, Ctrl, Alt, etc.
-        if (e.key.length > 1) {
-            return;
-        }
-
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
-
-        rfidBuffer += e.key;
-        
-        timeoutId = setTimeout(() => {
-            if (rfidBuffer.length > 0) {
-                processRfid(rfidBuffer);
-                rfidBuffer = '';
-            }
-        }, 100); // Wait 100ms for more characters before processing
-    };
-
-    const canListen = !driver && !isRfidAlertOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen && !isSignupsOpen;
-
-    if (canListen) {
-      window.addEventListener('keydown', handleKeyDown);
+    } catch(error) {
+       toast({
+        variant: 'destructive',
+        title: 'Feil ved søk',
+        description: (error as Error).message,
+      });
+    } finally {
+        setIsSearching(false);
+        setRfidQuery('');
     }
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      if (timeoutId) {
-          clearTimeout(timeoutId);
-      }
-    };
-  }, [toast, driver, isRfidAlertOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
+  };
 
   const handleSeasonPassCheckIn = () => {
     if (!driver) return;
@@ -331,7 +291,29 @@ export function CheckInDashboard() {
             paymentStatus={currentDriverCheckIn?.paymentStatus ?? null}
           />
         ) : (
-          <Scanner />
+          <Card className="w-full animate-in fade-in-50 shadow-lg">
+            <CardHeader>
+              <CardTitle>RFID-søk</CardTitle>
+              <CardDescription>
+                Bruk programvaren til kortleseren din for å lese av brikken. Lim inn ID-en under og trykk søk.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleRfidSearch} className="flex gap-2">
+                <Input
+                  placeholder="Lim inn RFID her..."
+                  value={rfidQuery}
+                  onChange={(e) => setRfidQuery(e.target.value)}
+                  disabled={isSearching}
+                  autoFocus
+                />
+                <Button type="submit" disabled={isSearching || !rfidQuery.trim()}>
+                  {isSearching ? <LoaderCircle className="animate-spin" /> : <Search />}
+                  Søk
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         )}
 
         <PaymentDialog 
