@@ -11,14 +11,15 @@ import { createRace, updateRace, deleteRace } from "@/services/race-service";
 import { RacesTable } from "./races-table";
 import { RaceForm } from "./race-form";
 import { RaceSignupsDialog } from "./race-signups-dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RaceManagementPageProps {
   initialRaces: Race[];
 }
 
 export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
-  const [races, setRaces] = useState<Race[]>(initialRaces);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [races, setRaces] = useState<Race[]>(initialRaces.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+  const [viewMode, setViewMode] = useState<'table' | 'form'>('table');
   const [isSignupsOpen, setIsSignupsOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
@@ -28,13 +29,18 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
 
   const handleAddNew = () => {
     setSelectedRace(null);
-    setIsFormOpen(true);
+    setViewMode('form');
   };
 
   const handleEdit = (race: Race) => {
     setSelectedRace(race);
-    setIsFormOpen(true);
+    setViewMode('form');
   };
+
+  const handleBackToList = () => {
+      setViewMode('table');
+      setSelectedRace(null);
+  }
 
   const handleViewSignups = (race: Race) => {
     setSelectedRace(race);
@@ -46,26 +52,22 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
     setIsDeleteAlertOpen(true);
   };
   
-  const refreshRaces = async () => {
-    // In a real app, you'd fetch this from the service again.
-    // For now, we manually update the state in handleSave and handleConfirmDelete.
-  }
-
   const handleSave = async (raceData: Omit<Race, 'id' | 'createdAt' | 'status'>, id?: string) => {
     setIsLoading(true);
     try {
+      let updatedRaces;
       if (id && selectedRace) {
         const raceToUpdate: Race = { ...selectedRace, ...raceData };
         await updateRace(raceToUpdate);
-        setRaces(races.map(r => r.id === id ? raceToUpdate : r));
+        updatedRaces = races.map(r => r.id === id ? raceToUpdate : r);
         toast({ title: "Løp oppdatert", description: `${raceData.name} er lagret.` });
       } else {
         const newRace = await createRace(raceData);
-        setRaces([newRace, ...races]);
+        updatedRaces = [newRace, ...races];
         toast({ title: "Løp opprettet", description: `${raceData.name} er lagt til.` });
       }
-      setIsFormOpen(false);
-      setSelectedRace(null);
+      setRaces(updatedRaces.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      handleBackToList();
     } catch (error) {
       toast({ variant: "destructive", title: "Lagring feilet", description: (error as Error).message });
     } finally {
@@ -90,36 +92,45 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button onClick={handleAddNew}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Opprett nytt løp
-        </Button>
-      </div>
-      <RacesTable 
-        races={races} 
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onViewSignups={handleViewSignups}
-      />
-      
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedRace ? 'Rediger Løp' : 'Opprett Løp'}</DialogTitle>
-            <DialogDescription>
-              Fyll ut detaljene for løpet under.
-            </DialogDescription>
-          </DialogHeader>
-          <RaceForm 
-            raceToEdit={selectedRace}
-            onSave={handleSave}
-            closeDialog={() => setIsFormOpen(false)}
-            isLoading={isLoading}
-          />
-        </DialogContent>
-      </Dialog>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {viewMode === 'table' ? 'Løpsadministrasjon' : (selectedRace ? 'Rediger Løp' : 'Opprett Løp')}
+          </CardTitle>
+          <CardDescription>
+            {viewMode === 'table' 
+                ? 'Her kan du opprette og administrere løp. Førere kan se og melde seg på kommende løp fra sin profilside.'
+                : `Fyll ut detaljene for løpet under. Trykk lagre når du er ferdig.`
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {viewMode === 'table' ? (
+                <div className="space-y-6">
+                    <div className="flex justify-end">
+                        <Button onClick={handleAddNew}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Opprett nytt løp
+                        </Button>
+                    </div>
+                    <RacesTable 
+                        races={races} 
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onViewSignups={handleViewSignups}
+                    />
+                </div>
+            ) : (
+                <RaceForm 
+                    raceToEdit={selectedRace}
+                    onSave={handleSave}
+                    closeDialog={handleBackToList}
+                    isLoading={isLoading}
+                />
+            )}
+        </CardContent>
+      </Card>
       
       <Dialog open={isSignupsOpen} onOpenChange={setIsSignupsOpen}>
         <DialogContent className="max-w-4xl">
@@ -154,6 +165,6 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
