@@ -5,7 +5,8 @@ import {
     getFirebaseTrainingSignupsByDate,
     getFirebaseTrainingSettings,
     updateFirebaseTrainingSettings,
-    deleteFirebaseTrainingSignup
+    deleteFirebaseTrainingSignup,
+    getFirebaseTrainingSignupsByDriver
 } from './firebase-service';
 import type { TrainingSignup, TrainingSettings } from '@/lib/types';
 
@@ -15,6 +16,10 @@ export async function addTrainingSignup(signupData: Omit<TrainingSignup, 'id'>):
 
 export async function getSignupsByDate(date: string): Promise<TrainingSignup[]> {
     return getFirebaseTrainingSignupsByDate(date);
+}
+
+export async function getTrainingSignupsByDriver(driverId: string): Promise<TrainingSignup[]> {
+    return getFirebaseTrainingSignupsByDriver(driverId);
 }
 
 export async function getTrainingSettings(): Promise<TrainingSettings> {

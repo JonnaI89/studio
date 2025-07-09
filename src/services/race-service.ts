@@ -41,7 +41,7 @@ export async function getRaceSignups(raceId: string): Promise<RaceSignup[]> {
     return getFirebaseRaceSignups(raceId);
 }
 
-export async function getSignupsByDriver(driverId: string): Promise<RaceSignup[]> {
+export async function getRaceSignupsByDriver(driverId: string): Promise<RaceSignup[]> {
     return getFirebaseRaceSignupsByDriver(driverId);
 }
 

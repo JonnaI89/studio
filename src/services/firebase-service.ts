@@ -175,6 +175,23 @@ export async function getFirebaseTrainingSignupsByDate(date: string): Promise<Tr
     }
 }
 
+export async function getFirebaseTrainingSignupsByDriver(driverId: string): Promise<TrainingSignup[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        
+        const q = query(collection(db, TRAINING_SIGNUPS_COLLECTION), where("driverId", "==", driverId));
+        const querySnapshot = await getDocs(q);
+        
+        const signups = querySnapshot.docs.map(doc => doc.data() as TrainingSignup);
+
+        return signups;
+    } catch (error) {
+        console.error(`Error fetching training signups for driver ${driverId}: `, error);
+        throw new Error("En feil oppstod under henting av påmeldinger for trening.");
+    }
+}
+
+
 export async function getFirebaseTrainingSettings(): Promise<TrainingSettings> {
     try {
         if (!db) throw new Error("Firestore not initialized");

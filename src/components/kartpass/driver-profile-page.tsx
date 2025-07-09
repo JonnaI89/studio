@@ -46,7 +46,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;
         try {
-            const updatedDriver: Driver = { ...driverData, id: id };
+            const updatedDriver: Driver = { ...driverData, id: id, role: driver.role };
             await updateDriver(updatedDriver);
             setDriver(updatedDriver);
             setIsEditing(false);
