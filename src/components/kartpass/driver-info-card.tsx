@@ -15,7 +15,7 @@ interface DriverInfoCardProps {
   onReset: () => void;
   isCheckedIn: boolean;
   checkInTime: string | null;
-  paymentStatus: 'paid' | 'unpaid' | 'season_pass' | null;
+  paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license' | null;
 }
 
 export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime, paymentStatus }: DriverInfoCardProps) {
@@ -80,12 +80,12 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         )}
 
         {isCheckedIn && checkInTime && (
-            <div className={`p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' || paymentStatus === 'season_pass' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+            <div className={`p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' || paymentStatus === 'season_pass' || paymentStatus === 'one_time_license' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
                 <CheckCircle2 className="h-5 w-5"/>
                 <div>
                   <span className="font-semibold">Innsjekket kl:</span> {checkInTime}
                   {paymentStatus && <span className="font-semibold ml-2">Status:</span>}
-                  {paymentStatus === 'paid' ? ' Betalt' : paymentStatus === 'season_pass' ? ' Årskort' : ' Ubetalt'}
+                  {paymentStatus === 'paid' ? ' Betalt' : paymentStatus === 'season_pass' ? ' Årskort' : paymentStatus === 'one_time_license' ? ' Engangslisens' : ' Ubetalt'}
                 </div>
             </div>
         )}

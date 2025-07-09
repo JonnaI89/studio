@@ -35,7 +35,7 @@ export function CheckedInTable({ entries }: CheckedInTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {[...entries].reverse().map(({ driver, checkInTime, paymentStatus }) => (
+          {entries.map(({ driver, checkInTime, paymentStatus }) => (
             <TableRow key={`${driver.id}-${checkInTime}`}>
               <TableCell className="font-medium">{driver.name}</TableCell>
               <TableCell>{driver.club}</TableCell>
@@ -45,6 +45,8 @@ export function CheckedInTable({ entries }: CheckedInTableProps) {
                     ? 'default' 
                     : paymentStatus === 'season_pass'
                     ? 'secondary'
+                    : paymentStatus === 'one_time_license'
+                    ? 'outline'
                     : 'destructive'
                 }>
                   {
@@ -52,6 +54,8 @@ export function CheckedInTable({ entries }: CheckedInTableProps) {
                     ? 'Betalt'
                     : paymentStatus === 'season_pass'
                     ? 'Årskort'
+                    : paymentStatus === 'one_time_license'
+                    ? 'Engangslisens'
                     : 'Ubetalt'
                   }
                 </Badge>

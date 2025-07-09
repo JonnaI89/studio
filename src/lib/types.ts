@@ -23,7 +23,7 @@ export type Driver = {
 export type CheckedInEntry = {
   driver: Driver;
   checkInTime: string;
-  paymentStatus: 'paid' | 'unpaid' | 'season_pass';
+  paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
 };
 
 export type TrainingSignup = {

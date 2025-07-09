@@ -9,7 +9,7 @@ import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle, ScanLine } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Settings, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ import { PaymentDialog } from "./payment-dialog";
 import { calculateAge } from "@/lib/utils";
 import { TrainingSignupsDialog } from "./training-signups-dialog";
 import Link from "next/link";
+import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
 
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
@@ -50,6 +51,7 @@ export function CheckInDashboard() {
   const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isRfidAlertOpen, setIsRfidAlertOpen] = useState(false);
+  const [isOneTimeLicenseOpen, setIsOneTimeLicenseOpen] = useState(false);
 
   const rfidInputBuffer = useRef<string>('');
   const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -159,7 +161,7 @@ export function CheckInDashboard() {
             updatedList[existingEntryIndex] = newEntry;
             return updatedList;
         }
-        return [...prev, newEntry];
+        return [newEntry, ...prev];
     });
 
     toast({
@@ -193,7 +195,7 @@ export function CheckInDashboard() {
             updatedList[existingEntryIndex] = newEntry;
             return updatedList;
         }
-        return [...prev, newEntry];
+        return [newEntry, ...prev];
     });
 
     toast({
@@ -204,6 +206,35 @@ export function CheckInDashboard() {
     resetViewAfterDelay(driverForPayment.id);
     setIsPaymentOpen(false);
     setDriverForPayment(null);
+  };
+  
+  const handleOneTimeLicenseCheckIn = (name: string, licenseNumber: string) => {
+    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    const oneTimeDriver: Driver = {
+        id: `onetime_${Date.now()}`,
+        name: name,
+        rfid: `onetime_${licenseNumber}`,
+        club: 'Engangslisens',
+        dob: '2000-01-01',
+        email: '',
+        role: 'driver',
+        hasSeasonPass: false,
+        driverLicense: licenseNumber,
+    };
+
+    const newEntry: CheckedInEntry = {
+        driver: oneTimeDriver,
+        checkInTime: time,
+        paymentStatus: 'one_time_license' 
+    };
+
+    setCheckedInDrivers(prev => [newEntry, ...prev]);
+
+    toast({
+        title: 'Innsjekk Vellykket (Engangslisens)',
+        description: `${name} er nå sjekket inn.`,
+    });
   };
 
   const handleReset = () => {
@@ -273,6 +304,20 @@ export function CheckInDashboard() {
                     <DriverManagementDialog 
                         drivers={drivers}
                         onDatabaseUpdate={fetchData}
+                    />
+                </DialogContent>
+            </Dialog>
+           
+           <Dialog open={isOneTimeLicenseOpen} onOpenChange={setIsOneTimeLicenseOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" title="Sjekk inn med engangslisens">
+                        <FilePlus2 className="h-5 w-5" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <OneTimeLicenseCheckinDialog 
+                        onCheckIn={handleOneTimeLicenseCheckIn} 
+                        closeDialog={() => setIsOneTimeLicenseOpen(false)} 
                     />
                 </DialogContent>
             </Dialog>
