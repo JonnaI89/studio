@@ -33,11 +33,11 @@ export default async function Page({ params }: { params: { id: string } }) {
                  </div>
             </header>
             
-            <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
-                    <TabsTrigger value="profile">Min Profil</TabsTrigger>
-                    <TabsTrigger value="races">Påmelding Løp</TabsTrigger>
+            <Tabs defaultValue="training" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="training">Påmelding Trening</TabsTrigger>
+                    <TabsTrigger value="races">Påmelding Løp</TabsTrigger>
+                    <TabsTrigger value="profile">Min Profil</TabsTrigger>
                 </TabsList>
                 <TabsContent value="profile" className="mt-6">
                     <DriverProfilePage 
