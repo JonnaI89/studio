@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal } from "lucide-react";
+import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal, Hash } from "lucide-react";
 
 interface DriverInfoCardProps {
   driver: Driver;
@@ -53,6 +53,9 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
            {driver.teamLicense && <InfoItem icon={<Group className="text-primary" />} label="Team" value={driver.teamLicense} />}
           <Separator />
           <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr || 'Mangler'} />
+          <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr || 'Mangler'} />
+          <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 1" value={driver.motorNr1 || 'Mangler'} />
+          <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 2" value={driver.motorNr2 || 'Mangler'} />
           <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense || 'Mangler'} />
           <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense || 'Mangler'} />
         </div>

@@ -40,6 +40,9 @@ const formSchema = z.object({
     klasse: z.string().optional(),
     startNr: z.string().optional(),
     transponderNr: z.string().optional(),
+    chassiNr: z.string().optional(),
+    motorNr1: z.string().optional(),
+    motorNr2: z.string().optional(),
     driverLicense: z.string().optional(),
     vehicleLicense: z.string().optional(),
     teamLicense: z.string().optional(),
@@ -80,6 +83,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             klasse: driverToEdit.klasse || "",
             startNr: driverToEdit.startNr || "",
             transponderNr: driverToEdit.transponderNr || "",
+            chassiNr: driverToEdit.chassiNr || "",
+            motorNr1: driverToEdit.motorNr1 || "",
+            motorNr2: driverToEdit.motorNr2 || "",
             driverLicense: driverToEdit.driverLicense || "",
             vehicleLicense: driverToEdit.vehicleLicense || "",
             teamLicense: driverToEdit.teamLicense || "",
@@ -95,6 +101,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             klasse: "",
             startNr: "",
             transponderNr: "",
+            chassiNr: "",
+            motorNr1: "",
+            motorNr2: "",
             driverLicense: "",
             vehicleLicense: "",
             teamLicense: "",
@@ -138,6 +147,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             klasse: values.klasse,
             startNr: values.startNr,
             transponderNr: values.transponderNr,
+            chassiNr: values.chassiNr,
+            motorNr1: values.motorNr1,
+            motorNr2: values.motorNr2,
             driverLicense: values.driverLicense,
             vehicleLicense: values.vehicleLicense,
             teamLicense: values.teamLicense,
@@ -309,6 +321,45 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <FormLabel>Transponder nr</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Transpondernummer" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="chassiNr"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Chassi nr</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Chassisnummer" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="motorNr1"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Motor nr 1</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Motornummer 1" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="motorNr2"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Motor nr 2</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Motornummer 2" {...field} value={field.value ?? ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

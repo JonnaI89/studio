@@ -10,6 +10,9 @@ export type Driver = {
   klasse?: string;
   startNr?: string;
   transponderNr?: string;
+  chassiNr?: string;
+  motorNr1?: string;
+  motorNr2?: string;
   driverLicense?: string;
   vehicleLicense?: string;
   teamLicense?: string;
