@@ -453,14 +453,14 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                 <DialogTrigger asChild>
                   <Button variant="outline" disabled={isLoading}>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    Manuelt Søk
+                    Manuell registrering
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-xl">
                   <DialogHeader>
-                    <DialogTitle>Manuell Innsjekk</DialogTitle>
+                    <DialogTitle>Manuell registrering</DialogTitle>
                     <DialogDescription>
-                      Søk etter en fører for å sjekke dem inn manuelt.
+                      Søk etter en fører for å registrere dem manuelt for dagens økt.
                     </DialogDescription>
                   </DialogHeader>
                   <ManualCheckInForm 
