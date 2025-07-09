@@ -20,6 +20,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogContent,
@@ -415,53 +423,111 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
 
   return (
     <div className="w-full max-w-lg flex flex-col items-center gap-8">
-      <header className="w-full flex justify-between items-center">
+      <header className="w-full flex justify-between items-start">
         <div>
             <FoererportalenLogo />
             {eventName && <p className="text-sm text-muted-foreground -mt-2">Innsjekk for: <span className="font-semibold">{eventName}</span></p>}
         </div>
-        <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="icon" title="Løpsadministrasjon" disabled={isLoading}>
-                <Link href="/admin/races">
-                    <Flag className="h-5 w-5" />
-                </Link>
-            </Button>
-            <Button asChild variant="outline" size="icon" title="Nettstedinnstillinger" disabled={isLoading}>
-                <Link href="/admin/site-settings">
-                    <ImageIcon className="h-5 w-5" />
-                </Link>
-            </Button>
-            <Button asChild variant="outline" size="icon" title="Treningsinnstillinger" disabled={isLoading}>
-                <Link href="/admin/training-settings">
-                    <Settings className="h-5 w-5" />
-                </Link>
-            </Button>
-
-            <Dialog open={isSignupsOpen} onOpenChange={setIsSignupsOpen}>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Dialog>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" title="Påmeldte til trening" disabled={isLoading}>
-                        <CalendarDays className="h-5 w-5" />
-                        <span className="sr-only">Påmeldte til trening</span>
-                    </Button>
+                  <Button variant="outline" disabled={isLoading}>
+                    <List className="mr-2 h-4 w-4" />
+                    Vis Innsjekkede
+                  </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl">
-                     <DialogHeader>
-                        <DialogTitle>Påmeldte til Trening</DialogTitle>
-                        <DialogDescription>
-                          Velg en dato i kalenderen for å se hvem som er påmeldt, sortert etter klasse.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <TrainingSignupsDialog checkedInEntries={checkedInDrivers}/>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Innsjekkede Førere</DialogTitle>
+                    <DialogDescription>
+                      Liste over alle førere som har sjekket inn i denne økten.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <CheckedInTable entries={checkedInDrivers} />
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isDriverMgmtOpen} onOpenChange={setIsDriverMgmtOpen}>
+            <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" title="Føreradministrasjon" disabled={isLoading}>
-                        <Users className="h-5 w-5" />
-                        <span className="sr-only">Føreradministrasjon</span>
+                  <Button variant="outline" disabled={isLoading}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Manuelt Søk
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Manuell Innsjekk</DialogTitle>
+                    <DialogDescription>
+                      Søk etter en fører for å sjekke dem inn manuelt.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ManualCheckInForm 
+                    drivers={drivers} 
+                    onDriverSelect={handleManualSelect}
+                    closeDialog={() => setIsManualCheckInOpen(false)}
+                  />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isOneTimeLicenseOpen} onOpenChange={setIsOneTimeLicenseOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" disabled={isLoading}>
+                        <FilePlus2 className="mr-2 h-4 w-4" />
+                        Engangslisens
                     </Button>
                 </DialogTrigger>
+                <DialogContent>
+                    <OneTimeLicenseCheckinDialog 
+                        onCheckIn={handleOneTimeLicenseCheckIn} 
+                        closeDialog={() => setIsOneTimeLicenseOpen(false)} 
+                    />
+                </DialogContent>
+            </Dialog>
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" disabled={isLoading}>
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Innstillinger og administrasjon</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Administrasjon</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setIsDriverMgmtOpen(true)}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Føreradministrasjon</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setIsSignupsOpen(true)}>
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        <span>Påmeldte (Trening)</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Innstillinger</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                        <Link href="/admin/races">
+                            <Flag className="mr-2 h-4 w-4" />
+                            Løpsinnstillinger
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                         <Link href="/admin/training-settings">
+                            <Bike className="mr-2 h-4 w-4" />
+                            Treningsinnstillinger
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/admin/site-settings">
+                            <ImageIcon className="mr-2 h-4 w-4" />
+                            Generelle Innstillinger
+                        </Link>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Dialogs controlled from menu */}
+            <Dialog open={isDriverMgmtOpen} onOpenChange={setIsDriverMgmtOpen}>
                 <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                      <DialogHeader>
                         <DialogTitle>Føreradministrasjon</DialogTitle>
@@ -475,60 +541,17 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                     />
                 </DialogContent>
             </Dialog>
-           
-           <Dialog open={isOneTimeLicenseOpen} onOpenChange={setIsOneTimeLicenseOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" title="Sjekk inn med engangslisens">
-                        <FilePlus2 className="h-5 w-5" />
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <OneTimeLicenseCheckinDialog 
-                        onCheckIn={handleOneTimeLicenseCheckIn} 
-                        closeDialog={() => setIsOneTimeLicenseOpen(false)} 
-                    />
+            <Dialog open={isSignupsOpen} onOpenChange={setIsSignupsOpen}>
+                <DialogContent className="max-w-4xl">
+                     <DialogHeader>
+                        <DialogTitle>Påmeldte til Trening</DialogTitle>
+                        <DialogDescription>
+                          Velg en dato i kalenderen for å se hvem som er påmeldt, sortert etter klasse.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <TrainingSignupsDialog checkedInEntries={checkedInDrivers}/>
                 </DialogContent>
             </Dialog>
-
-           <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" title="Manuell innsjekk" disabled={isLoading}>
-                <UserPlus className="h-5 w-5" />
-                <span className="sr-only">Manuell innsjekk</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Manuell Innsjekk</DialogTitle>
-                <DialogDescription>
-                  Søk etter en fører for å sjekke dem inn manuelt.
-                </DialogDescription>
-              </DialogHeader>
-              <ManualCheckInForm 
-                drivers={drivers} 
-                onDriverSelect={handleManualSelect}
-                closeDialog={() => setIsManualCheckInOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
-
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" title="Vis innsjekkede" disabled={isLoading}>
-                <List className="h-5 w-5" />
-                <span className="sr-only">Vis innsjekkede førere</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Innsjekkede Førere</DialogTitle>
-                <DialogDescription>
-                  Liste over alle førere som har sjekket inn i denne økten.
-                </DialogDescription>
-              </DialogHeader>
-              <CheckedInTable entries={checkedInDrivers} />
-            </DialogContent>
-          </Dialog>
         </div>
       </header>
 
@@ -579,7 +602,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                     <AlertDialogDescription>
                         RFID-brikken med ID <span className="font-mono bg-muted p-1 rounded-sm">{newRfidId}</span> er ikke registrert i systemet.
                         <br /><br />
-                        For å registrere denne føreren, gå til "Føreradministrasjon" (person-ikonet øverst) og velg "Registrer ny fører". Du må fylle inn denne RFID-IDen i skjemaet.
+                        For å registrere denne føreren, gå til "Føreradministrasjon" (tannhjul-ikonet øverst) og velg "Registrer ny fører". Du må fylle inn denne RFID-IDen i skjemaet.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
