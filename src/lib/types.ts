@@ -26,6 +26,16 @@ export type CheckedInEntry = {
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
 };
 
+export type CheckinHistoryEntry = {
+  id: string; // Firestore doc ID
+  driverId: string;
+  driverName: string;
+  driverKlasse: string | undefined;
+  checkinDate: string; // YYYY-MM-DD
+  checkinTime: string; // HH:MM:SS
+  paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
+};
+
 export type TrainingSignup = {
   id: string; // auto-generated doc id
   driverId: string;

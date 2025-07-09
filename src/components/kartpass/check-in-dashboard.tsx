@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
+import { recordCheckin } from "@/services/checkin-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -151,7 +152,9 @@ export function CheckInDashboard() {
 
   const handleSeasonPassCheckIn = () => {
     if (!driver) return;
-    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const now = new Date();
+    const time = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const date = now.toISOString().split('T')[0];
     
     setCheckedInDrivers(prev => {
         const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driver.id);
@@ -162,6 +165,22 @@ export function CheckInDashboard() {
             return updatedList;
         }
         return [newEntry, ...prev];
+    });
+
+    recordCheckin({
+        driverId: driver.id,
+        driverName: driver.name,
+        driverKlasse: driver.klasse,
+        checkinDate: date,
+        checkinTime: time,
+        paymentStatus: 'season_pass'
+    }).catch(err => {
+        console.error("Failed to record check-in", err);
+        toast({
+            variant: 'destructive',
+            title: 'Lagringsfeil',
+            description: 'Innsjekkingen ble ikke lagret i historikken.'
+        })
     });
 
     toast({
@@ -185,7 +204,9 @@ export function CheckInDashboard() {
   
   const handlePaymentSuccess = () => {
     if (!driverForPayment) return;
-    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const now = new Date();
+    const time = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const date = now.toISOString().split('T')[0];
     
     setCheckedInDrivers(prev => {
         const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driverForPayment.id);
@@ -196,6 +217,22 @@ export function CheckInDashboard() {
             return updatedList;
         }
         return [newEntry, ...prev];
+    });
+
+    recordCheckin({
+        driverId: driverForPayment.id,
+        driverName: driverForPayment.name,
+        driverKlasse: driverForPayment.klasse,
+        checkinDate: date,
+        checkinTime: time,
+        paymentStatus: 'paid'
+    }).catch(err => {
+        console.error("Failed to record check-in", err);
+        toast({
+            variant: 'destructive',
+            title: 'Lagringsfeil',
+            description: 'Innsjekkingen ble ikke lagret i historikken.'
+        })
     });
 
     toast({
@@ -209,7 +246,9 @@ export function CheckInDashboard() {
   };
   
   const handleOneTimeLicenseCheckIn = (name: string, licenseNumber: string) => {
-    const time = new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const now = new Date();
+    const time = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const date = now.toISOString().split('T')[0];
     
     const oneTimeDriver: Driver = {
         id: `onetime_${Date.now()}`,
@@ -221,7 +260,24 @@ export function CheckInDashboard() {
         role: 'driver',
         hasSeasonPass: false,
         driverLicense: licenseNumber,
+        klasse: 'Engangslisens',
     };
+
+    recordCheckin({
+        driverId: oneTimeDriver.id,
+        driverName: oneTimeDriver.name,
+        driverKlasse: oneTimeDriver.klasse,
+        checkinDate: date,
+        checkinTime: time,
+        paymentStatus: 'one_time_license'
+    }).catch(err => {
+        console.error("Failed to record one-time license check-in", err);
+        toast({
+            variant: 'destructive',
+            title: 'Lagringsfeil',
+            description: 'Innsjekkingen ble ikke lagret i historikken.'
+        })
+    });
 
     const newEntry: CheckedInEntry = {
         driver: oneTimeDriver,

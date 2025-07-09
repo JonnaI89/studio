@@ -1,6 +1,6 @@
 import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup } from '@/lib/types';
+import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup, CheckinHistoryEntry } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
 
 const DRIVERS_COLLECTION = 'drivers';
@@ -10,6 +10,7 @@ const TRAINING_SCHEDULE_DOC = 'training_schedule';
 const SITE_CONFIG_DOC = 'site_config';
 const RACES_COLLECTION = 'races';
 const RACE_SIGNUPS_COLLECTION = 'raceSignups';
+const CHECKIN_HISTORY_COLLECTION = 'checkinHistory';
 
 
 export async function getFirebaseDrivers(): Promise<Driver[]> {
@@ -351,5 +352,18 @@ export async function deleteFirebaseRaceSignup(id: string): Promise<void> {
     } catch (error) {
         console.error(`Error deleting race signup with ID ${id}: `, error);
         throw new Error("Kunne ikke fjerne påmelding.");
+    }
+}
+
+export async function addFirebaseCheckinHistory(entryData: Omit<CheckinHistoryEntry, 'id'>): Promise<CheckinHistoryEntry> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const newDocRef = doc(collection(db, CHECKIN_HISTORY_COLLECTION));
+        const newEntry: CheckinHistoryEntry = { ...entryData, id: newDocRef.id };
+        await setDoc(newDocRef, newEntry);
+        return newEntry;
+    } catch (error) {
+        console.error("Error adding check-in history to Firestore: ", error);
+        throw new Error("Kunne ikke lagre innsjekking i historikken.");
     }
 }
