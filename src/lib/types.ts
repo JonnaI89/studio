@@ -21,6 +21,7 @@ export type Driver = {
 };
 
 export type CheckedInEntry = {
+  historyId: string;
   driver: Driver;
   checkInTime: string;
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';

@@ -399,3 +399,15 @@ export async function getFirebaseCheckinHistoryForDate(date: string): Promise<Ch
         throw new Error("Kunne ikke hente innsjekkingshistorikk for i dag.");
     }
 }
+
+export async function deleteFirebaseCheckinHistory(id: string): Promise<void> {
+    try {
+        if (!db) {
+            throw new Error("Firestore is not initialized.");
+        }
+        await deleteDoc(doc(db, CHECKIN_HISTORY_COLLECTION, id));
+    } catch (error) {
+        console.error(`Error deleting checkin history with ID ${id} from Firestore: `, error);
+        throw new Error("Kunne ikke slette innsjekking fra databasen.");
+    }
+}

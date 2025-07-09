@@ -9,12 +9,15 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "../ui/button";
+import { Trash2 } from "lucide-react";
 
 interface CheckedInTableProps {
   entries: CheckedInEntry[];
+  onDelete?: (historyId: string) => void;
 }
 
-export function CheckedInTable({ entries }: CheckedInTableProps) {
+export function CheckedInTable({ entries, onDelete }: CheckedInTableProps) {
   if (entries.length === 0) {
     return (
       <p className="text-center text-muted-foreground py-8">
@@ -31,36 +34,44 @@ export function CheckedInTable({ entries }: CheckedInTableProps) {
             <TableHead>Navn</TableHead>
             <TableHead>Klubb</TableHead>
             <TableHead>Betalingsstatus</TableHead>
-            <TableHead className="text-right">Tidspunkt</TableHead>
+            <TableHead>Tidspunkt</TableHead>
+            {onDelete && <TableHead className="text-right">Handlinger</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {entries.map(({ driver, checkInTime, paymentStatus }) => (
-            <TableRow key={`${driver.id}-${checkInTime}`}>
-              <TableCell className="font-medium">{driver.name}</TableCell>
-              <TableCell>{driver.club}</TableCell>
+          {entries.map((entry) => (
+            <TableRow key={entry.historyId}>
+              <TableCell className="font-medium">{entry.driver.name}</TableCell>
+              <TableCell>{entry.driver.club}</TableCell>
               <TableCell>
                 <Badge variant={
-                  paymentStatus === 'paid' 
+                  entry.paymentStatus === 'paid' 
                     ? 'default' 
-                    : paymentStatus === 'season_pass'
+                    : entry.paymentStatus === 'season_pass'
                     ? 'secondary'
-                    : paymentStatus === 'one_time_license'
+                    : entry.paymentStatus === 'one_time_license'
                     ? 'outline'
                     : 'destructive'
                 }>
                   {
-                    paymentStatus === 'paid'
+                    entry.paymentStatus === 'paid'
                     ? 'Betalt'
-                    : paymentStatus === 'season_pass'
+                    : entry.paymentStatus === 'season_pass'
                     ? 'Årskort'
-                    : paymentStatus === 'one_time_license'
+                    : entry.paymentStatus === 'one_time_license'
                     ? 'Engangslisens'
                     : 'Ubetalt'
                   }
                 </Badge>
               </TableCell>
-              <TableCell className="text-right">{checkInTime}</TableCell>
+              <TableCell className="text-right">{entry.checkInTime}</TableCell>
+              {onDelete && (
+                <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => onDelete(entry.historyId)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
