@@ -30,6 +30,7 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -67,6 +68,8 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const [isOneTimeLicenseOpen, setIsOneTimeLicenseOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Race | 'training' | null>(null);
   const [isCheckinsOpen, setIsCheckinsOpen] = useState(false);
+  const [checkinToDelete, setCheckinToDelete] = useState<CheckedInEntry | null>(null);
+  const [isDeletingCheckin, setIsDeletingCheckin] = useState(false);
 
   const rfidInputBuffer = useRef<string>('');
   const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -413,20 +416,26 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     setDriver(selectedDriver);
   };
 
-  const handleDeleteCheckin = async (historyId: string) => {
-    if (!window.confirm("Er du sikker på at du vil slette denne innsjekkingen? Handlingen kan ikke angres.")) {
-        return;
-    }
+  const handleOpenDeleteDialog = (entry: CheckedInEntry) => {
+    setCheckinToDelete(entry);
+  };
+
+  const handleConfirmDeleteCheckin = async () => {
+    if (!checkinToDelete) return;
+    setIsDeletingCheckin(true);
     try {
-        await deleteCheckin(historyId);
-        setCheckedInDrivers(prev => prev.filter(entry => entry.historyId !== historyId));
-        toast({ title: "Innsjekking slettet" });
+      await deleteCheckin(checkinToDelete.historyId);
+      setCheckedInDrivers(prev => prev.filter(entry => entry.historyId !== checkinToDelete.historyId));
+      toast({ title: "Innsjekking slettet" });
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Sletting feilet',
-            description: (error as Error).message
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Sletting feilet',
+        description: (error as Error).message
+      });
+    } finally {
+      setIsDeletingCheckin(false);
+      setCheckinToDelete(null);
     }
   };
 
@@ -486,7 +495,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                       Liste over alle førere som har sjekket inn i denne økten.
                     </DialogDescription>
                   </DialogHeader>
-                  <CheckedInTable entries={checkedInDrivers} onDelete={handleDeleteCheckin} />
+                  <CheckedInTable entries={checkedInDrivers} onDelete={handleOpenDeleteDialog} />
                 </DialogContent>
             </Dialog>
 
@@ -653,6 +662,29 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <AlertDialog open={!!checkinToDelete} onOpenChange={(isOpen) => !isOpen && setCheckinToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Dette vil slette innsjekkingen for <span className="font-bold">{checkinToDelete?.driver.name}</span>. Handlingen kan ikke angres.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeletingCheckin}>Avbryt</AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={handleConfirmDeleteCheckin}
+                        disabled={isDeletingCheckin}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        {isDeletingCheckin ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Ja, slett innsjekking
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </div>
     </div>
   );

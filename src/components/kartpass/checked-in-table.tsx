@@ -14,7 +14,7 @@ import { Trash2 } from "lucide-react";
 
 interface CheckedInTableProps {
   entries: CheckedInEntry[];
-  onDelete?: (historyId: string) => void;
+  onDelete?: (entry: CheckedInEntry) => void;
 }
 
 export function CheckedInTable({ entries, onDelete }: CheckedInTableProps) {
@@ -67,7 +67,7 @@ export function CheckedInTable({ entries, onDelete }: CheckedInTableProps) {
               <TableCell className="text-right">{entry.checkInTime}</TableCell>
               {onDelete && (
                 <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => onDelete(entry.historyId)}>
+                    <Button variant="ghost" size="icon" onClick={() => onDelete(entry)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                 </TableCell>
