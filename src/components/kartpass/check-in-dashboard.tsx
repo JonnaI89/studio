@@ -467,58 +467,55 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
 
   return (
     <div className="w-full flex-1 flex flex-col">
-        <header className="container mx-auto px-4 sm:px-6 md:px-8">
-            <div className="w-full flex justify-between items-start py-8">
+        <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur-sm">
+            <div className="container mx-auto px-4 sm:px-6 md:px-8 py-4 space-y-4">
                 <div>
                     <FoererportalenLogo />
                 </div>
+                <div className="flex items-center justify-start gap-1 flex-wrap">
+                    <Button variant="ghost" onClick={() => setIsCheckinsOpen(true)} disabled={isLoading}>
+                        <List className="mr-2 h-4 w-4" />
+                        Innsjekkede
+                    </Button>
+                    <Button variant="ghost" onClick={() => setIsManualCheckInOpen(true)} disabled={isLoading}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Manuell Reg.
+                    </Button>
+                    <Button variant="ghost" onClick={() => setIsOneTimeLicenseOpen(true)} disabled={isLoading}>
+                        <FilePlus2 className="mr-2 h-4 w-4" />
+                        Engangslisens
+                    </Button>
+                    <Separator orientation="vertical" className="h-6 mx-2" />
+                    <Button variant="ghost" onClick={() => setIsDriverMgmtOpen(true)} disabled={isLoading}>
+                        <Users className="mr-2 h-4 w-4" />
+                        Føreradmin
+                    </Button>
+                    <Button variant="ghost" onClick={() => setIsSignupsOpen(true)} disabled={isLoading}>
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        Påmeldte
+                    </Button>
+                    <Separator orientation="vertical" className="h-6 mx-2" />
+                    <Button variant="ghost" asChild disabled={isLoading}>
+                        <Link href="/admin/races">
+                            <Flag className="mr-2 h-4 w-4" />
+                            Løp
+                        </Link>
+                    </Button>
+                    <Button variant="ghost" asChild disabled={isLoading}>
+                        <Link href="/admin/training-settings">
+                            <Bike className="mr-2 h-4 w-4" />
+                            Trening
+                        </Link>
+                    </Button>
+                    <Button variant="ghost" asChild disabled={isLoading}>
+                        <Link href="/admin/site-settings">
+                            <ImageIcon className="mr-2 h-4 w-4" />
+                            Nettsted
+                        </Link>
+                    </Button>
+                </div>
             </div>
         </header>
-
-        <nav className="sticky top-0 z-20 w-full bg-background/95 backdrop-blur-sm border-b shadow-sm">
-            <div className="container mx-auto flex h-16 items-center justify-center gap-1 px-4 flex-wrap">
-                <Button variant="ghost" onClick={() => setIsCheckinsOpen(true)} disabled={isLoading}>
-                    <List className="mr-2 h-4 w-4" />
-                    Innsjekkede
-                </Button>
-                <Button variant="ghost" onClick={() => setIsManualCheckInOpen(true)} disabled={isLoading}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Manuell Reg.
-                </Button>
-                <Button variant="ghost" onClick={() => setIsOneTimeLicenseOpen(true)} disabled={isLoading}>
-                    <FilePlus2 className="mr-2 h-4 w-4" />
-                    Engangslisens
-                </Button>
-                <Separator orientation="vertical" className="h-6 mx-2" />
-                <Button variant="ghost" onClick={() => setIsDriverMgmtOpen(true)} disabled={isLoading}>
-                    <Users className="mr-2 h-4 w-4" />
-                    Føreradmin
-                </Button>
-                <Button variant="ghost" onClick={() => setIsSignupsOpen(true)} disabled={isLoading}>
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    Påmeldte
-                </Button>
-                <Separator orientation="vertical" className="h-6 mx-2" />
-                <Button variant="ghost" asChild disabled={isLoading}>
-                    <Link href="/admin/races">
-                        <Flag className="mr-2 h-4 w-4" />
-                        Løp
-                    </Link>
-                </Button>
-                <Button variant="ghost" asChild disabled={isLoading}>
-                    <Link href="/admin/training-settings">
-                        <Bike className="mr-2 h-4 w-4" />
-                        Trening
-                    </Link>
-                </Button>
-                <Button variant="ghost" asChild disabled={isLoading}>
-                    <Link href="/admin/site-settings">
-                        <ImageIcon className="mr-2 h-4 w-4" />
-                        Nettsted
-                    </Link>
-                </Button>
-            </div>
-        </nav>
 
         <main className="flex-1 flex w-full justify-center">
             <div className="w-full max-w-lg min-h-[500px] flex items-center justify-center my-8 px-4">
