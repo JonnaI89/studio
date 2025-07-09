@@ -4,7 +4,6 @@ import { getRaces, getSignupsByDriver } from '@/services/race-service';
 import { DriverProfilePage } from '@/components/kartpass/driver-profile-page';
 import { notFound } from 'next/navigation';
 import { FoererportalenLogo } from '@/components/icons/kart-pass-logo';
-import { RaceSignupHeaderButton } from '@/components/kartpass/race-signup-header-button';
 import { LogoutButton } from '@/components/auth/logout-button';
 
 export default async function Page({ params }: { params: { id: string } }) {
@@ -22,11 +21,6 @@ export default async function Page({ params }: { params: { id: string } }) {
             <header className="flex justify-between items-center mb-8">
                  <FoererportalenLogo />
                  <div className="flex items-center gap-2">
-                    <RaceSignupHeaderButton 
-                        driver={driver}
-                        races={races}
-                        driverRaceSignups={driverRaceSignups}
-                    />
                     <LogoutButton variant="outline" />
                  </div>
             </header>

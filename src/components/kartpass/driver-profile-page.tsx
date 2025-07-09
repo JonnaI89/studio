@@ -18,6 +18,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { getMonth, getYear, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RaceSignupsDialog } from './race-signups-dialog';
+import { RaceSignupHeaderButton } from './race-signup-header-button';
 
 
 interface DriverProfilePageProps {
@@ -186,6 +187,20 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
 
     return (
         <div className="space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Løpspåmelding</CardTitle>
+                    <CardDescription>Se kommende løp og meld deg på.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RaceSignupHeaderButton 
+                        driver={driver}
+                        races={races}
+                        driverRaceSignups={driverRaceSignups}
+                    />
+                </CardContent>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Treningspåmelding</CardTitle>
