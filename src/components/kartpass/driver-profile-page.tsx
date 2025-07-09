@@ -23,8 +23,8 @@ import { RaceSignupsDialog } from './race-signups-dialog';
 interface DriverProfilePageProps {
     initialDriver: Driver;
     trainingSettings: TrainingSettings | null;
-    races: Race[];
-    driverRaceSignups: RaceSignup[];
+    races?: Race[];
+    driverRaceSignups?: RaceSignup[];
 }
 
 interface InfoItemProps {
@@ -46,7 +46,7 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     )
 }
 
-export function DriverProfilePage({ initialDriver, trainingSettings, races, driverRaceSignups }: DriverProfilePageProps) {
+export function DriverProfilePage({ initialDriver, trainingSettings, races = [], driverRaceSignups = [] }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
