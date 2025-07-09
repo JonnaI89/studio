@@ -99,7 +99,6 @@ export function CheckInDashboard() {
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // Prevent handling if a dialog or input is focused
       if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.hasAttribute('role'))) {
           return;
       }
@@ -109,14 +108,13 @@ export function CheckInDashboard() {
       }
 
       if (event.key === 'Enter') {
-        if (rfidInputBuffer.current.length > 3) { // Require a minimum length
+        if (rfidInputBuffer.current.length > 3) {
           processRfidScan(rfidInputBuffer.current);
         }
         rfidInputBuffer.current = '';
         return;
       }
       
-      // Ignore control keys, but allow alphanumeric and some symbols
       if (event.key.length === 1) {
          rfidInputBuffer.current += event.key;
       }
@@ -126,7 +124,7 @@ export function CheckInDashboard() {
           processRfidScan(rfidInputBuffer.current);
         }
         rfidInputBuffer.current = '';
-      }, 200); // 200ms timeout to detect end of "burst" scan
+      }, 200);
     };
 
     window.addEventListener('keydown', handleKeyPress);
@@ -137,6 +135,17 @@ export function CheckInDashboard() {
       }
     };
   }, [processRfidScan]);
+
+  const resetViewAfterDelay = (driverId: string) => {
+      setTimeout(() => {
+          setDriver((currentDriver) => {
+              if (currentDriver?.id === driverId) {
+                  return null;
+              }
+              return currentDriver;
+          });
+      }, 3500);
+  };
 
   const handleSeasonPassCheckIn = () => {
     if (!driver) return;
@@ -157,6 +166,8 @@ export function CheckInDashboard() {
         title: 'Innsjekk Vellykket (Årskort)',
         description: `${driver.name} er nå sjekket inn.`,
     });
+    
+    resetViewAfterDelay(driver.id);
   };
   
   const handleCheckIn = () => {
@@ -190,6 +201,7 @@ export function CheckInDashboard() {
         description: `${driverForPayment.name} er nå sjekket inn.`,
     });
 
+    resetViewAfterDelay(driverForPayment.id);
     setIsPaymentOpen(false);
     setDriverForPayment(null);
   };
@@ -366,5 +378,3 @@ export function CheckInDashboard() {
     </div>
   );
 }
-
-    

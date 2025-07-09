@@ -22,7 +22,11 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   const isUnderage = age !== null && age < 18;
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('');
+    const names = name.split(' ');
+    if (names.length > 1) {
+        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
   }
 
   return (
@@ -70,21 +74,19 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         )}
 
         {isUnderage && !driver.guardian && !driver.teamLicense && (
-            <div className="space-y-2 p-3 bg-destructive/20 rounded-lg">
-                <p className="text-destructive-foreground bg-destructive p-2 rounded-md">Foresattes detaljer mangler for mindreårig fører.</p>
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm text-center font-medium text-destructive">Foresattes detaljer mangler for mindreårig fører.</p>
             </div>
         )}
 
         {isCheckedIn && checkInTime && (
-            <div className={`p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' || paymentStatus === 'season_pass' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive-foreground'}`}>
+            <div className={`p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' || paymentStatus === 'season_pass' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
                 <CheckCircle2 className="h-5 w-5"/>
-                <p>
+                <div>
                   <span className="font-semibold">Innsjekket kl:</span> {checkInTime}
-                  {paymentStatus && <>
-                    <span className="font-semibold ml-2">Status:</span>
-                    {paymentStatus === 'paid' ? ' Betalt' : paymentStatus === 'season_pass' ? ' Årskort' : ' Ubetalt'}
-                  </>}
-                </p>
+                  {paymentStatus && <span className="font-semibold ml-2">Status:</span>}
+                  {paymentStatus === 'paid' ? ' Betalt' : paymentStatus === 'season_pass' ? ' Årskort' : ' Ubetalt'}
+                </div>
             </div>
         )}
 
@@ -118,6 +120,7 @@ interface InfoItemProps {
 }
 
 function InfoItem({ icon, label, value, children }: InfoItemProps) {
+    if (!value && !children) return null;
     return (
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
