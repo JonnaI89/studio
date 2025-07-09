@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Driver, CheckedInEntry, SiteSettings } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
@@ -38,7 +38,6 @@ import Link from "next/link";
 
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [rfidBuffer, setRfidBuffer] = useState('');
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
@@ -79,44 +78,72 @@ export function CheckInDashboard() {
 
 
   useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (rfidBuffer.trim()) {
-          const scannedId = rfidBuffer.trim();
-          setRfidBuffer('');
-          
-          try {
-            const foundDriver = await getDriverByRfid(scannedId);
+    let rfidBuffer = '';
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    const processRfid = async (scannedId: string) => {
+        if (!scannedId.trim()) return;
+
+        try {
+            const foundDriver = await getDriverByRfid(scannedId.trim());
             if (foundDriver) {
-              setDriver(foundDriver);
+                setDriver(foundDriver);
             } else {
-              setNewRfidId(scannedId);
-              setIsRfidAlertOpen(true);
+                setNewRfidId(scannedId.trim());
+                setIsRfidAlertOpen(true);
             }
-          } catch(error) {
-             toast({
-              variant: 'destructive',
-              title: 'Feil ved søk',
-              description: (error as Error).message,
-            });
-          }
+        } catch(error) {
+           toast({
+            variant: 'destructive',
+            title: 'Feil ved søk',
+            description: (error as Error).message,
+          });
         }
-      } else if (e.key === 'Backspace') {
-        setRfidBuffer(prev => prev.slice(0, -1));
-      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-        setRfidBuffer(prev => prev + e.key);
-      }
     };
 
-    if (!driver && !isRfidAlertOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen && !isSignupsOpen) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            processRfid(rfidBuffer);
+            rfidBuffer = '';
+            return;
+        }
+
+        // Ignore control keys like Shift, Ctrl, Alt, etc.
+        if (e.key.length > 1) {
+            return;
+        }
+
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+
+        rfidBuffer += e.key;
+        
+        timeoutId = setTimeout(() => {
+            if (rfidBuffer.length > 0) {
+                processRfid(rfidBuffer);
+                rfidBuffer = '';
+            }
+        }, 100); // Wait 100ms for more characters before processing
+    };
+
+    const canListen = !driver && !isRfidAlertOpen && !isManualCheckInOpen && !isDriverMgmtOpen && !isPaymentOpen && !isSignupsOpen;
+
+    if (canListen) {
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      if (timeoutId) {
+          clearTimeout(timeoutId);
+      }
     };
-  }, [rfidBuffer, toast, driver, isRfidAlertOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
+  }, [toast, driver, isRfidAlertOpen, isManualCheckInOpen, isDriverMgmtOpen, isPaymentOpen, isSignupsOpen]);
 
   const handleSeasonPassCheckIn = () => {
     if (!driver) return;
@@ -176,7 +203,6 @@ export function CheckInDashboard() {
 
   const handleReset = () => {
     setDriver(null);
-    setRfidBuffer('');
   }
 
   const handleManualSelect = (selectedDriver: Driver) => {

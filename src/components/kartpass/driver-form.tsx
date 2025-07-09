@@ -24,7 +24,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CalendarIcon, UserPlus, Trash2, PlusCircle } from "lucide-react";
-import { cn, calculateAge } from "@/lib/utils";
+import { cn, calculateAge, normalizeRfid } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { Separator } from "../ui/separator";
@@ -128,7 +128,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
 
     function onSubmit(values: FormValues) {
         const driverData: Omit<Driver, 'id'> = {
-            rfid: values.rfid,
+            rfid: values.rfid, // Normalization happens in the service layer
             email: values.email || '',
             name: values.name,
             dob: format(values.dob, "yyyy-MM-dd"),
@@ -172,8 +172,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                                 placeholder="Skann eller skriv inn ID"
                                                 {...field}
                                                 value={field.value ?? ''}
-                                                readOnly={!!driverToEdit?.rfid}
-                                                className={cn(!!driverToEdit?.rfid && "cursor-not-allowed opacity-70")}
                                             />
                                         </FormControl>
                                         <FormDescription>

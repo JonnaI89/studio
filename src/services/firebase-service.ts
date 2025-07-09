@@ -1,6 +1,7 @@
 import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup } from '@/lib/types';
+import { normalizeRfid } from '@/lib/utils';
 
 const DRIVERS_COLLECTION = 'drivers';
 const TRAINING_SIGNUPS_COLLECTION = 'trainingSignups';
@@ -47,7 +48,8 @@ export async function getFirebaseDriverById(id: string): Promise<Driver | null> 
 export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | null> {
     try {
         if (!db) throw new Error("Firestore not initialized");
-        const q = query(collection(db, DRIVERS_COLLECTION), where("rfid", "==", rfid));
+        const normalized = normalizeRfid(rfid);
+        const q = query(collection(db, DRIVERS_COLLECTION), where("rfid", "==", normalized));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             return querySnapshot.docs[0].data() as Driver;
@@ -64,8 +66,8 @@ export async function addFirebaseDriver(driver: Driver): Promise<void> {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
-        // The driver's auth UID is the document ID
-        await setDoc(doc(db, DRIVERS_COLLECTION, driver.id), driver);
+        const driverToSave = { ...driver, rfid: normalizeRfid(driver.rfid) };
+        await setDoc(doc(db, DRIVERS_COLLECTION, driverToSave.id), driverToSave);
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
         throw new Error("Kunne ikke legge til fører i Firebase.");
@@ -77,9 +79,9 @@ export async function updateFirebaseDriver(driver: Driver): Promise<void> {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
-        const driverRef = doc(db, DRIVERS_COLLECTION, driver.id);
-        // Use setDoc with merge option to handle updates and creations gracefully
-        await setDoc(driverRef, driver, { merge: true });
+        const driverToUpdate = { ...driver, rfid: normalizeRfid(driver.rfid) };
+        const driverRef = doc(db, DRIVERS_COLLECTION, driverToUpdate.id);
+        await setDoc(driverRef, driverToUpdate, { merge: true });
     } catch (error) {
         console.error("Error updating driver in Firestore: ", error);
         throw new Error("Kunne ikke oppdatere fører i Firebase.");
@@ -106,10 +108,9 @@ export async function batchAddFirebaseDrivers(drivers: Driver[]): Promise<void> 
         const batch = writeBatch(db);
 
         drivers.forEach((driver) => {
-            // In batch import, we assume the provided ID is the intended document ID.
-            // This might need adjustment if UIDs are to be generated. For now, it uses the sheet's ID.
-            const docRef = doc(db, DRIVERS_COLLECTION, driver.id);
-            batch.set(docRef, driver);
+            const driverToSave = { ...driver, rfid: normalizeRfid(driver.rfid) };
+            const docRef = doc(db, DRIVERS_COLLECTION, driverToSave.id);
+            batch.set(docRef, driverToSave);
         });
 
         await batch.commit();

@@ -56,3 +56,8 @@ export function calculateAge(dobString: string): number | null {
 
   return age < 0 ? null : age;
 }
+
+export function normalizeRfid(rfid: string): string {
+  // Strips non-alphanumeric characters and converts to lowercase for consistency.
+  return rfid.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+}

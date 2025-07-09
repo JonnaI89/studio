@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '@/lib/firebase-config';
+import { normalizeRfid } from '@/lib/utils';
 
 // This is the main service file for the application.
 // It uses Firebase as the data source. All components should use these functions.
@@ -68,6 +69,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
             ...driverData,
             id: user.uid,
             role: 'driver',
+            rfid: normalizeRfid(driverData.rfid), // Ensure the returned object has normalized RFID
         };
 
         // Add the corresponding driver profile to Firestore.
