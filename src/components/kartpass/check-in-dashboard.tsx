@@ -391,28 +391,30 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
 
   if (todaysRaces && todaysRaces.length > 1 && !selectedEvent) {
     return (
-      <div className="w-full max-w-lg flex flex-col items-center gap-8 text-center">
-        <FoererportalenLogo />
-        <Card className="w-full shadow-lg">
-          <CardHeader>
-            <CardTitle>Velg Arrangement</CardTitle>
-            <CardDescription>
-              Det er flere arrangementer i dag. Velg hvilket du vil sjekke inn til.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {todaysRaces.map(race => (
-              <Button key={race.id} onClick={() => setSelectedEvent(race)} size="lg">
-                <Flag className="mr-2 h-5 w-5" />
-                {race.name}
+      <div className="w-full flex-1 flex flex-col justify-center items-center">
+        <div className="w-full max-w-lg flex flex-col items-center gap-8 text-center">
+          <FoererportalenLogo />
+          <Card className="w-full shadow-lg">
+            <CardHeader>
+              <CardTitle>Velg Arrangement</CardTitle>
+              <CardDescription>
+                Det er flere arrangementer i dag. Velg hvilket du vil sjekke inn til.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {todaysRaces.map(race => (
+                <Button key={race.id} onClick={() => setSelectedEvent(race)} size="lg">
+                  <Flag className="mr-2 h-5 w-5" />
+                  {race.name}
+                </Button>
+              ))}
+              <Button onClick={() => setSelectedEvent('training')} variant="outline" size="lg">
+                <Bike className="mr-2 h-5 w-5" />
+                Vanlig Trening
               </Button>
-            ))}
-            <Button onClick={() => setSelectedEvent('training')} variant="outline" size="lg">
-              <Bike className="mr-2 h-5 w-5" />
-              Vanlig Trening
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -422,7 +424,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const eventName = selectedEvent === 'training' ? 'dagens trening' : selectedEvent?.name;
 
   return (
-    <div className="w-full max-w-lg flex flex-col items-center gap-8">
+    <div className="w-full flex flex-col items-center gap-8">
       <header className="w-full flex justify-between items-start">
         <div>
             <FoererportalenLogo />
@@ -555,7 +557,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
         </div>
       </header>
 
-      <div className="w-full min-h-[550px] flex items-center justify-center">
+      <div className="w-full max-w-lg min-h-[550px] flex items-center justify-center">
         {isLoading || !selectedEvent ? (
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
                 <LoaderCircle className="h-10 w-10 animate-spin" />
