@@ -326,6 +326,32 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="driverLicense"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Førerlisens</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Lisensnummer for fører" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="vehicleLicense"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Vognlisens</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Lisensnummer for vogn" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                          <FormField
                             control={form.control}
                             name="chassiNr"
@@ -360,32 +386,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <FormLabel>Motor nr 2</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Motornummer 2" {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="driverLicense"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Førerlisens</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Lisensnummer for fører" {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="vehicleLicense"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Vognlisens</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Lisensnummer for vogn" {...field} value={field.value ?? ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

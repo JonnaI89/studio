@@ -309,12 +309,12 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
                                 <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                 <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
                                 <InfoItem icon={<Signal />} label="Transponder" value={driver.transponderNr} />
-                                <InfoItem icon={<Hash />} label="Chassi nr" value={driver.chassiNr} />
-                                <InfoItem icon={<Hash />} label="Motor nr 1" value={driver.motorNr1} />
-                                <InfoItem icon={<Hash />} label="Motor nr 2" value={driver.motorNr2} />
                                 <InfoItem icon={<UserCheck />} label="Førerlisens" value={driver.driverLicense} />
                                 <InfoItem icon={<CarFront />} label="Vognlisens" value={driver.vehicleLicense} />
                                 <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />
+                                <InfoItem icon={<Hash />} label="Chassi nr" value={driver.chassiNr} />
+                                <InfoItem icon={<Hash />} label="Motor nr 1" value={driver.motorNr1} />
+                                <InfoItem icon={<Hash />} label="Motor nr 2" value={driver.motorNr2} />
                             </div>
                            
                             {isUnderage && !driver.teamLicense && (
