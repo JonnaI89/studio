@@ -216,14 +216,56 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
             <Card>
                 <CardHeader>
                     <CardTitle>Løpspåmelding</CardTitle>
-                    <CardDescription>Se kommende løp og meld deg på.</CardDescription>
+                    <CardDescription>Se kommende løp, meld deg på, og se dine aktive påmeldinger.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
                     <RaceSignupHeaderButton 
                         driver={driver}
                         races={races}
                         driverRaceSignups={driverRaceSignups}
                     />
+                    <Separator />
+                     <div>
+                        <h3 className="font-semibold text-lg flex items-center mb-4"><Flag className="mr-2 h-5 w-5 text-primary" />Dine Påmeldte Løp</h3>
+                        {signedUpRaces.length > 0 ? (
+                            <div className="border rounded-md divide-y divide-border">
+                                {signedUpRaces.map(race => {
+                                    const signup = driverRaceSignups.find(s => s.raceId === race.id);
+                                    return (
+                                        <div key={race.id} className="flex items-center justify-between p-3 gap-4">
+                                            <div>
+                                                <p className="font-medium">{race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')})</p>
+                                                <p className="text-sm text-muted-foreground">Klasse: {signup?.driverKlasse || 'N/A'}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="outline" size="sm" onClick={() => setViewingSignupsForRace(race)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Se påmeldte
+                                                </Button>
+                                                {signup && race.status === 'upcoming' && (
+                                                    <Button 
+                                                        variant="destructive"
+                                                        size="sm" 
+                                                        onClick={() => handleRaceUnsignup(signup.id, race.name)}
+                                                        disabled={isUnsigningUp === signup.id}
+                                                    >
+                                                        {isUnsigningUp === signup.id ? (
+                                                            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <X className="mr-2 h-4 w-4" />
+                                                        )}
+                                                        Meld av
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">Du er ikke påmeldt noen løp.</p>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 
@@ -336,49 +378,6 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
                                 </div>
                               </>
                             )}
-
-                            <Separator className="my-4"/>
-                            <div className="space-y-2">
-                                <h3 className="font-semibold flex items-center mb-2"><Flag className="mr-2 h-5 w-5 text-primary" />Påmeldte Løp</h3>
-                                {signedUpRaces.length > 0 ? (
-                                    <div className="border rounded-md divide-y divide-border">
-                                        {signedUpRaces.map(race => {
-                                            const signup = driverRaceSignups.find(s => s.raceId === race.id);
-                                            return (
-                                                <div key={race.id} className="flex items-center justify-between p-3 gap-4">
-                                                    <div>
-                                                        <p className="font-medium">{race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')})</p>
-                                                        <p className="text-sm text-muted-foreground">Klasse: {signup?.driverKlasse || 'N/A'}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button variant="outline" size="sm" onClick={() => setViewingSignupsForRace(race)}>
-                                                            <Eye className="mr-2 h-4 w-4" />
-                                                            Se påmeldte
-                                                        </Button>
-                                                        {signup && race.status === 'upcoming' && (
-                                                            <Button 
-                                                                variant="destructive"
-                                                                size="sm" 
-                                                                onClick={() => handleRaceUnsignup(signup.id, race.name)}
-                                                                disabled={isUnsigningUp === signup.id}
-                                                            >
-                                                                {isUnsigningUp === signup.id ? (
-                                                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                                                                ) : (
-                                                                    <X className="mr-2 h-4 w-4" />
-                                                                )}
-                                                                Meld av
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">Du er ikke påmeldt noen løp.</p>
-                                )}
-                            </div>
                         </div>
                     )}
                 </CardContent>
