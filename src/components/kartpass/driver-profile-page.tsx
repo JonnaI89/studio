@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,6 +6,7 @@ import type { Driver, TrainingSettings, Race, RaceSignup, TrainingSignup } from 
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { addTrainingSignup, getSignupsByDate, deleteTrainingSignup } from '@/services/training-service';
+import { deleteRaceSignup } from '@/services/race-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
@@ -60,6 +62,7 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
     const [driverSignup, setDriverSignup] = useState<TrainingSignup | null>(null);
     const [isLoadingSignupStatus, setIsLoadingSignupStatus] = useState(false);
     const [viewingSignupsForRace, setViewingSignupsForRace] = useState<Race | null>(null);
+    const [isUnsigningUp, setIsUnsigningUp] = useState<string | null>(null);
 
 
     const getTrainingDaysForMonth = (monthDate: Date): Date[] => {
@@ -174,6 +177,29 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
             } finally {
                 setIsLoadingSignupStatus(false);
             }
+        }
+    }
+
+    const handleRaceUnsignup = async (signupId: string, raceName: string) => {
+        if (!signupId) return;
+        if (!window.confirm(`Er du sikker på at du vil melde deg av ${raceName}?`)) return;
+
+        setIsUnsigningUp(signupId);
+        try {
+            await deleteRaceSignup(signupId);
+            toast({
+                title: "Avmelding fra løp Vellykket",
+                description: `Du er nå meldt av fra ${raceName}.`
+            });
+            router.refresh();
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Avmelding fra løp feilet',
+                description: (error as Error).message,
+            });
+        } finally {
+            setIsUnsigningUp(null);
         }
     }
 
@@ -321,10 +347,27 @@ export function DriverProfilePage({ initialDriver, trainingSettings, races = [],
                                                         <p className="font-medium">{race.name} ({format(parseISO(race.date), 'dd.MM.yyyy')})</p>
                                                         <p className="text-sm text-muted-foreground">Klasse: {signup?.driverKlasse || 'N/A'}</p>
                                                     </div>
-                                                    <Button variant="outline" size="sm" onClick={() => setViewingSignupsForRace(race)}>
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        Se påmeldte
-                                                    </Button>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button variant="outline" size="sm" onClick={() => setViewingSignupsForRace(race)}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            Se påmeldte
+                                                        </Button>
+                                                        {signup && race.status === 'upcoming' && (
+                                                            <Button 
+                                                                variant="destructive"
+                                                                size="sm" 
+                                                                onClick={() => handleRaceUnsignup(signup.id, race.name)}
+                                                                disabled={isUnsigningUp === signup.id}
+                                                            >
+                                                                {isUnsigningUp === signup.id ? (
+                                                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <X className="mr-2 h-4 w-4" />
+                                                                )}
+                                                                Meld av
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
