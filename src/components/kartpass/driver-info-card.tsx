@@ -58,7 +58,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   };
 
   return (
-    <Card className="w-full max-w-4xl animate-in fade-in zoom-in-95 shadow-xl">
+    <Card className="w-full max-w-5xl animate-in fade-in zoom-in-95 shadow-xl">
       <CardHeader>
         <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
@@ -95,16 +95,19 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                         <p className="font-semibold">Innehaver av Årskort</p>
                     </div>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 text-sm">
                   <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob})` : 'Mangler'} />
                   <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
                   <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr || 'Mangler'} />
+                  
                   <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr || 'Mangler'} />
                   <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense || 'Mangler'} />
                   <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense || 'Mangler'} />
+                  
                   <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr || 'Mangler'} />
                   <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 1" value={driver.motorNr1 || 'Mangler'} />
                   <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 2" value={driver.motorNr2 || 'Mangler'} />
+
                   {driver.teamLicense && <InfoItem icon={<Group className="text-primary" />} label="Team" value={driver.teamLicense} />}
                 </div>
                 

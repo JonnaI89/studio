@@ -526,7 +526,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
         </header>
 
         <main className="flex-1 flex w-full justify-center">
-            <div className="w-full max-w-4xl min-h-[500px] flex items-center justify-center my-8 px-4">
+            <div className="w-full max-w-5xl flex items-center justify-center my-8 px-4">
                 {isLoading || !selectedEvent ? (
                     <div className="flex flex-col items-center gap-4 text-muted-foreground">
                         <LoaderCircle className="h-10 w-10 animate-spin" />
