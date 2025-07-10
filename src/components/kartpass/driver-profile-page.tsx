@@ -96,17 +96,21 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                     ) : (
                         <div className="space-y-2">
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-                                <InfoItem icon={<CalendarIcon />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
-                                <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
-                                <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
-                                <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
-                                <InfoItem icon={<Signal />} label="Transponder" value={driver.transponderNr} />
-                                <InfoItem icon={<UserCheck />} label="Førerlisens" value={driver.driverLicense} />
-                                <InfoItem icon={<CarFront />} label="Vognlisens" value={driver.vehicleLicense} />
-                                <InfoItem icon={<Hash />} label="Chassi nr" value={driver.chassiNr} />
-                                <InfoItem icon={<Hash />} label="Motor nr 1" value={driver.motorNr1} />
-                                <InfoItem icon={<Hash />} label="Motor nr 2" value={driver.motorNr2} />
-                                <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />
+                                <div>
+                                    <InfoItem icon={<CalendarIcon />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
+                                    <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
+                                    <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
+                                    <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
+                                    <InfoItem icon={<Signal />} label="Transponder" value={driver.transponderNr} />
+                                    <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />
+                                </div>
+                                <div>
+                                    <InfoItem icon={<UserCheck />} label="Førerlisens" value={driver.driverLicense} />
+                                    <InfoItem icon={<CarFront />} label="Vognlisens" value={driver.vehicleLicense} />
+                                    <InfoItem icon={<Hash />} label="Chassi nr" value={driver.chassiNr} />
+                                    <InfoItem icon={<Hash />} label="Motor nr 1" value={driver.motorNr1} />
+                                    <InfoItem icon={<Hash />} label="Motor nr 2" value={driver.motorNr2} />
+                                </div>
                             </div>
                            
                             {isUnderage && !driver.teamLicense && (
