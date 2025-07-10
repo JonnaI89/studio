@@ -14,6 +14,7 @@ import { calculateAge } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
