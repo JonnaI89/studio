@@ -13,6 +13,7 @@ import { useState } from "react";
 import { DriverForm } from "./driver-form";
 import { useToast } from "@/hooks/use-toast";
 import { updateDriver } from "@/services/driver-service";
+import { calculateAge } from "@/lib/utils";
 
 interface DriverInfoCardProps {
   driver: Driver;
