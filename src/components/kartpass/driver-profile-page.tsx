@@ -25,14 +25,14 @@ interface InfoItemProps {
 }
 
 function InfoItem({ icon, label, value }: InfoItemProps) {
-    if (!value) return null;
+    if (!value && typeof value !== 'string') return null;
     return (
         <div className="flex items-start justify-between gap-4 py-3">
             <div className="flex items-center gap-4">
                 <span className="h-6 w-6 text-muted-foreground">{icon}</span>
                 <span className="text-muted-foreground whitespace-nowrap">{label}</span>
             </div>
-            <span className="font-semibold text-right break-words">{value}</span>
+            <span className="font-semibold text-right break-words">{value || <span className="text-muted-foreground/70 font-normal italic">Mangler</span>}</span>
         </div>
     )
 }
@@ -46,9 +46,9 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;
         try {
-            const updatedDriver: Driver = { ...driverData, id: id, role: driver.role };
-            await updateDriver(updatedDriver);
-            setDriver(updatedDriver);
+            const updatedDriverData: Driver = { ...driver, ...driverData, id: id, role: driver.role };
+            await updateDriver(updatedDriverData);
+            setDriver(updatedDriverData);
             setIsEditing(false);
             toast({
                 title: "Profil Oppdatert",
