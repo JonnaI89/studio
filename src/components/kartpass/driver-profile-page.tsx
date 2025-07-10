@@ -13,6 +13,7 @@ import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCh
 import { calculateAge } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
@@ -86,23 +87,24 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                 <CardContent>
                     {isEditing ? (
                         <div className="pt-4 border-t">
-                             <DriverForm
-                                driverToEdit={driver}
-                                onSave={handleSave}
-                                closeDialog={() => setIsEditing(false)}
-                                isRestrictedView={!isAdmin}
-                            />
+                             <ScrollArea className="h-[65vh] pr-4">
+                                <DriverForm
+                                    driverToEdit={driver}
+                                    onSave={handleSave}
+                                    closeDialog={() => setIsEditing(false)}
+                                    isRestrictedView={!isAdmin}
+                                />
+                             </ScrollArea>
                         </div>
                     ) : (
                         <div className="space-y-2">
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
                                 <div>
-                                    <InfoItem icon={<CalendarIcon />} label="Alder" value={age !== null ? `${age} år` : 'Mangler'} />
+                                    <InfoItem icon={<CalendarIcon />} label="Fødselsdato" value={driver.dob ? format(new Date(driver.dob), "dd.MM.yyyy") : null} />
                                     <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
                                     <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                     <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />
                                     <InfoItem icon={<Signal />} label="Transponder" value={driver.transponderNr} />
-                                    <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />
                                 </div>
                                 <div>
                                     <InfoItem icon={<UserCheck />} label="Førerlisens" value={driver.driverLicense} />
@@ -112,6 +114,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                                     <InfoItem icon={<Hash />} label="Motor nr 2" value={driver.motorNr2} />
                                 </div>
                             </div>
+                            <InfoItem icon={<Group />} label="Teamlisens" value={driver.teamLicense} />
                            
                             {isUnderage && !driver.teamLicense && (
                                 <>
