@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal, Hash, Pencil } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal, Hash, Pencil, Trophy } from "lucide-react";
 import { useState } from "react";
 import { DriverForm } from "./driver-form";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +27,7 @@ interface DriverInfoCardProps {
 
 export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime, paymentStatus, onProfileUpdate }: DriverInfoCardProps) {
   const isUnderage = age !== null && age < 18;
-  const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("info");
   const { toast } = useToast();
 
   const getInitials = (name: string) => {
@@ -43,7 +44,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         const updatedDriver: Driver = { ...driverData, id: id, role: driver.role };
         await updateDriver(updatedDriver);
         onProfileUpdate(updatedDriver);
-        setIsEditing(false);
+        setActiveTab("info");
         toast({
             title: "Profil Oppdatert",
             description: "Endringene dine er lagret.",
@@ -57,116 +58,119 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
     }
   };
 
+  const hasGuardianInfo = isUnderage && !driver.teamLicense;
+  
   return (
     <Card className="w-full max-w-5xl animate-in fade-in zoom-in-95 shadow-xl">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-            <div className="flex items-center gap-4">
-                <Avatar className="w-24 h-24 border-4 border-primary/20">
-                  <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
-                    {getInitials(driver.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                    <CardTitle className="text-3xl font-bold">{driver.name}</CardTitle>
-                    <CardDescription>{driver.klasse || "Ingen klasse angitt"}</CardDescription>
-                </div>
-            </div>
-            <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {isEditing ? "Avbryt" : "Rediger Profil"}
-            </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isEditing ? (
-             <div className="pt-6 border-t">
-                <DriverForm 
-                    driverToEdit={driver} 
-                    onSave={handleSave} 
-                    closeDialog={() => setIsEditing(false)} 
-                />
-            </div>
-        ) : (
-            <>
-                {driver.hasSeasonPass && (
-                    <div className="p-3 mb-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center gap-2 text-primary">
-                        <Star className="h-5 w-5"/>
-                        <p className="font-semibold">Innehaver av Årskort</p>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-6">
+                        <Avatar className="w-24 h-24 border-4 border-primary/20">
+                        <AvatarFallback className="text-3xl bg-primary/10 text-primary font-bold">
+                            {getInitials(driver.name)}
+                        </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <CardTitle className="text-3xl font-bold">{driver.name}</CardTitle>
+                            <CardDescription className="text-base">{driver.club}</CardDescription>
+                        </div>
                     </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                  <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob})` : 'Mangler'} />
-                  <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
+                    <TabsList>
+                        <TabsTrigger value="info">Info</TabsTrigger>
+                        <TabsTrigger value="tech">Lisenser & Teknisk</TabsTrigger>
+                        {hasGuardianInfo && <TabsTrigger value="guardian">Foresatte</TabsTrigger>}
+                        <TabsTrigger value="edit">
+                            <Pencil className="mr-2 h-4 w-4" /> Rediger
+                        </TabsTrigger>
+                    </TabsList>
                 </div>
-                
-                <Separator className="my-4"/>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-                  <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense} />
-                  <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense} />
-                  <InfoItem icon={<Group className="text-primary" />} label="Team" value={driver.teamLicense} />
-                  
-                  <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr} />
-                  <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr} />
-                  <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr} />
-                  <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 1" value={driver.motorNr1} />
-                  <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 2" value={driver.motorNr2} />
-                </div>
-                
-                {isUnderage && !driver.teamLicense && (
-                  <>
-                    <Separator className="my-4"/>
-                    <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
-                      <h3 className="font-semibold flex items-center"><Shield className="mr-2 h-4 w-4 text-amber-600" />Foresattes informasjon</h3>
-                       {!driver.guardian || !driver.guardian.name ? (
-                            <p className="text-destructive pt-2">Foresattes informasjon mangler.</p>
-                       ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
-                            <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
-                            <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
-                            {driver.guardian.licenses?.map((license, index) => (
-                               <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Foresattlisens ${index + 1}`} value={license} />
-                            ))}
-                          </div>
-                       )}
+            </CardHeader>
+            <CardContent>
+                <TabsContent value="info" className="mt-0">
+                    <div className="p-6 border rounded-lg bg-muted/30">
+                        {driver.hasSeasonPass && (
+                            <div className="p-3 mb-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center gap-2 text-primary">
+                                <Star className="h-5 w-5"/>
+                                <p className="font-semibold">Innehaver av Årskort</p>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                            <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob})` : 'Mangler'} />
+                            <InfoItem icon={<Trophy className="text-primary" />} label="Klasse" value={driver.klasse} />
+                        </div>
                     </div>
-                  </>
-                )}
-            </>
-        )}
-      </CardContent>
-      {!isEditing && (
-        <CardFooter className="flex flex-col gap-2 pt-6 border-t">
-          {isCheckedIn && checkInTime && (
-              <div className={`w-full mb-2 p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' || paymentStatus === 'season_pass' || paymentStatus === 'one_time_license' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
-                  <CheckCircle2 className="h-5 w-5"/>
-                  <div>
-                    <span className="font-semibold">Innsjekket kl:</span> {checkInTime}
-                    {paymentStatus && <span className="font-semibold ml-2">Status:</span>}
-                    {paymentStatus === 'paid' ? ' Betalt' : paymentStatus === 'season_pass' ? ' Årskort' : paymentStatus === 'one_time_license' ? ' Engangslisens' : ' Ubetalt'}
-                  </div>
-              </div>
-          )}
-          <div className="w-full flex gap-2">
-            <Button variant="outline" onClick={onReset} className="w-full">
-                Skann neste fører
-            </Button>
-            <Button 
-              onClick={onCheckIn}
-              disabled={isCheckedIn || (isUnderage && !driver.guardian && !driver.teamLicense)}
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
-            >
-              {isCheckedIn 
-                ? <><CheckCircle2 className="mr-2 h-6 w-6" />Innsjekket</>
-                : driver.hasSeasonPass
-                  ? <><UserCheck className="mr-2 h-6 w-6" />Sjekk Inn (Årskort)</>
-                  : <><CreditCard className="mr-2 h-6 w-6" />Betal & Sjekk Inn</>
-              }
-            </Button>
-          </div>
-        </CardFooter>
-      )}
+                </TabsContent>
+                <TabsContent value="tech" className="mt-0">
+                    <div className="p-6 border rounded-lg bg-muted/30">
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+                            <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense} />
+                            <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense} />
+                            <InfoItem icon={<Group className="text-primary" />} label="Teamlisens" value={driver.teamLicense} />
+                            <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr} />
+                            <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr} />
+                            <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr} />
+                            <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 1" value={driver.motorNr1} />
+                            <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 2" value={driver.motorNr2} />
+                        </div>
+                    </div>
+                </TabsContent>
+                <TabsContent value="guardian" className="mt-0">
+                    <div className="p-6 border rounded-lg bg-muted/30">
+                        <h3 className="font-semibold flex items-center mb-4"><Shield className="mr-2 h-5 w-5 text-amber-600" />Foresattes informasjon</h3>
+                        {!driver.guardian || !driver.guardian.name ? (
+                                <p className="text-destructive pt-2">Foresattes informasjon mangler.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
+                                <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
+                                <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
+                                {driver.guardian.licenses?.map((license, index) => (
+                                <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Foresattlisens ${index + 1}`} value={license} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
+                <TabsContent value="edit" className="mt-0">
+                    <div className="p-2 border rounded-lg bg-muted/30">
+                        <DriverForm 
+                            driverToEdit={driver} 
+                            onSave={handleSave} 
+                            closeDialog={() => setActiveTab("info")} 
+                        />
+                    </div>
+                </TabsContent>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 pt-6 border-t">
+            {isCheckedIn && checkInTime && (
+                <div className={`w-full mb-2 p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in ${paymentStatus === 'paid' || paymentStatus === 'season_pass' || paymentStatus === 'one_time_license' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                    <CheckCircle2 className="h-5 w-5"/>
+                    <div>
+                        <span className="font-semibold">Innsjekket kl:</span> {checkInTime}
+                        {paymentStatus && <span className="font-semibold ml-2">Status:</span>}
+                        {paymentStatus === 'paid' ? ' Betalt' : paymentStatus === 'season_pass' ? ' Årskort' : paymentStatus === 'one_time_license' ? ' Engangslisens' : ' Ubetalt'}
+                    </div>
+                </div>
+            )}
+            <div className="w-full flex gap-2">
+                <Button variant="outline" onClick={onReset} className="w-full">
+                    Skann neste fører
+                </Button>
+                <Button 
+                onClick={onCheckIn}
+                disabled={isCheckedIn || (isUnderage && !driver.guardian && !driver.teamLicense)}
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
+                >
+                {isCheckedIn 
+                    ? <><CheckCircle2 className="mr-2 h-6 w-6" />Innsjekket</>
+                    : driver.hasSeasonPass
+                    ? <><UserCheck className="mr-2 h-6 w-6" />Sjekk Inn (Årskort)</>
+                    : <><CreditCard className="mr-2 h-6 w-6" />Betal & Sjekk Inn</>
+                }
+                </Button>
+            </div>
+            </CardFooter>
+        </Tabs>
     </Card>
   );
 }
