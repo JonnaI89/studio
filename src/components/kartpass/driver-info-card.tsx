@@ -95,42 +95,43 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                         <p className="font-semibold">Innehaver av Årskort</p>
                     </div>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                   <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob})` : 'Mangler'} />
                   <InfoItem icon={<Users className="text-primary" />} label="Klubb" value={driver.club} />
-                  <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr || 'Mangler'} />
-                  
-                  <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr || 'Mangler'} />
-                  <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense || 'Mangler'} />
-                  <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense || 'Mangler'} />
-                  
-                  <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr || 'Mangler'} />
-                  <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 1" value={driver.motorNr1 || 'Mangler'} />
-                  <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 2" value={driver.motorNr2 || 'Mangler'} />
-
-                  {driver.teamLicense && <InfoItem icon={<Group className="text-primary" />} label="Team" value={driver.teamLicense} />}
                 </div>
                 
-                {isUnderage && driver.guardian && !driver.teamLicense && (
+                <Separator className="my-4"/>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+                  <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense} />
+                  <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense} />
+                  <InfoItem icon={<Group className="text-primary" />} label="Team" value={driver.teamLicense} />
+                  
+                  <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr} />
+                  <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr} />
+                  <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr} />
+                  <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 1" value={driver.motorNr1} />
+                  <InfoItem icon={<Hash className="text-primary" />} label="Motor nr 2" value={driver.motorNr2} />
+                </div>
+                
+                {isUnderage && !driver.teamLicense && (
                   <>
                     <Separator className="my-4"/>
                     <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
                       <h3 className="font-semibold flex items-center"><Shield className="mr-2 h-4 w-4 text-amber-600" />Foresattes informasjon</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                        <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
-                        <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
-                        {driver.guardian.licenses?.map((license, index) => (
-                           <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Foresattlisens ${index + 1}`} value={license} />
-                        ))}
-                      </div>
+                       {!driver.guardian || !driver.guardian.name ? (
+                            <p className="text-destructive pt-2">Foresattes informasjon mangler.</p>
+                       ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
+                            <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
+                            <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
+                            {driver.guardian.licenses?.map((license, index) => (
+                               <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Foresattlisens ${index + 1}`} value={license} />
+                            ))}
+                          </div>
+                       )}
                     </div>
                   </>
-                )}
-
-                {isUnderage && !driver.guardian && !driver.teamLicense && (
-                    <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <p className="text-sm text-center font-medium text-destructive">Foresattes detaljer mangler for mindreårig fører.</p>
-                    </div>
                 )}
             </>
         )}
@@ -186,7 +187,7 @@ function InfoItem({ icon, label, value, children }: InfoItemProps) {
                 <span className="text-muted-foreground">{label}</span>
             </div>
             <div className="text-right">
-                {value && <span className="font-semibold break-words">{value}</span>}
+                {value ? <span className="font-semibold break-words">{value}</span> : <span className="text-muted-foreground/70 font-normal italic">Mangler</span>}
                 {children}
             </div>
         </div>
