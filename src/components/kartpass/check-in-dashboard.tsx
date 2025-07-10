@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -431,6 +432,13 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     }
   };
 
+  const handleProfileUpdate = (updatedDriver: Driver) => {
+    setDriver(updatedDriver); // Update the state for the info card
+    // Also update the main drivers list to reflect changes in management dialogs etc.
+    setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
+  };
+
+
   if (todaysRaces && todaysRaces.length > 1 && !selectedEvent) {
     return (
       <div className="w-full flex-1 flex flex-col justify-center items-center p-4 sm:p-8">
@@ -518,7 +526,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
         </header>
 
         <main className="flex-1 flex w-full justify-center">
-            <div className="w-full max-w-lg min-h-[500px] flex items-center justify-center my-8 px-4">
+            <div className="w-full max-w-4xl min-h-[500px] flex items-center justify-center my-8 px-4">
                 {isLoading || !selectedEvent ? (
                     <div className="flex flex-col items-center gap-4 text-muted-foreground">
                         <LoaderCircle className="h-10 w-10 animate-spin" />
@@ -533,9 +541,10 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                     isCheckedIn={!!currentDriverCheckIn}
                     checkInTime={currentDriverCheckIn?.checkInTime ?? null}
                     paymentStatus={currentDriverCheckIn?.paymentStatus ?? null}
+                    onProfileUpdate={handleProfileUpdate}
                 />
                 ) : (
-                <Card className="w-full animate-in fade-in-50 shadow-lg">
+                <Card className="w-full max-w-lg animate-in fade-in-50 shadow-lg">
                     <CardHeader className="text-center">
                     <ScanLine className="mx-auto h-24 w-24 text-primary animate-pulse" />
                     <CardTitle className="text-2xl pt-4">Venter på skanning...</CardTitle>
