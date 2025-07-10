@@ -78,7 +78,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                     </div>
                     <TabsList>
                         <TabsTrigger value="info">Info</TabsTrigger>
-                        <TabsTrigger value="tech">Lisenser & Teknisk</TabsTrigger>
+                        <TabsTrigger value="tech">Teknisk</TabsTrigger>
                         {hasGuardianInfo && <TabsTrigger value="guardian">Foresatte</TabsTrigger>}
                         <TabsTrigger value="edit">
                             <Pencil className="mr-2 h-4 w-4" /> Rediger
@@ -95,18 +95,18 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                                 <p className="font-semibold">Innehaver av Årskort</p>
                             </div>
                         )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
                             <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob})` : 'Mangler'} />
                             <InfoItem icon={<Trophy className="text-primary" />} label="Klasse" value={driver.klasse} />
+                            <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense} />
+                            <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense} />
+                            <InfoItem icon={<Group className="text-primary" />} label="Teamlisens" value={driver.teamLicense} />
                         </div>
                     </div>
                 </TabsContent>
                 <TabsContent value="tech" className="mt-0">
                     <div className="p-6 border rounded-lg bg-muted/30">
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-                            <InfoItem icon={<UserCheck className="text-primary" />} label="Førerlisens" value={driver.driverLicense} />
-                            <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense} />
-                            <InfoItem icon={<Group className="text-primary" />} label="Teamlisens" value={driver.teamLicense} />
                             <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr} />
                             <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr} />
                             <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr} />
