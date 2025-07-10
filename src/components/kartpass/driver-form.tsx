@@ -22,10 +22,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CalendarIcon, UserPlus, Trash2, PlusCircle, Save } from "lucide-react";
-import { cn, calculateAge, normalizeRfid } from "@/lib/utils";
+import { CalendarIcon, Save, PlusCircle, Trash2 } from "lucide-react";
+import { cn, calculateAge } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { Separator } from "../ui/separator";
