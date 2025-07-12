@@ -13,6 +13,7 @@ import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { Flag, CheckCircle, Trophy, Trash2, Calendar, User } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RaceSignupsDialog } from './race-signups-dialog';
 
 interface RaceSignupCardProps {
