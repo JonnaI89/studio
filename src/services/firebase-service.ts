@@ -2,6 +2,8 @@ import { db } from '@/lib/firebase-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup, CheckinHistoryEntry } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
+import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
+
 
 const DRIVERS_COLLECTION = 'drivers';
 const TRAINING_SIGNUPS_COLLECTION = 'trainingSignups';
@@ -277,46 +279,25 @@ export async function getFirebaseRaces(): Promise<Race[]> {
 
 export async function getFirebaseRacesForDate(date: string): Promise<Race[]> {
     try {
-        if (!db) throw new Error("Firestore not initialized.");
-        // This query finds races where the given date is between the start date and the end date (inclusive).
-        // It's split into two queries because Firestore does not support inequality filters on multiple fields.
-        
-        // Query 1: Find races where the start date is on the given date.
-        const q1 = query(collection(db, RACES_COLLECTION), where("date", "==", date));
-        
-        // Query 2: Find races where the start date is before the given date AND the end date is on or after the given date.
-        const q2 = query(
-            collection(db, RACES_COLLECTION), 
-            where("date", "<", date),
-            where("endDate", ">=", date)
-        );
+      if (!db) throw new Error("Firestore not initialized.");
+      const targetDate = parseISO(date);
 
-        const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-        
-        const racesMap = new Map<string, Race>();
-        snapshot1.docs.forEach(doc => racesMap.set(doc.id, doc.data() as Race));
-        snapshot2.docs.forEach(doc => racesMap.set(doc.id, doc.data() as Race));
+      // Fetch all races and filter in the code to avoid complex composite indexes
+      const allRaces = await getFirebaseRaces();
 
-        return Array.from(racesMap.values());
-
+      const activeRaces = allRaces.filter(race => {
+        const startDate = startOfDay(parseISO(race.date));
+        const endDate = race.endDate ? endOfDay(parseISO(race.endDate)) : endOfDay(startDate);
+        return isWithinInterval(targetDate, { start: startDate, end: endDate });
+      });
+      
+      return activeRaces;
     } catch (error) {
-        console.error(`Error fetching races for date ${date}: `, error);
-        // Fallback for environments where the above query might fail (e.g., missing indexes)
-        // This is less efficient as it fetches all races and filters client-side.
-        console.log("Falling back to client-side filtering for races.");
-        try {
-            const allRaces = await getFirebaseRaces();
-            return allRaces.filter(race => {
-                const startDate = race.date;
-                const endDate = race.endDate || race.date;
-                return date >= startDate && date <= endDate;
-            });
-        } catch (fallbackError) {
-             console.error(`Fallback failed as well for date ${date}: `, fallbackError);
-             throw new Error("Kunne ikke hente løp for dato.");
-        }
+      console.error(`Error fetching or filtering races for date ${date}: `, error);
+      throw new Error("Kunne ikke hente løp for den valgte datoen.");
     }
 }
+
 
 export async function updateFirebaseRace(race: Race): Promise<void> {
     try {
@@ -459,3 +440,5 @@ export async function deleteFirebaseCheckinHistory(id: string): Promise<void> {
         throw new Error("Kunne ikke slette innsjekking fra databasen.");
     }
 }
+
+    
