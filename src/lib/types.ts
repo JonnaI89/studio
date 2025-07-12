@@ -74,7 +74,8 @@ export type SiteSettings = {
 export type Race = {
   id: string; // Firestore document ID
   name: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (Start Date)
+  endDate?: string; // YYYY-MM-DD (Optional End Date)
   description: string;
   status: 'upcoming' | 'ongoing' | 'completed';
   createdAt: string; // ISO string

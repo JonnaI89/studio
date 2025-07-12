@@ -16,10 +16,15 @@ import { CalendarIcon, LoaderCircle, Save } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Navn må være minst 3 tegn." }),
-  date: z.date({ required_error: "Dato er påkrevd." }),
+  date: z.date({ required_error: "Startdato er påkrevd." }),
+  endDate: z.date().optional(),
   description: z.string().min(10, { message: "Beskrivelse må være minst 10 tegn." }),
   availableClasses: z.string().optional(),
+}).refine(data => !data.endDate || data.endDate >= data.date, {
+    message: "Sluttdato kan ikke være før startdato.",
+    path: ["endDate"],
 });
+
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -36,6 +41,7 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
     defaultValues: raceToEdit ? {
       name: raceToEdit.name,
       date: new Date(raceToEdit.date),
+      endDate: raceToEdit.endDate ? new Date(raceToEdit.endDate) : undefined,
       description: raceToEdit.description,
       availableClasses: raceToEdit.availableClasses?.join('\n') || '',
     } : {
@@ -49,6 +55,7 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
     const raceData = {
       ...values,
       date: format(values.date, "yyyy-MM-dd"),
+      endDate: values.endDate ? format(values.endDate, "yyyy-MM-dd") : undefined,
       availableClasses: values.availableClasses?.split('\n').map(s => s.trim()).filter(Boolean) || [],
     };
     onSave(raceData, raceToEdit?.id);
@@ -70,45 +77,86 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="date"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Dato</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                      disabled={isLoading}
-                    >
-                      {field.value ? (
-                        format(field.value, "dd.MM.yyyy")
-                      ) : (
-                        <span>Velg en dato</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+                <FormItem className="flex flex-col">
+                <FormLabel>Startdato</FormLabel>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <FormControl>
+                        <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                        )}
+                        disabled={isLoading}
+                        >
+                        {field.value ? (
+                            format(field.value, "dd.MM.yyyy")
+                        ) : (
+                            <span>Velg en dato</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                    </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+             <FormField
+            control={form.control}
+            name="endDate"
+            render={({ field }) => (
+                <FormItem className="flex flex-col">
+                <FormLabel>Sluttdato (Valgfri)</FormLabel>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <FormControl>
+                        <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                        )}
+                        disabled={isLoading}
+                        >
+                        {field.value ? (
+                            format(field.value, "dd.MM.yyyy")
+                        ) : (
+                            <span>Velg en dato</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                    </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
         <FormField
           control={form.control}
           name="description"

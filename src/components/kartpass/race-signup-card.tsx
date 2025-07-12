@@ -31,7 +31,7 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
     const signedUpRaceIds = new Set(driverRaceSignups.map(s => s.raceId));
     
     const upcomingRaces = races
-        .filter(r => !isBefore(startOfDay(parseISO(r.date)), startOfDay(new Date())))
+        .filter(r => !isBefore(startOfDay(parseISO(r.endDate || r.date)), startOfDay(new Date())))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const signedUpRaces = driverRaceSignups
@@ -41,6 +41,15 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
         }))
         .filter(item => item.race)
         .sort((a, b) => new Date(a.race!.date).getTime() - new Date(b.race!.date).getTime());
+        
+    const formatDateRange = (startDate: string, endDate?: string) => {
+        const start = format(parseISO(startDate), "dd.MM.yyyy");
+        if (endDate && endDate !== startDate) {
+            const end = format(parseISO(endDate), "dd.MM.yyyy");
+            return `${start} - ${end}`;
+        }
+        return start;
+    };
 
     const handleRaceSignup = async (race: Race, selectedClass: string | undefined) => {
         if (!selectedClass) {
@@ -99,7 +108,7 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                                 {signedUpRaceIds.has(race.id) && <CheckCircle className="h-5 w-5 text-green-600" />}
                                                 {race.name}
                                             </span>
-                                            <span className="text-sm text-muted-foreground">{format(parseISO(race.date), 'dd.MM.yyyy')}</span>
+                                            <span className="text-sm text-muted-foreground">{formatDateRange(race.date, race.endDate)}</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent>
@@ -149,7 +158,7 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                     <div>
                                         <p className="font-bold text-lg">{race.name}</p>
                                         <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                                            <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {format(parseISO(race.date), 'dd.MM.yyyy')}</span>
+                                            <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {formatDateRange(race.date, race.endDate)}</span>
                                             <span className="flex items-center gap-1.5"><Trophy className="h-4 w-4" /> {signup.driverKlasse}</span>
                                         </div>
                                     </div>

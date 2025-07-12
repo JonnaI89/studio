@@ -27,6 +27,15 @@ export function RacesTable({ races, onEdit, onDelete, onViewSignups }: RacesTabl
     );
   }
 
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const start = format(parseISO(startDate), "dd.MM.yyyy");
+    if (endDate && endDate !== startDate) {
+      const end = format(parseISO(endDate), "dd.MM.yyyy");
+      return `${start} - ${end}`;
+    }
+    return start;
+  };
+
   return (
     <ScrollArea className="h-[60vh] border rounded-md">
       <Table>
@@ -42,7 +51,7 @@ export function RacesTable({ races, onEdit, onDelete, onViewSignups }: RacesTabl
           {races.map((race) => (
             <TableRow key={race.id}>
               <TableCell className="font-medium">{race.name}</TableCell>
-              <TableCell>{format(parseISO(race.date), "dd.MM.yyyy")}</TableCell>
+              <TableCell>{formatDateRange(race.date, race.endDate)}</TableCell>
               <TableCell>
                 <Badge variant={race.status === 'upcoming' ? 'default' : 'secondary'}>
                   {race.status === 'upcoming' ? 'Kommende' : race.status === 'ongoing' ? 'Pågående' : 'Fullført'}
