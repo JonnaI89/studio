@@ -10,7 +10,6 @@ import {
     deleteFirebaseDriver
 } from './firebase-service';
 import type { Driver } from '@/lib/types';
-import { format } from 'date-fns';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '@/lib/firebase-config';
@@ -49,6 +48,10 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     if (!driverData.email) {
         throw new Error("E-post er påkrevd for å opprette en ny fører.");
     }
+
+    if (!driverData.driverLicense) {
+        throw new Error("Førerlisens er påkrevd for å sette et standardpassord.");
+    }
     
     // Use a unique name for the temporary app instance to avoid conflicts.
     const tempAppName = `temp-user-creation-${crypto.randomUUID()}`;
@@ -58,7 +61,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     const tempAuth = getAuth(tempApp);
 
     try {
-        const password = format(new Date(driverData.dob), "ddMMyyyy");
+        const password = driverData.driverLicense;
         
         // Create the user with the temporary auth instance.
         // This will not affect the auth state of the main application.
@@ -87,7 +90,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
              throw new Error("E-postadressen er ugyldig.");
         }
         if (error.code === 'auth/weak-password') {
-             throw new Error("Passordet er for svakt. Det må være minst seks tegn. (Passordet genereres fra fødselsdato DDMMÅÅÅÅ).");
+             throw new Error("Passordet er for svakt. Det må være minst seks tegn. (Passordet genereres fra førerlisens).");
         }
         throw new Error("En ukjent feil oppstod under opprettelse av ny fører.");
     } finally {

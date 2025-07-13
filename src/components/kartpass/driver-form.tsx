@@ -43,7 +43,7 @@ const formSchema = z.object({
     chassiNr: z.string().optional(),
     motorNr1: z.string().optional(),
     motorNr2: z.string().optional(),
-    driverLicense: z.string().optional(),
+    driverLicense: z.string().min(1, { message: "Førerlisens er påkrevd." }),
     vehicleLicense: z.string().optional(),
     teamLicense: z.string().optional(),
     guardianName: z.string().optional(),
@@ -267,9 +267,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     />
                                     </PopoverContent>
                                 </Popover>
-                                <FormDescription>
-                                    Passord settes til DDMMÅÅÅÅ ved nyregistrering.
-                                </FormDescription>
                                 <FormMessage />
                                 </FormItem>
                             )}
@@ -335,6 +332,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <FormControl>
                                         <Input placeholder="Lisensnummer for fører" {...field} value={field.value ?? ''} />
                                     </FormControl>
+                                     <FormDescription>
+                                        Passord settes til førerlisens ved nyregistrering.
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
