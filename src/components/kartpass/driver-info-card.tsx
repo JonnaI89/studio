@@ -1,11 +1,10 @@
 
 "use client";
 
-import type { Driver } from "@/lib/types";
+import type { Driver, Guardian } from "@/lib/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal, Hash, Pencil, Trophy } from "lucide-react";
@@ -60,7 +59,8 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
     }
   };
 
-  const hasGuardianInfo = isUnderage && !driver.teamLicense;
+  const hasGuardianInfo = driver.guardians && driver.guardians.length > 0;
+  const checkInDisabled = isCheckedIn || (isUnderage && !hasGuardianInfo && !driver.teamLicense);
   
   return (
     <Card className="w-full max-w-5xl animate-in fade-in zoom-in-95 shadow-xl">
@@ -102,19 +102,17 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                             <InfoItem icon={<CarFront className="text-primary" />} label="Vognlisens" value={driver.vehicleLicense} />
                             <InfoItem icon={<Group className="text-primary" />} label="Teamlisens" value={driver.teamLicense} />
                         </div>
-                        {hasGuardianInfo && (
+                        {isUnderage && !driver.teamLicense && (
                             <>
                                 <Separator className="my-6" />
                                 <div className="space-y-4">
                                 <h3 className="font-semibold flex items-center mb-4"><Shield className="mr-2 h-5 w-5 text-amber-600" />Foresattes informasjon</h3>
-                                {!driver.guardian || !driver.guardian.name ? (
-                                        <p className="text-destructive pt-2">Foresattes informasjon mangler.</p>
+                                {!hasGuardianInfo ? (
+                                    <p className="text-destructive pt-2">Foresattes informasjon mangler.</p>
                                 ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2 pt-2">
-                                        <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={driver.guardian.name} />
-                                        <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={driver.guardian.contact} />
-                                        {driver.guardian.licenses?.map((license, index) => (
-                                        <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Foresattlisens ${index + 1}`} value={license} />
+                                    <div className="space-y-6">
+                                        {driver.guardians?.map((guardian) => (
+                                           <GuardianInfoSection key={guardian.id} guardian={guardian} />
                                         ))}
                                     </div>
                                 )}
@@ -162,7 +160,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                 </Button>
                 <Button 
                 onClick={onCheckIn}
-                disabled={isCheckedIn || (isUnderage && !driver.guardian && !driver.teamLicense)}
+                disabled={checkInDisabled}
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
                 >
                 {isCheckedIn 
@@ -177,6 +175,20 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
         </Tabs>
     </Card>
   );
+}
+
+function GuardianInfoSection({ guardian }: { guardian: Guardian }) {
+    return (
+        <div className="p-4 border rounded-md bg-background/50">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2 pt-2 text-sm">
+                <InfoItem icon={<User className="text-amber-600" />} label="Navn" value={guardian.name} />
+                <InfoItem icon={<Phone className="text-amber-600"/>} label="Kontakt" value={guardian.contact} />
+                {guardian.licenses?.map((license, index) => (
+                <InfoItem key={index} icon={<Shield className="text-amber-600" />} label={`Lisens ${index + 1}`} value={license} />
+                ))}
+            </div>
+        </div>
+    )
 }
 
 interface InfoItemProps {
@@ -201,3 +213,4 @@ function InfoItem({ icon, label, value, children }: InfoItemProps) {
         </div>
     )
 }
+

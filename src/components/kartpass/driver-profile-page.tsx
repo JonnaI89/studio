@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import type { Driver } from '@/lib/types';
+import type { Driver, Guardian } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
 
     const age = driver.dob ? calculateAge(driver.dob) : null;
     const isUnderage = age !== null && age < 18;
+    const hasGuardianInfo = driver.guardians && driver.guardians.length > 0;
 
     return (
         <div className="space-y-8">
@@ -122,14 +123,18 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                                 <Separator className="my-2"/>
                                 <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
                                   <h3 className="font-semibold flex items-center mb-2"><Shield className="mr-2 h-5 w-5 text-amber-600" />Foresattes Informasjon</h3>
-                                   {!driver.guardian || !driver.guardian.name ? (
+                                   {!hasGuardianInfo ? (
                                         <p className="text-destructive">Foresattes informasjon mangler.</p>
                                    ) : (
-                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-                                            <InfoItem icon={<User />} label="Navn" value={driver.guardian.name} />
-                                            <InfoItem icon={<Phone />} label="Kontakt" value={driver.guardian.contact} />
-                                            {driver.guardian.licenses?.map((license, index) => (
-                                                <InfoItem key={index} icon={<Shield />} label={`Lisens ${index + 1}`} value={license} />
+                                       <div className="space-y-4">
+                                            {driver.guardians?.map((guardian, index) => (
+                                                <div key={guardian.id} className="grid grid-cols-1 md:grid-cols-2 gap-x-12 border-t pt-4 first:border-t-0 first:pt-0">
+                                                    <InfoItem icon={<User />} label={`Foresatt ${index + 1}`} value={guardian.name} />
+                                                    <InfoItem icon={<Phone />} label="Kontakt" value={guardian.contact} />
+                                                    {guardian.licenses?.map((license, lIndex) => (
+                                                        <InfoItem key={lIndex} icon={<Shield />} label={`Lisens ${lIndex + 1}`} value={license} />
+                                                    ))}
+                                                </div>
                                             ))}
                                        </div>
                                    )}

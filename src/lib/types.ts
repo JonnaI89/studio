@@ -1,3 +1,10 @@
+export type Guardian = {
+  id: string;
+  name: string;
+  contact: string;
+  licenses?: string[];
+}
+
 export type Driver = {
   id: string; // This will be the Firebase Auth UID
   rfid: string;
@@ -16,11 +23,7 @@ export type Driver = {
   driverLicense?: string;
   vehicleLicense?: string;
   teamLicense?: string;
-  guardian?: {
-    name: string;
-    contact: string;
-    licenses?: string[];
-  };
+  guardians?: Guardian[];
 };
 
 export type CheckedInEntry = {
