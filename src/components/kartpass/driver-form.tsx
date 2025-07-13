@@ -212,6 +212,11 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                             className={cn(!!driverToEdit?.email && !isRestrictedView && "cursor-not-allowed opacity-70")}
                                         />
                                     </FormControl>
+                                    {!driverToEdit && (
+                                        <FormDescription>
+                                            Passord settes til det samme som e-posten ved nyregistrering.
+                                        </FormDescription>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -294,9 +299,6 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <FormControl>
                                         <Input placeholder="Lisensnummer for fører" {...field} value={field.value ?? ''} />
                                     </FormControl>
-                                     <FormDescription>
-                                        Passord settes til førerlisens ved nyregistrering.
-                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

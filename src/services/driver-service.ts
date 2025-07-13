@@ -48,10 +48,6 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     if (!driverData.email) {
         throw new Error("E-post er påkrevd for å opprette en ny fører.");
     }
-
-    if (!driverData.driverLicense) {
-        throw new Error("Førerlisens er påkrevd for å sette et standardpassord.");
-    }
     
     // Use a unique name for the temporary app instance to avoid conflicts.
     const tempAppName = `temp-user-creation-${crypto.randomUUID()}`;
@@ -61,7 +57,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     const tempAuth = getAuth(tempApp);
 
     try {
-        const password = driverData.driverLicense;
+        const password = driverData.email;
         
         // Create the user with the temporary auth instance.
         // This will not affect the auth state of the main application.
@@ -90,7 +86,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
              throw new Error("E-postadressen er ugyldig.");
         }
         if (error.code === 'auth/weak-password') {
-             throw new Error("Passordet er for svakt. Det må være minst seks tegn. (Passordet genereres fra førerlisens).");
+             throw new Error("Passordet er for svakt. Det må være minst seks tegn. Passordet settes lik e-posten.");
         }
         throw new Error("En ukjent feil oppstod under opprettelse av ny fører.");
     } finally {
@@ -98,3 +94,4 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
         await deleteApp(tempApp);
     }
 }
+
