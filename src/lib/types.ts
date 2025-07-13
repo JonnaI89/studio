@@ -3,7 +3,7 @@ export type Driver = {
   rfid: string;
   email: string;
   name: string;
-  dob: string; // YYYY-MM-DD
+  dob: string; // YYYY-MM-DD, can be empty
   club: string;
   role: 'admin' | 'driver';
   hasSeasonPass?: boolean;

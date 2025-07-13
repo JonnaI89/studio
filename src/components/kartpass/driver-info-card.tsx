@@ -126,7 +126,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                 <TabsContent value="tech" className="mt-0">
                     <div className="p-6 border rounded-lg bg-muted/30">
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-                            <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob ? format(parseDateString(driver.dob)!, 'dd.MM.yyyy') : 'Ukjent dato'})` : 'Mangler'} />
+                            <InfoItem icon={<Calendar className="text-primary" />} label="Alder" value={age !== null ? `${age} år (${driver.dob ? format(parseDateString(driver.dob)!, 'dd.MM.yyyy') : 'Ukjent dato'})` : 'Ukjent'} />
                             <InfoItem icon={<Hash className="text-primary" />} label="Startnummer" value={driver.startNr} />
                             <InfoItem icon={<Signal className="text-primary" />} label="Transponder" value={driver.transponderNr} />
                             <InfoItem icon={<Hash className="text-primary" />} label="Chassi nr" value={driver.chassiNr} />

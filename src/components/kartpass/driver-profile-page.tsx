@@ -65,7 +65,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
         }
     };
 
-    const age = calculateAge(driver.dob);
+    const age = driver.dob ? calculateAge(driver.dob) : null;
     const isUnderage = age !== null && age < 18;
 
     return (

@@ -18,14 +18,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Save, PlusCircle, Trash2 } from "lucide-react";
-import { cn, calculateAge, parseDateString } from "@/lib/utils";
+import { cn, parseDateString } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Separator } from "../ui/separator";
 
-const dobSchema = z.string().refine(val => parseDateString(val) !== null, {
+const dobSchema = z.string().refine(val => {
+    if (!val) return true; // Allow empty string
+    return parseDateString(val) !== null;
+}, {
     message: "Ugyldig datoformat. Bruk DD.MM.YYYY.",
 }).refine(val => {
+    if (!val) return true; // Allow empty string
     const date = parseDateString(val);
     return date && date < new Date();
 }, {
@@ -38,7 +42,7 @@ const formSchema = z.object({
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
     email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
-    dob: dobSchema,
+    dob: dobSchema.optional(),
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
     hasSeasonPass: z.boolean().optional(),
     klasse: z.string().optional(),
@@ -53,16 +57,6 @@ const formSchema = z.object({
     guardianName: z.string().optional(),
     guardianContact: z.string().optional(),
     guardianLicenses: z.array(z.object({ value: z.string() })).optional(),
-}).refine(data => {
-    if (!data.dob) return true;
-    const age = calculateAge(data.dob);
-    if (age !== null && age < 18 && !data.teamLicense) {
-        return !!data.guardianName && data.guardianName.length > 1 && !!data.guardianContact && data.guardianContact.length > 1;
-    }
-    return true;
-}, {
-    message: "Navn og kontakt for foresatt er påkrevd for førere under 18 (med mindre teamlisens er angitt).",
-    path: ["guardianName"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -123,20 +117,11 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
         name: "guardianLicenses",
     });
 
-    const dob = form.watch("dob");
     const teamLicense = form.watch("teamLicense");
-    const [isUnderage, setIsUnderage] = useState(false);
-    
-    useEffect(() => {
-        if (dob) {
-            const age = calculateAge(dob);
-            setIsUnderage(age !== null && age < 18);
-        }
-    }, [dob]);
     
     function onSubmit(values: FormValues) {
-        const parsedDate = parseDateString(values.dob);
-        if (!parsedDate) {
+        const parsedDate = values.dob ? parseDateString(values.dob) : null;
+        if (values.dob && !parsedDate) {
             form.setError("dob", { type: "manual", message: "Ugyldig dato."});
             return;
         }
@@ -145,7 +130,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             rfid: values.rfid, // Normalization happens in the service layer
             email: values.email || '',
             name: values.name,
-            dob: format(parsedDate, "yyyy-MM-dd"),
+            dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
             club: values.club,
             role: driverToEdit?.role === 'admin' ? 'admin' : 'driver',
             hasSeasonPass: values.hasSeasonPass,
@@ -160,7 +145,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             teamLicense: values.teamLicense,
         };
 
-        if (isUnderage && !values.teamLicense) {
+        if (values.guardianName || values.guardianContact || (values.guardianLicenses && values.guardianLicenses.length > 0)) {
             driverData.guardian = {
                 name: values.guardianName || '',
                 contact: values.guardianContact || '',
@@ -237,7 +222,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                             name="dob"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Fødselsdato</FormLabel>
+                                <FormLabel>Fødselsdato (Valgfri)</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="DD.MM.YYYY"
@@ -405,86 +390,81 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <Input placeholder="Lisensnummer for team" {...field} value={field.value ?? ''} />
                                 </FormControl>
                                 <FormDescription>
-                                    Hvis denne er fylt ut, overstyrer den informasjon om foresatte.
+                                    Hvis denne er fylt ut, overstyrer den informasjon om foresatte for førere under 18.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                     
-                    {isUnderage && (
-                         <div className={cn("transition-opacity", !!teamLicense && "opacity-50 pointer-events-none")}>
-                            <Separator className="my-6" />
-                            <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                                <h3 className="font-semibold text-amber-600">Fører er under 18 år</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Informasjon om foresatt er påkrevd, med mindre team-lisens er angitt.
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className={cn("transition-opacity", !!teamLicense && "opacity-50 pointer-events-none")}>
+                        <Separator className="my-6" />
+                        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                            <h3 className="font-semibold">Foresattes Informasjon</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Denne informasjonen er påkrevd for førere under 18, med mindre team-lisens er angitt.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="guardianName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Foresattes Navn</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Kari Nordmann" {...field} value={field.value ?? ''}/>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="guardianContact"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Foresattes Kontaktinfo</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="+47 123 45 678" {...field} value={field.value ?? ''}/>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <div className="space-y-2 pt-2">
+                                <FormLabel>Foresattes Lisenser</FormLabel>
+                                {fields.map((field, index) => (
                                     <FormField
+                                        key={field.id}
                                         control={form.control}
-                                        name="guardianName"
+                                        name={`guardianLicenses.${index}.value`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Foresattes Navn</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Kari Nordmann" {...field} value={field.value ?? ''}/>
-                                                </FormControl>
-                                                <FormMessage />
+                                                <div className="flex items-center gap-2">
+                                                    <FormControl>
+                                                        <Input placeholder={`Lisensnummer ${index + 1}`} {...field} value={field.value ?? ''} />
+                                                    </FormControl>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                </div>
                                             </FormItem>
                                         )}
                                     />
-                                    <FormField
-                                        control={form.control}
-                                        name="guardianContact"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Foresattes Kontaktinfo</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="+47 123 45 678" {...field} value={field.value ?? ''}/>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="space-y-2 pt-2">
-                                    <FormLabel>Foresattes Lisenser</FormLabel>
-                                    {fields.map((field, index) => (
-                                        <FormField
-                                            key={field.id}
-                                            control={form.control}
-                                            name={`guardianLicenses.${index}.value`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <div className="flex items-center gap-2">
-                                                        <FormControl>
-                                                            <Input placeholder={`Lisensnummer ${index + 1}`} {...field} value={field.value ?? ''} />
-                                                        </FormControl>
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                        </Button>
-                                                    </div>
-                                                </FormItem>
-                                            )}
-                                        />
-                                    ))}
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => append({ value: "" })}
-                                    >
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Legg til lisens
-                                    </Button>
-                                </div>
+                                ))}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => append({ value: "" })}
+                                >
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Legg til lisens
+                                </Button>
                             </div>
                         </div>
-                    )}
-                    {form.formState.errors.guardianName && (
-                        <FormMessage>{form.formState.errors.guardianName.message}</FormMessage>
-                    )}
+                    </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t">
                     <Button type="submit">
