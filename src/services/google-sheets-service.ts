@@ -2,13 +2,14 @@
 'use server';
 
 import { google } from 'googleapis';
-import type { Driver } from '@/lib/types';
+import type { Driver, Guardian } from '@/lib/types';
 
 // This file handles communication with Google Sheets for the one-time import.
 // It requires credentials in the .env.local file.
 
 const SHEET_ID = process.env.GOOGLE_SHEETS_SHEET_ID;
-const RANGE = 'Drivers!A:J'; 
+// Define the range based on the new column structure (A to U)
+const RANGE = 'Drivers!A:U'; 
 
 const getAuth = () => {
   const credentials = {
@@ -31,31 +32,76 @@ const getSheetsApi = () => {
   return google.sheets({ version: 'v4', auth });
 }
 
+// Updated column map to match the new structure
 const columnMap: { [key: string]: number } = {
-    id: 0, name: 1, dob: 2, club: 3, driverLicense: 4, vehicleLicense: 5,
-    teamLicense: 6, guardianName: 7, guardianContact: 8, guardianLicenses: 9
+    id: 0,
+    name: 1,
+    dob: 2,
+    club: 3,
+    email: 4,
+    rfid: 5,
+    klasse: 6,
+    startNr: 7,
+    transponderNr: 8,
+    chassiNr: 9,
+    motorNr1: 10,
+    motorNr2: 11,
+    driverLicense: 12,
+    vehicleLicense: 13,
+    teamLicense: 14,
+    guardian1_name: 15,
+    guardian1_contact: 16,
+    guardian1_licenses: 17,
+    guardian2_name: 18,
+    guardian2_contact: 19,
+    guardian2_licenses: 20,
 };
 
 const rowToDriver = (row: any[]): Driver => {
     const driver: Driver = {
-        id: row[columnMap.id] || '',
+        id: row[columnMap.id] || `generated_${crypto.randomUUID()}`,
         name: row[columnMap.name] || '',
         dob: row[columnMap.dob] || '',
         club: row[columnMap.club] || '',
+        email: row[columnMap.email] || '',
+        rfid: row[columnMap.rfid] || '',
+        klasse: row[columnMap.klasse] || undefined,
+        startNr: row[columnMap.startNr] || undefined,
+        transponderNr: row[columnMap.transponderNr] || undefined,
+        chassiNr: row[columnMap.chassiNr] || undefined,
+        motorNr1: row[columnMap.motorNr1] || undefined,
+        motorNr2: row[columnMap.motorNr2] || undefined,
         driverLicense: row[columnMap.driverLicense] || undefined,
         vehicleLicense: row[columnMap.vehicleLicense] || undefined,
         teamLicense: row[columnMap.teamLicense] || undefined,
+        role: 'driver',
+        guardians: []
     };
     
-    const guardianName = row[columnMap.guardianName];
-    const guardianContact = row[columnMap.guardianContact];
-
-    if (guardianName && guardianContact) {
-        driver.guardian = {
-            name: guardianName,
-            contact: guardianContact,
-            licenses: (row[columnMap.guardianLicenses] || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+    // Process first guardian
+    const g1_name = row[columnMap.guardian1_name];
+    const g1_contact = row[columnMap.guardian1_contact];
+    if (g1_name && g1_contact) {
+        const guardian1: Guardian = {
+            id: crypto.randomUUID(),
+            name: g1_name,
+            contact: g1_contact,
+            licenses: (row[columnMap.guardian1_licenses] || '').split(',').map((s: string) => s.trim()).filter(Boolean)
         };
+        driver.guardians?.push(guardian1);
+    }
+    
+    // Process second guardian
+    const g2_name = row[columnMap.guardian2_name];
+    const g2_contact = row[columnMap.guardian2_contact];
+    if (g2_name && g2_contact) {
+        const guardian2: Guardian = {
+            id: crypto.randomUUID(),
+            name: g2_name,
+            contact: g2_contact,
+            licenses: (row[columnMap.guardian2_licenses] || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+        };
+        driver.guardians?.push(guardian2);
     }
 
     return driver;
@@ -75,7 +121,7 @@ export async function getDriversFromSheet(): Promise<Driver[]> {
         }
 
         // Skip header row (index 0) and map the rest
-        return rows.slice(1).map(row => rowToDriver(row)).filter(d => d.id); // Filter out empty rows
+        return rows.slice(1).map(row => rowToDriver(row)).filter(d => d.id && d.name && d.email); // Filter out rows without essential info
     } catch (error) {
         console.error('Error fetching drivers from Google Sheet:', error);
         throw new Error("Kunne ikke hente førere fra Google Sheet for import. Sjekk at API-nøkler og Sheet-ID er korrekte.");
