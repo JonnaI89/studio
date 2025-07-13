@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { DriverForm } from './driver-form';
 import { Separator } from '@/components/ui/separator';
 import { Pencil, User, Calendar as CalendarIcon, Users, Shield, CarFront, UserCheck, Hash, Trophy, Phone, Group, Signal } from 'lucide-react';
-import { calculateAge } from '@/lib/utils';
+import { calculateAge, parseDateString } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { PasswordChangeForm } from '../auth/password-change-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -101,7 +101,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                         <div className="space-y-2">
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
                                 <div>
-                                    <InfoItem icon={<CalendarIcon />} label="Fødselsdato" value={driver.dob ? format(new Date(driver.dob), "dd.MM.yyyy") : null} />
+                                    <InfoItem icon={<CalendarIcon />} label="Fødselsdato" value={driver.dob ? format(parseDateString(driver.dob)!, "dd.MM.yyyy") : null} />
                                     <InfoItem icon={<Users />} label="Klubb" value={driver.club} />
                                     <InfoItem icon={<Trophy />} label="Klasse" value={driver.klasse} />
                                     <InfoItem icon={<Hash />} label="Startnummer" value={driver.startNr} />

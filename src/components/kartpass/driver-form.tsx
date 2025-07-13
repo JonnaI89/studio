@@ -16,25 +16,29 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { CalendarIcon, Save, PlusCircle, Trash2 } from "lucide-react";
-import { cn, calculateAge } from "@/lib/utils";
+import { Save, PlusCircle, Trash2 } from "lucide-react";
+import { cn, calculateAge, parseDateString } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { Separator } from "../ui/separator";
+
+const dobSchema = z.string().refine(val => parseDateString(val) !== null, {
+    message: "Ugyldig datoformat. Bruk DD.MM.YYYY.",
+}).refine(val => {
+    const date = parseDateString(val);
+    return date && date < new Date();
+}, {
+    message: "Dato kan ikke være i fremtiden."
+});
+
 
 const formSchema = z.object({
     id: z.string().optional(), // Firebase Auth UID, set after creation
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
     email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
-    dob: z.date({ required_error: "Fødselsdato er påkrevd." }),
+    dob: dobSchema,
     club: z.string().min(2, { message: "Klubb må ha minst 2 tegn." }),
     hasSeasonPass: z.boolean().optional(),
     klasse: z.string().optional(),
@@ -51,7 +55,7 @@ const formSchema = z.object({
     guardianLicenses: z.array(z.object({ value: z.string() })).optional(),
 }).refine(data => {
     if (!data.dob) return true;
-    const age = calculateAge(format(data.dob, "yyyy-MM-dd"));
+    const age = calculateAge(data.dob);
     if (age !== null && age < 18 && !data.teamLicense) {
         return !!data.guardianName && data.guardianName.length > 1 && !!data.guardianContact && data.guardianContact.length > 1;
     }
@@ -76,7 +80,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
         resolver: zodResolver(formSchema),
         defaultValues: driverToEdit ? {
             ...driverToEdit,
-            dob: new Date(driverToEdit.dob),
+            dob: driverToEdit.dob ? format(parseDateString(driverToEdit.dob)!, 'dd.MM.yyyy') : '',
             email: driverToEdit.email || "",
             rfid: driverToEdit.rfid || "",
             hasSeasonPass: driverToEdit.hasSeasonPass || false,
@@ -97,6 +101,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             name: "",
             email: "",
             club: "",
+            dob: "",
             hasSeasonPass: false,
             klasse: "",
             startNr: "",
@@ -124,23 +129,23 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
     
     useEffect(() => {
         if (dob) {
-            const age = calculateAge(format(dob, "yyyy-MM-dd"));
+            const age = calculateAge(dob);
             setIsUnderage(age !== null && age < 18);
         }
     }, [dob]);
     
-    const handleDobChange = (date: Date | undefined) => {
-        if (date) {
-            form.setValue("dob", date, { shouldValidate: true });
-        }
-    };
-
     function onSubmit(values: FormValues) {
+        const parsedDate = parseDateString(values.dob);
+        if (!parsedDate) {
+            form.setError("dob", { type: "manual", message: "Ugyldig dato."});
+            return;
+        }
+
         const driverData: Omit<Driver, 'id'> = {
             rfid: values.rfid, // Normalization happens in the service layer
             email: values.email || '',
             name: values.name,
-            dob: format(values.dob, "yyyy-MM-dd"),
+            dob: format(parsedDate, "yyyy-MM-dd"),
             club: values.club,
             role: driverToEdit?.role === 'admin' ? 'admin' : 'driver',
             hasSeasonPass: values.hasSeasonPass,
@@ -231,42 +236,15 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                             control={form.control}
                             name="dob"
                             render={({ field }) => (
-                                <FormItem className="flex flex-col">
+                                <FormItem>
                                 <FormLabel>Fødselsdato</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "dd.MM.yyyy")
-                                        ) : (
-                                            <span>Velg en dato</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        captionLayout="dropdown-buttons"
-                                        fromYear={1920}
-                                        toYear={new Date().getFullYear()}
-                                        selected={field.value}
-                                        onSelect={(date) => handleDobChange(date)}
-                                        disabled={(date) =>
-                                            date > new Date() || date < new Date("1920-01-01")
-                                        }
-                                        initialFocus
+                                <FormControl>
+                                    <Input
+                                        placeholder="DD.MM.YYYY"
+                                        {...field}
+                                        value={field.value ?? ''}
                                     />
-                                    </PopoverContent>
-                                </Popover>
+                                </FormControl>
                                 <FormMessage />
                                 </FormItem>
                             )}
