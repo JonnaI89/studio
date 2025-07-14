@@ -1,8 +1,6 @@
 
 "use server";
 
-import { v4 as uuidv4 } from 'uuid';
-
 const ZETTLE_API_URL = "https://pusher.zettle.com";
 const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
 
@@ -71,7 +69,7 @@ export async function createZettlePaymentLink(requestData: { amount: number; ref
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`,
-                'X-Idempotency-Key': uuidv4(),
+                'X-Idempotency-Key': crypto.randomUUID(),
             },
             body: JSON.stringify(payload),
             cache: 'no-store'
