@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn, signOut } from "@/services/auth-service";
-import { getDriverById, getDriversByAuthUid } from "@/services/driver-service";
+import { getDriverById } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -35,36 +35,24 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      
-      // First, check if the logged in user is an admin.
-      // Admin profiles are directly linked to the auth UID.
-      const adminProfile = await getDriverById(user.uid);
-      if (adminProfile?.role === 'admin') {
+      const driverProfile = await getDriverById(user.uid);
+
+      if (driverProfile) {
+        if (driverProfile.role === 'admin') {
           toast({ title: "Admin-innlogging Vellykket" });
           window.location.href = '/admin';
-          return;
-      }
-      
-      // If not an admin, check for driver profiles linked to this auth account
-      const profiles = await getDriversByAuthUid(user.uid);
-
-      if (profiles.length === 0) {
+        } else {
+          toast({ title: "Innlogging Vellykket" });
+          window.location.href = `/driver/${driverProfile.id}`;
+        }
+      } else {
         toast({
           variant: "destructive",
           title: "Profil Mangler",
           description: "Brukeren din er ikke koblet til en førerprofil. Kontakt administrator.",
         });
-        // Important: sign out if no profile is found to prevent being in a logged-in but unusable state.
         await signOut();
-      } else if (profiles.length === 1) {
-        toast({ title: "Innlogging Vellykket" });
-        window.location.href = `/driver/${profiles[0].id}`;
-      } else {
-        // More than one profile (siblings), redirect to selection page
-        toast({ title: "Velg Fører", description: "Velg hvilken fører du vil logge inn som." });
-        window.location.href = `/velg-forer?authUid=${encodeURIComponent(user.uid)}`;
       }
-
     } catch (error) {
       toast({
         variant: "destructive",

@@ -65,49 +65,27 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
-export async function getFirebaseDriversByAuthUid(authUid: string): Promise<Driver[]> {
+export async function checkIfDriverExistsByEmail(email: string): Promise<boolean> {
     try {
         if (!db) throw new Error("Firestore not initialized");
-        const q = query(collection(db, DRIVERS_COLLECTION), where("authUid", "==", authUid), orderBy("name"));
+        const q = query(collection(db, DRIVERS_COLLECTION), where("email", "==", email));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ ...(doc.data() as Omit<Driver, 'id'>), id: doc.id }) as Driver);
+        return !querySnapshot.empty;
     } catch (error) {
-        console.error(`Error fetching drivers with authUid ${authUid} from Firestore: `, error);
-        throw new Error("Kunne ikke hente førere med authUid fra Firebase.");
+        console.error(`Error checking for driver with email ${email}: `, error);
+        throw new Error("Kunne ikke verifisere e-post mot databasen.");
     }
 }
 
-export async function getAnyFirebaseDriverByAuthUid(authUid: string): Promise<Driver | null> {
-    try {
-        if (!db) throw new Error("Firestore not initialized");
-        const q = query(collection(db, DRIVERS_COLLECTION), where("authUid", "==", authUid));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
-            return { ...(doc.data() as Omit<Driver, 'id'>), id: doc.id };
-        }
-        return null;
-    } catch (error) {
-        console.error(`Error fetching any driver with authUid ${authUid} from Firestore: `, error);
-        throw new Error("Kunne ikke hente fører med authUid fra Firebase.");
-    }
-}
-
-
-export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>): Promise<Driver> {
+export async function addFirebaseDriver(driverData: Driver): Promise<void> {
     try {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
+        // The document ID is now the same as the user's UID from Auth
+        const driverRef = doc(db, DRIVERS_COLLECTION, driverData.id);
         const driverToSave = { ...driverData, rfid: normalizeRfid(driverData.rfid) };
-        
-        const docRef = await addDoc(collection(db, DRIVERS_COLLECTION), driverToSave);
-        
-        const newDriver: Driver = { ...driverToSave, id: docRef.id };
-        await setDoc(docRef, { ...newDriver, id: docRef.id }); // Write back with the new doc ID
-        
-        return newDriver;
-
+        await setDoc(driverRef, driverToSave);
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
         throw new Error("Kunne ikke legge til fører i Firebase.");
