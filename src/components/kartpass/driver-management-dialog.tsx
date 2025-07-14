@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -76,7 +77,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     }
   };
 
-  const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
+  const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
     try {
       if (driverToEdit && id) {
         // This is an update to an existing driver.
@@ -106,11 +107,11 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
           return;
         }
 
-        const newDriver = await createDriverAndUser(driverData as Omit<Driver, 'id' | 'authUid' | 'role'>);
+        const newDriver = await createDriverAndUser(driverData);
         
         toast({
             title: 'Fører Opprettet!',
-            description: `Profil for ${newDriver.name} er opprettet.`,
+            description: `Profil for ${newDriver.name} er opprettet. Passord er det samme som e-post.`,
         });
       }
 
