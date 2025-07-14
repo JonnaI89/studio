@@ -60,22 +60,16 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     let authUser: { uid: string };
 
     try {
-        const existingDriversWithEmail = await getDriversByEmail(driverData.email);
+        const existingDriversWithEmail = await getFirebaseDriversByEmail(driverData.email);
 
         if (existingDriversWithEmail.length > 0) {
-            // An auth user for this email likely exists. We can re-use their UID.
-            // The UID is stored as the document ID ('id') on our driver profiles.
             authUser = { uid: existingDriversWithEmail[0].id };
         } else {
-            // No user exists with this email, so create a new one.
             const password = driverData.email;
             const userCredential = await createUserWithEmailAndPassword(tempAuth, driverData.email, password);
             authUser = userCredential.user;
         }
 
-        // Now, regardless of whether the auth user was new or existing,
-        // we create a new driver profile in Firestore.
-        // The driver's ID is the auth user's UID.
         const newDriverProfile: Driver = {
             ...driverData,
             id: authUser.uid,
@@ -83,7 +77,6 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
             rfid: normalizeRfid(driverData.rfid),
         };
 
-        // Add the new driver profile to Firestore.
         await addDriver(newDriverProfile);
 
         return newDriverProfile;
@@ -91,7 +84,28 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     } catch (error: any) {
         console.error("User creation/linking error: ", error);
         if (error.code === 'auth/email-already-in-use') {
-            throw new Error("En bruker med denne e-postadressen finnes allerede.");
+             // This is not a fatal error in our new flow. We can proceed.
+             // We need to fetch the user's UID to proceed.
+             const existingDrivers = await getFirebaseDriversByEmail(driverData.email);
+             if (existingDrivers.length > 0) {
+                 authUser = { uid: existingDrivers[0].id };
+                 const newDriverProfile: Driver = {
+                    ...driverData,
+                    id: authUser.uid, 
+                    role: 'driver',
+                    rfid: normalizeRfid(driverData.rfid),
+                };
+                // We must create a new document with a NEW ID for the sibling
+                const siblingDocId = crypto.randomUUID();
+                const siblingProfile = {...newDriverProfile, id: siblingDocId};
+
+                // The ID of the driver doc is NOT the same as the auth UID in this case.
+                await addFirebaseDriver(siblingProfile);
+
+                return siblingProfile;
+             } else {
+                 throw new Error("E-post er i bruk, men kunne ikke finne tilknyttet førerprofil.");
+             }
         }
         if (error.code === 'auth/invalid-email') {
             throw new Error("E-postadressen er ugyldig.");
