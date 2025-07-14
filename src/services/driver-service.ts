@@ -46,8 +46,8 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     try {
         const userRecord = await authAdmin.createUser({
             email: driverData.email,
-            password: driverData.email, // Standard passord, brukeren kan endre dette senere.
-            emailVerified: true, // Setter e-post som verifisert som standard.
+            password: driverData.email,
+            emailVerified: true,
         });
 
         const newDriverProfile: Omit<Driver, 'id'> = {
@@ -56,7 +56,6 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
             rfid: normalizeRfid(driverData.rfid),
         };
         
-        // Bruker UID fra den nyopprettede brukeren som ID for førerprofilen
         await addFirebaseDriver(newDriverProfile, userRecord.uid);
         
         return {
