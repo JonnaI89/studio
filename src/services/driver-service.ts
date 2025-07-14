@@ -8,9 +8,10 @@ import {
     getFirebaseDriverById,
     getFirebaseDriverByRfid,
     deleteFirebaseDriver,
-    getFirebaseDriverByEmail
+    getFirebaseDriverByEmail,
+    getFirebaseDriversByAuthUid
 } from './firebase-service';
-import { signUp } from './auth-service';
+import { authAdmin } from '@/lib/firebase-admin-config';
 import type { Driver } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
 
@@ -18,6 +19,11 @@ import { normalizeRfid } from '@/lib/utils';
 export async function getDrivers(): Promise<Driver[]> {
     return getFirebaseDrivers();
 }
+
+export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
+    return getFirebaseDriversByAuthUid(authUid);
+}
+
 
 export async function getDriverById(id: string): Promise<Driver | null> {
     return getFirebaseDriverById(id);
@@ -35,45 +41,53 @@ export async function deleteDriver(id: string): Promise<void> {
     return deleteFirebaseDriver(id);
 }
 
-export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'>): Promise<Driver> {
+export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role' | 'authUid'>): Promise<Driver> {
     if (!driverData.email) {
         throw new Error("E-post er påkrevd for å opprette en ny fører.");
     }
-    
+    if (!authAdmin) {
+        throw new Error("Firebase Admin SDK er ikke initialisert. Handlingen kan ikke fullføres.");
+    }
+
     const email = driverData.email;
-    const password = driverData.email; 
-
-    // Sjekk om en fører med denne e-posten allerede eksisterer
-    const existingDriver = await getFirebaseDriverByEmail(email);
-    if (existingDriver) {
-        throw new Error(`En bruker med e-posten ${email} finnes allerede. E-post må være unik.`);
-    }
-
-    // This is now called on the server, but it uses the client-side SDK.
-    // This is not ideal, but it avoids the Admin SDK credential issue in this environment.
-    // A proper implementation would have this as a client-callable function.
-    try {
-      const user = await signUp(email, password);
+    const password = driverData.email;
     
-      const newDriverProfile: Driver = {
-          ...driverData,
-          id: user.uid, // Kobler fører-ID direkte til Auth-ID
-          role: 'driver',
-          rfid: normalizeRfid(driverData.rfid),
-      };
+    let authUid: string;
+    let existingUser = null;
 
-      await addFirebaseDriver(newDriverProfile);
-      return newDriverProfile;
-
+    try {
+        existingUser = await authAdmin.getUserByEmail(email);
+        authUid = existingUser.uid;
     } catch (error: any) {
-        console.error("Error creating user or profile:", error);
-        // Provide a more user-friendly error message
-        if (error.code === 'auth/email-already-in-use') {
-            throw new Error(`E-posten ${email} er allerede registrert.`);
+        if (error.code === 'auth/user-not-found') {
+            // User does not exist, create a new one
+            const newUserRecord = await authAdmin.createUser({
+                email: email,
+                emailVerified: false,
+                password: password,
+            });
+            authUid = newUserRecord.uid;
+        } else {
+            // Some other error occurred
+            console.error("Error fetching user by email:", error);
+            throw new Error("En feil oppstod ved verifisering av bruker.");
         }
-        if (error.code === 'auth/weak-password') {
-            throw new Error('Passordet er for svakt. Det må være minst 6 tegn.');
-        }
-        throw new Error(`En feil oppsto under opprettelse av bruker: ${error.message}`);
     }
+    
+    // Nå har vi en authUid, enten fra en eksisterende eller ny bruker.
+    // Opprett førerprofilen i databasen.
+    const newDriverProfile: Omit<Driver, 'id'> = {
+        ...driverData,
+        authUid: authUid,
+        role: 'driver',
+        rfid: normalizeRfid(driverData.rfid),
+    };
+
+    const newDriverId = await addFirebaseDriver(newDriverProfile);
+
+    return {
+        ...newDriverProfile,
+        id: newDriverId,
+    };
 }
+
