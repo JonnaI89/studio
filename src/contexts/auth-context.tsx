@@ -2,7 +2,7 @@
 
 import { createContext, useState, useEffect, ReactNode } from "react";
 import { onAuthStateChanged } from "@/services/auth-service";
-import { getDriverById } from "@/services/driver-service";
+import { getAnyFirebaseDriverByAuthUid } from "@/services/firebase-service";
 import type { User } from "firebase/auth";
 import type { Driver } from "@/lib/types";
 import { LoaderCircle } from "lucide-react";
@@ -31,7 +31,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
-        const driverProfile = await getDriverById(user.uid);
+        // We get *any* driver profile associated with the auth user
+        // This is primarily for the isAdmin check
+        const driverProfile = await getAnyFirebaseDriverByAuthUid(user.uid);
         setProfile(driverProfile);
       } else {
         setUser(null);

@@ -8,16 +8,15 @@ import {
     getFirebaseDriverById,
     getFirebaseDriverByRfid,
     deleteFirebaseDriver,
-    getFirebaseDriversByEmail
+    getFirebaseDriversByAuthUid,
+    getAnyFirebaseDriverByAuthUid,
 } from './firebase-service';
 import type { Driver } from '@/lib/types';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, type User as FirebaseAuthUser } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '@/lib/firebase-config';
 import { normalizeRfid } from '@/lib/utils';
-
-// This is the main service file for the application.
-// It uses Firebase as the data source. All components should use these functions.
+import { authAdmin } from '@/lib/firebase-admin-config';
 
 export async function getDrivers(): Promise<Driver[]> {
     return getFirebaseDrivers();
@@ -31,13 +30,14 @@ export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
     return getFirebaseDriverByRfid(rfid);
 }
 
-export async function getDriversByEmail(email: string): Promise<Driver[]> {
-    return getFirebaseDriversByEmail(email);
+export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
+    return getFirebaseDriversByAuthUid(authUid);
 }
 
 
 export async function addDriver(driver: Driver): Promise<void> {
-    return addFirebaseDriver(driver);
+    const newDriver = await addFirebaseDriver(driver);
+    return;
 }
 
 export async function updateDriver(driver: Driver): Promise<void> {
@@ -45,65 +45,72 @@ export async function updateDriver(driver: Driver): Promise<void> {
 }
 
 export async function deleteDriver(id: string): Promise<void> {
+    // Note: this doesn't delete the auth user, which is correct
+    // in a sibling scenario. Deleting auth users would need a separate process.
     return deleteFirebaseDriver(id);
 }
 
-export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'>): Promise<Driver> {
+export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authUid' | 'role'>): Promise<Driver> {
     if (!driverData.email) {
         throw new Error("E-post er påkrevd for å opprette en ny fører.");
     }
-
-    const tempAppName = `temp-user-creation-${crypto.randomUUID()}`;
-    const tempApp = initializeApp(firebaseConfig, tempAppName);
-    const tempAuth = getAuth(tempApp);
+    if (!authAdmin) {
+        throw new Error("Auth Admin SDK er ikke initialisert. Kan ikke opprette bruker.");
+    }
 
     let authUid: string;
+    let userExists = true;
 
+    // 1. Check if a user with this email already exists in Firebase Auth
     try {
-        const existingUsers = await getDriversByEmail(driverData.email);
-        
-        if (existingUsers.length > 0) {
-            // An auth user with this email already exists, reuse their UID.
-            // All siblings will share the same Auth UID, but have different document IDs.
-            // We can get the auth UID from any of the existing profiles.
-            authUid = existingUsers[0].id;
+        const userRecord = await authAdmin.getUserByEmail(driverData.email);
+        authUid = userRecord.uid;
+    } catch (error: any) {
+        if (error.code === 'auth/user-not-found') {
+            userExists = false;
         } else {
-            // No user with this email exists, create a new Firebase Auth user.
+            // Rethrow other errors
+            throw error;
+        }
+    }
+    
+    // 2. If the user does not exist, create them in Firebase Auth
+    if (!userExists) {
+        // We must use a temporary client-side auth instance to create a user,
+        // as the Admin SDK can't create users with email/password directly
+        // without more complex flows.
+        const tempAppName = `temp-user-creation-${crypto.randomUUID()}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = getAuth(tempApp);
+
+        try {
             const password = driverData.email; // Default password
             const userCredential = await createUserWithEmailAndPassword(tempAuth, driverData.email, password);
             authUid = userCredential.user.uid;
+        } catch(e: any) {
+            console.error("Error creating auth user in temp app", e);
+            throw e;
+        } finally {
+            await deleteApp(tempApp);
         }
+    }
 
-        // We now have an auth UID (either new or existing).
-        // Create the new driver profile in Firestore.
-        // It's crucial that this new driver gets its *own* unique document ID.
-        // The driver's `id` field will store the *auth* UID for linking purposes.
-        const newDriverProfile: Omit<Driver, 'id'> & { id: string } = {
-            ...driverData,
-            id: authUid, // The shared Auth UID
-            role: 'driver',
-            rfid: normalizeRfid(driverData.rfid),
-        };
+    // 3. Now, create the new driver profile in Firestore.
+    // This will get its own unique Firestore document ID.
+    const newDriverProfile: Omit<Driver, 'id'> = {
+        ...driverData,
+        authUid: authUid!,
+        role: 'driver',
+        rfid: normalizeRfid(driverData.rfid),
+    };
 
-        // Let Firestore generate a unique ID for the document itself.
+    try {
         const createdDriver = await addFirebaseDriver(newDriverProfile);
         return createdDriver;
-
-    } catch (error: any) {
-        console.error("User creation/linking error: ", error);
-        // We handle specific auth errors that might occur during the creation step.
-        if (error.code === 'auth/invalid-email') {
-            throw new Error("E-postadressen er ugyldig.");
-        }
-        if (error.code === 'auth/weak-password') {
-            throw new Error("Passordet er for svakt. Det må være minst seks tegn. Passordet settes lik e-posten.");
-        }
-        // This error shouldn't happen with the new logic, but is kept for safety.
-        if (error.code === 'auth/email-already-in-use') {
-             throw new Error("E-post er i bruk, men kunne ikke finne tilknyttet førerprofil. Prøv igjen, eller kontakt admin.");
-        }
-        throw new Error("En ukjent feil oppstod under opprettelse av ny fører.");
-    } finally {
-        await deleteApp(tempApp);
+    } catch (error) {
+        console.error("Error creating Firestore driver profile:", error);
+        // If Firestore creation fails, we should ideally delete the auth user if we just created them.
+        // This is complex and left out for now, but a production system might need this.
+        throw new Error("Kunne ikke lagre førerprofilen i databasen.");
     }
 }

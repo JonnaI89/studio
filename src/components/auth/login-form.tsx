@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn, signOut } from "@/services/auth-service";
-import { getDriverById, addDriver, getDriversByEmail } from "@/services/driver-service";
-import type { Driver } from "@/lib/types";
+import { getDriverById, getDriversByAuthUid } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -44,7 +43,7 @@ export function LoginForm() {
           return;
       }
 
-      const profiles = await getDriversByEmail(user.email!);
+      const profiles = await getDriversByAuthUid(user.uid);
 
       if (profiles.length === 0) {
         toast({
@@ -59,7 +58,7 @@ export function LoginForm() {
       } else {
         // Multiple profiles found (siblings)
         toast({ title: "Velg Fører", description: "Velg hvilken fører du vil logge inn som." });
-        window.location.href = `/velg-forer?email=${encodeURIComponent(user.email!)}`;
+        window.location.href = `/velg-forer?authUid=${encodeURIComponent(user.uid)}`;
       }
 
     } catch (error) {

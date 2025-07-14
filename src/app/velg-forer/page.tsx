@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getDriversByEmail } from '@/services/driver-service';
+import { getDriversByAuthUid } from '@/services/driver-service';
 import type { Driver } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,23 +32,23 @@ function DriverSelectionCard({ driver, onSelect }: { driver: Driver, onSelect: (
 export default function VelgForerPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const email = searchParams.get('email');
+    const authUid = searchParams.get('authUid');
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!email) {
-            setError("E-post mangler. Kan ikke hente førere.");
+        if (!authUid) {
+            setError("Innloggings-ID mangler. Kan ikke hente førere.");
             setIsLoading(false);
             return;
         }
 
         const fetchDrivers = async () => {
             try {
-                const fetchedDrivers = await getDriversByEmail(email);
+                const fetchedDrivers = await getDriversByAuthUid(authUid);
                 if (fetchedDrivers.length === 0) {
-                    setError("Ingen førere funnet for denne e-posten.");
+                    setError("Ingen førere funnet for denne brukeren.");
                 } else {
                     setDrivers(fetchedDrivers);
                 }
@@ -60,7 +60,7 @@ export default function VelgForerPage() {
         };
 
         fetchDrivers();
-    }, [email]);
+    }, [authUid]);
 
     const handleSelectDriver = (id: string) => {
         router.push(`/driver/${id}`);
@@ -75,7 +75,7 @@ export default function VelgForerPage() {
                 <Card className="shadow-lg">
                     <CardHeader className="text-center">
                         <CardTitle>Velg Fører</CardTitle>
-                        <CardDescription>Denne e-posten er knyttet til flere førere. Velg hvem du vil logge inn som.</CardDescription>
+                        <CardDescription>Denne brukeren er knyttet til flere førere. Velg hvem du vil logge inn som.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {isLoading ? (

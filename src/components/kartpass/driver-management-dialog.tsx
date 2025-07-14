@@ -58,8 +58,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     if (!driverToDelete) return;
     setIsDeleting(true);
     try {
-      // Note: This does not delete the Firebase Auth user, only the Firestore profile.
-      // This is a limitation of not having a working Admin SDK.
       await deleteDriver(driverToDelete.id);
       toast({
         title: "Fører Slettet",
@@ -78,11 +76,11 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     }
   };
 
-  const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
+  const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
     try {
       if (driverToEdit && id) {
         // This is an update to an existing driver.
-        const driverToUpdate = { ...driverToEdit, ...driverData };
+        const driverToUpdate: Driver = { ...driverToEdit, ...driverData, id: id };
         await updateDriver(driverToUpdate);
         toast({
             title: `Fører oppdatert`,
@@ -108,7 +106,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
           return;
         }
 
-        const newDriver = await createDriverAndUser(driverData);
+        const newDriver = await createDriverAndUser(driverData as Omit<Driver, 'id' | 'authUid' | 'role'>);
         
         toast({
             title: 'Fører Opprettet!',

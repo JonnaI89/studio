@@ -44,7 +44,8 @@ const guardianSchema = z.object({
 });
 
 const formSchema = z.object({
-    id: z.string().optional(), // Firebase Auth UID, set after creation
+    id: z.string().optional(),
+    authUid: z.string().optional(),
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
     email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
@@ -130,7 +131,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
         }
 
         const driverData: Omit<Driver, 'id'> = {
-            rfid: values.rfid, // Normalization happens in the service layer
+            authUid: values.authUid || driverToEdit?.authUid || '',
+            rfid: values.rfid,
             email: values.email || '',
             name: values.name,
             dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
