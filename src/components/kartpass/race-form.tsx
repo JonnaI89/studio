@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, useFieldArray } from "react-hook-form";
@@ -7,6 +8,7 @@ import type { Race } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -51,13 +53,13 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
       date: new Date(raceToEdit.date),
       endDate: raceToEdit.endDate ? parseISO(raceToEdit.endDate) : undefined,
       availableClasses: raceToEdit.availableClasses?.join('\n') || '',
-      entryFee: raceToEdit.entryFee || undefined,
+      entryFee: raceToEdit.entryFee ?? '',
       classFees: raceToEdit.classFees || [],
     } : {
       name: "",
       description: "",
       availableClasses: "",
-      entryFee: undefined,
+      entryFee: '',
       classFees: [],
     },
   });
@@ -203,7 +205,10 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
               <FormLabel>Tilgjengelige Klasser</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Én klasse per linje, f.eks.&#10;Rotax&#10;KZ2&#10;Cadetti"
+                  placeholder="Én klasse per linje, f.eks.
+Rotax
+KZ2
+Cadetti"
                   className="resize-y min-h-[100px]"
                   {...field}
                   disabled={isLoading}
