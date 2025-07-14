@@ -1,22 +1,21 @@
+
 "use server";
 
 import { v4 as uuidv4 } from 'uuid';
-import { getSiteSettings } from './settings-service';
 
-// In a real application, these would be securely stored and managed.
-const ZETTLE_API_URL = "https://reader-connect.zettle.com";
+const ZETTLE_API_URL = "https://pusher.zettle.com";
 const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
 
-interface ZettlePaymentRequest {
+interface ZettlePaymentLinkRequest {
     amount: number; // in cents/øre
-    reference: string;
-    linkId: string;
+    referenceNumber: string;
+    redirectUrl: string;
 }
 
-interface ZettlePaymentResponse {
-    paymentId: string;
-    websocketUrl: string;
-    status: string;
+interface ZettlePaymentLinkResponse {
+    id: string;
+    url: string;
+    qrCode: string;
 }
 
 async function getZettleAccessToken(): Promise<string> {
@@ -38,7 +37,8 @@ async function getZettleAccessToken(): Promise<string> {
                 'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                 'client_id': clientId,
                 'assertion': userAssertionToken
-            })
+            }),
+            cache: 'no-store' // Important to prevent caching of the token request
         });
         
         if (!response.ok) {
@@ -56,48 +56,37 @@ async function getZettleAccessToken(): Promise<string> {
     }
 }
 
-export async function createZettlePayment(requestData: { amount: number; reference: string; }): Promise<ZettlePaymentResponse> {
-    const settings = await getSiteSettings();
-    if (!settings.zettleLinkId) {
-        throw new Error("Zettle Terminal ID (Link ID) er ikke satt i nettstedinnstillingene.");
+export async function createZettlePaymentLink(requestData: { amount: number; reference: string; }): Promise<{ url: string; qrCode: string; }> {
+    const accessToken = await getZettleAccessToken();
+
+    const payload: ZettlePaymentLinkRequest = {
+        amount: requestData.amount,
+        referenceNumber: requestData.reference,
+        redirectUrl: "https://kartpass.no/payment-complete" // A placeholder confirmation page
     }
 
-    const request: ZettlePaymentRequest = {
-        ...requestData,
-        linkId: settings.zettleLinkId,
-    };
-    
-    const accessToken = await getZettleAccessToken();
-    const idempotencyKey = uuidv4();
-
     try {
-        const response = await fetch(`${ZETTLE_API_URL}/v1/links/${request.linkId}/payments`, {
+        const response = await fetch(`${ZETTLE_API_URL}/v2/payment-links`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`,
-                'Idempotency-Key': idempotencyKey,
+                'X-Idempotency-Key': uuidv4(),
             },
-            body: JSON.stringify({
-                amount: request.amount,
-                reference: request.reference,
-                // The channel ensures this POS session only gets updates for this payment.
-                channel: uuidv4(), 
-            }),
+            body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
             const errorBody = await response.text();
-            console.error("Zettle API Error:", response.status, errorBody);
+            console.error("Zettle API Error (Payment Link):", response.status, errorBody);
             throw new Error(`Feil fra Zettle API: ${response.statusText}. Sjekk server-logger.`);
         }
 
-        const data = await response.json();
+        const data: ZettlePaymentLinkResponse = await response.json();
 
         return {
-            paymentId: data.id,
-            websocketUrl: data.url,
-            status: data.status,
+            url: data.url,
+            qrCode: data.qrCode
         };
 
     } catch (error) {

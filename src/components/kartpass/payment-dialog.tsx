@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +10,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CreditCard, LoaderCircle, Wifi, CheckCircle2, XCircle } from "lucide-react";
+import { CreditCard, LoaderCircle, CheckCircle2, XCircle, QrCode } from "lucide-react";
 import type { Driver, SiteSettings } from "@/lib/types";
-import { createZettlePayment } from "@/services/zettle-service";
+import { createZettlePaymentLink } from "@/services/zettle-service";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+import Link from "next/link";
 
 interface PaymentDialogProps {
   isOpen: boolean;
@@ -24,12 +25,13 @@ interface PaymentDialogProps {
   settings: SiteSettings | null;
 }
 
-type PaymentStatus = "idle" | "initializing" | "waiting_for_terminal" | "in_progress" | "successful" | "failed" | "cancelled";
+type PaymentStatus = "idle" | "initializing" | "waiting_for_payment" | "successful" | "failed";
 
 export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, settings }: PaymentDialogProps) {
   const [status, setStatus] = useState<PaymentStatus>("idle");
-  const socketRef = useRef<Socket | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const price = (() => {
@@ -40,80 +42,26 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
     return isWeekend ? settings.weekendPrice ?? 350 : settings.weekdayPrice ?? 250;
   })();
 
-  const cleanupSocket = () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-  };
-
   const startPaymentProcess = async () => {
     if (!driver) return;
     setStatus("initializing");
     setError(null);
-    cleanupSocket(); // Ensure no old sockets are lingering
+    setPaymentLink(null);
+    setQrCodeUrl(null);
 
     try {
-      const paymentData = await createZettlePayment({
+      const paymentData = await createZettlePaymentLink({
         amount: price * 100, // Zettle expects amount in øre/cents
         reference: `KARTPASS-${driver.id.slice(0, 8)}-${Date.now()}`
       });
 
-      if (!paymentData.websocketUrl || !paymentData.paymentId) {
+      if (!paymentData.url || !paymentData.qrCode) {
         throw new Error("Mottok ikke gyldig data fra Zettle API.");
       }
-
-      const newSocket = io(paymentData.websocketUrl, {
-        transports: ["websocket"],
-        reconnection: false, // Handle reconnection manually if needed
-        autoConnect: true,
-      });
-
-      socketRef.current = newSocket;
-
-      newSocket.on("connect", () => {
-        setStatus("waiting_for_terminal");
-      });
-
-      newSocket.on("message", (message: string) => {
-        try {
-          const parsedMessage = JSON.parse(message);
-          console.log("Zettle Message:", parsedMessage);
-
-          if (parsedMessage.event === 'payment-update' || parsedMessage.payload?.type === 'PAYMENT_RESPONSE') {
-              const paymentStatus = parsedMessage.payload?.status;
-              if (paymentStatus === 'in-progress') {
-                  setStatus("in_progress");
-              } else if (paymentStatus === 'successful') {
-                  setStatus("successful");
-                  cleanupSocket();
-                  setTimeout(() => {
-                    onPaymentSuccess();
-                  }, 1500); 
-              } else if (paymentStatus === 'failed' || paymentStatus === 'cancelled') {
-                  setStatus(paymentStatus);
-                  setError(parsedMessage.payload?.message || "Betalingen ble avbrutt eller feilet.");
-                  cleanupSocket();
-              }
-          }
-        } catch (e) {
-            console.error("Failed to parse WebSocket message:", e);
-        }
-      });
       
-      newSocket.on('disconnect', () => {
-          if (status !== 'successful' && status !== 'failed' && status !== 'cancelled') {
-             setError("Koblingen til betalingsterminalen ble brutt.");
-             setStatus("failed");
-          }
-          cleanupSocket();
-      });
-      
-      newSocket.on('connect_error', (err) => {
-          setError(`WebSocket-tilkobling feilet: ${err.message}`);
-          setStatus('failed');
-          cleanupSocket();
-      });
+      setPaymentLink(paymentData.url);
+      setQrCodeUrl(paymentData.qrCode);
+      setStatus("waiting_for_payment");
 
     } catch (err) {
       const errorMessage = (err as Error).message;
@@ -132,17 +80,20 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
     if (isOpen && driver) {
       startPaymentProcess();
     } else {
-      cleanupSocket();
       setStatus("idle");
       setError(null);
+      setPaymentLink(null);
+      setQrCodeUrl(null);
     }
-
-    return () => {
-      cleanupSocket();
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, driver]);
 
+  const handleManualConfirmation = () => {
+      setStatus("successful");
+      setTimeout(() => {
+        onPaymentSuccess();
+      }, 1500);
+  }
 
   const getStatusContent = () => {
     switch (status) {
@@ -150,28 +101,21 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
         return {
           icon: <LoaderCircle className="h-16 w-16 text-primary animate-spin" />,
           title: "Initialiserer betaling...",
-          description: "Kobler til Zettle-systemet.",
+          description: "Oppretter en sikker betalingslenke.",
         };
-      case "waiting_for_terminal":
+      case "waiting_for_payment":
         return {
-          icon: <Wifi className="h-16 w-16 text-primary animate-pulse" />,
-          title: "Venter på terminal...",
-          description: "Sendt til terminal. Fullfør betalingen der.",
-        };
-      case "in_progress":
-        return {
-          icon: <CreditCard className="h-16 w-16 text-primary" />,
-          title: "Betaling pågår...",
-          description: "Følg instruksjonene på kortterminalen.",
+          icon: <QrCode className="h-16 w-16 text-primary" />,
+          title: "Klar for betaling",
+          description: "Skann QR-koden eller bruk lenken under.",
         };
       case "successful":
         return {
             icon: <CheckCircle2 className="h-16 w-16 text-green-600" />,
-            title: "Betaling Vellykket!",
+            title: "Betaling Bekreftet!",
             description: "Innsjekking fullført. Lukker vindu...",
         };
       case "failed":
-      case "cancelled":
         return {
             icon: <XCircle className="h-16 w-16 text-destructive" />,
             title: "Betaling Mislyktes",
@@ -192,15 +136,11 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent onInteractOutside={(e) => {
-          if (status === 'in_progress' || status === 'waiting_for_terminal') {
-              e.preventDefault()
-          }
-      }}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Zettle Betaling</DialogTitle>
           <DialogDescription>
-            Automatisk betaling for {driver?.name}.
+            Betaling for {driver?.name}.
           </DialogDescription>
         </DialogHeader>
         <div className="my-8 flex flex-col items-center gap-4 text-center">
@@ -213,7 +153,26 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
             <p className="text-sm text-muted-foreground">Produkt: Dagspass</p>
           </div>
         </div>
-        {(status === "failed" || status === "cancelled") && (
+
+        {status === 'waiting_for_payment' && qrCodeUrl && (
+            <div className="flex flex-col items-center gap-4">
+                <div className="p-2 border bg-white rounded-lg">
+                    <Image src={qrCodeUrl} alt="QR-kode for betaling" width={256} height={256} />
+                </div>
+                 <Link href={paymentLink || '#'} target="_blank" className="text-sm text-primary hover:underline">
+                    Åpne betalingslenke i ny fane
+                </Link>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                    Når betalingen er fullført i Zettle-appen eller via kundens enhet, bekreft manuelt under.
+                </p>
+                <Button onClick={handleManualConfirmation} className="w-full bg-green-600 hover:bg-green-700">
+                    <CheckCircle2 className="mr-2 h-4 w-4"/>
+                    Bekreft Betaling & Sjekk Inn
+                </Button>
+            </div>
+        )}
+        
+        {(status === "failed") && (
             <div className="flex justify-center gap-2">
                  <Button variant="outline" onClick={() => onOpenChange(false)}>Lukk</Button>
                  <Button onClick={startPaymentProcess}>Prøv igjen</Button>
