@@ -1,3 +1,4 @@
+
 'use server';
 
 import { 
@@ -25,12 +26,6 @@ export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
     return getFirebaseDriverByRfid(rfid);
 }
 
-export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
-    const driver = await getFirebaseDriverById(authUid);
-    return driver ? [driver] : [];
-}
-
-
 export async function updateDriver(driver: Driver): Promise<void> {
     return updateFirebaseDriver(driver);
 }
@@ -51,8 +46,8 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     try {
         const userRecord = await authAdmin.createUser({
             email: driverData.email,
-            password: driverData.email,
-            emailVerified: true,
+            password: driverData.email, // Standard passord, brukeren kan endre dette senere.
+            emailVerified: true, // Setter e-post som verifisert som standard.
         });
 
         const newDriverProfile: Omit<Driver, 'id'> = {
@@ -61,6 +56,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
             rfid: normalizeRfid(driverData.rfid),
         };
         
+        // Bruker UID fra den nyopprettede brukeren som ID for førerprofilen
         await addFirebaseDriver(newDriverProfile, userRecord.uid);
         
         return {
