@@ -66,37 +66,6 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
-export async function getFirebaseDriversByAuthUid(authUid: string): Promise<Driver[]> {
-    try {
-        if (!db) throw new Error("Firestore not initialized");
-        const q = query(collection(db, DRIVERS_COLLECTION), where("authUid", "==", authUid));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            return querySnapshot.docs.map(doc => ({ ...(doc.data() as Omit<Driver, 'id'>), id: doc.id }));
-        }
-        return [];
-    } catch (error) {
-        console.error(`Error fetching drivers with authUid ${authUid} from Firestore: `, error);
-        throw new Error("Kunne ikke hente førere for denne brukeren.");
-    }
-}
-
-export async function getFirebaseDriverByEmail(email: string): Promise<Driver | null> {
-    try {
-        if (!db) throw new Error("Firestore not initialized");
-        const q = query(collection(db, DRIVERS_COLLECTION), where("email", "==", email), orderBy("name"));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            // Return the first driver found with that email
-            const doc = querySnapshot.docs[0];
-            return { ...(doc.data() as Omit<Driver, 'id'>), id: doc.id };
-        }
-        return null;
-    } catch (error) {
-        console.error(`Error checking for driver with email ${email}: `, error);
-        throw new Error("Kunne ikke verifisere e-post mot databasen.");
-    }
-}
 
 export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>, id: string): Promise<string> {
     try {

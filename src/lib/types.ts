@@ -94,7 +94,7 @@ export type Race = {
 };
 
 export type RaceSignup = {
-  id: string; // Firestore document ID
+  id:string; // Firestore document ID
   raceId: string;
   driverId: string;
   driverName: string;
