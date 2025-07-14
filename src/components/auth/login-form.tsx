@@ -6,13 +6,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getFirebaseDriverById } from "@/services/firebase-service";
+import { getFirebaseDriversByAuthUid } from "@/services/firebase-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
+import { Driver } from "@/lib/types";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -35,23 +36,32 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      const driverProfile = await getFirebaseDriverById(user.uid);
+      const driverProfiles: Driver[] = await getFirebaseDriversByAuthUid(user.uid);
 
-      if (driverProfile) {
-        if (driverProfile.role === 'admin') {
-          toast({ title: "Admin-innlogging Vellykket" });
-          window.location.href = '/admin';
-        } else {
-          toast({ title: "Innlogging Vellykket" });
-          window.location.href = `/driver/${driverProfile.id}`;
-        }
-      } else {
-         toast({
+      if (driverProfiles.length === 0) {
+        toast({
             variant: "destructive",
             title: "Profil Mangler",
             description: "Fant ingen førerprofil knyttet til denne innloggingen.",
         });
+        return; 
       }
+      
+      const adminProfile = driverProfiles.find(p => p.role === 'admin');
+      if (adminProfile) {
+        toast({ title: "Admin-innlogging Vellykket" });
+        window.location.href = '/admin';
+        return;
+      }
+
+      if (driverProfiles.length === 1) {
+        toast({ title: "Innlogging Vellykket" });
+        window.location.href = `/driver/${driverProfiles[0].id}`;
+      } else {
+        toast({ title: "Velg Fører" });
+        window.location.href = `/velg-forer?authUid=${user.uid}`;
+      }
+
     } catch (error) {
       toast({
         variant: "destructive",
