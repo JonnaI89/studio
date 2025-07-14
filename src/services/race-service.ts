@@ -10,8 +10,13 @@ import {
     deleteFirebaseRaceSignup,
     getFirebaseRaceSignupsByDriver,
     getFirebaseRacesForDate,
+    getFirebaseDriverById,
 } from './firebase-service';
-import type { Race, RaceSignup } from '@/lib/types';
+import type { Race, RaceSignup, Driver } from '@/lib/types';
+
+export type RaceSignupWithDriver = RaceSignup & {
+    driver: Driver | null;
+};
 
 export async function createRace(raceData: Omit<Race, 'id' | 'createdAt' | 'status'>): Promise<Race> {
     return createFirebaseRace(raceData);
@@ -39,6 +44,20 @@ export async function addRaceSignup(signupData: Omit<RaceSignup, 'id' | 'signedU
 
 export async function getRaceSignups(raceId: string): Promise<RaceSignup[]> {
     return getFirebaseRaceSignups(raceId);
+}
+
+export async function getRaceSignupsWithDriverData(raceId: string): Promise<RaceSignupWithDriver[]> {
+    const signups = await getFirebaseRaceSignups(raceId);
+    const signupsWithDrivers = await Promise.all(
+        signups.map(async (signup) => {
+            const driver = await getFirebaseDriverById(signup.driverId);
+            return {
+                ...signup,
+                driver,
+            };
+        })
+    );
+    return signupsWithDrivers;
 }
 
 export async function getRaceSignupsByDriver(driverId: string): Promise<RaceSignup[]> {

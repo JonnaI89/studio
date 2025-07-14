@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { RaceSignup } from "@/lib/types";
-import { getRaceSignups, deleteRaceSignup } from "@/services/race-service";
+import type { RaceSignupWithDriver } from "@/services/race-service";
+import { getRaceSignupsWithDriverData, deleteRaceSignup } from "@/services/race-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LoaderCircle, User, Trash2 } from "lucide-react";
+import { LoaderCircle, User, Trash2, Download } from "lucide-react";
 
 interface RaceSignupsDialogProps {
   raceId: string;
@@ -16,17 +16,17 @@ interface RaceSignupsDialogProps {
 }
 
 export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSignupsDialogProps) {
-  const [signups, setSignups] = useState<RaceSignup[]>([]);
+  const [signups, setSignups] = useState<RaceSignupWithDriver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const [signupToDelete, setSignupToDelete] = useState<RaceSignup | null>(null);
+  const [signupToDelete, setSignupToDelete] = useState<RaceSignupWithDriver | null>(null);
 
   useEffect(() => {
     const fetchSignups = async () => {
       if (!raceId) return;
       setIsLoading(true);
       try {
-        const fetchedSignups = await getRaceSignups(raceId);
+        const fetchedSignups = await getRaceSignupsWithDriverData(raceId);
         setSignups(fetchedSignups);
       } catch (error) {
         toast({
@@ -54,12 +54,39 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
     }
   };
 
+  const handleExport = () => {
+    if (signups.length === 0) {
+        toast({ title: "Ingen data å eksportere" });
+        return;
+    }
+
+    const headers = ["Klasse", "Navn", "TransponderNr"];
+    const csvContent = [
+        headers.join(","),
+        ...signups.map(signup => [
+            `"${signup.driverKlasse || ''}"`,
+            `"${signup.driverName}"`,
+            `"${signup.driver?.transponderNr || ''}"`
+        ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `tidtaker-liste-${raceId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   const groupedByKlasse = signups.reduce((acc, signup) => {
     const klasse = signup.driverKlasse || "Ukjent Klasse";
     if (!acc[klasse]) acc[klasse] = [];
     acc[klasse].push(signup);
     return acc;
-  }, {} as Record<string, RaceSignup[]>);
+  }, {} as Record<string, RaceSignupWithDriver[]>);
 
   const totalSignups = signups.length;
 
@@ -82,7 +109,15 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
 
   return (
     <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">Totalt {totalSignups} påmeldte.</p>
+        <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">Totalt {totalSignups} påmeldte.</p>
+            {showAdminControls && (
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Eksporter til CSV
+                </Button>
+            )}
+        </div>
         <ScrollArea className="h-[50vh] pr-4">
             <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedByKlasse)}>
             {Object.entries(groupedByKlasse).map(([klasse, drivers]) => (
