@@ -23,6 +23,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [logoUrl, setLogoUrl] = useState(initialSettings.logoUrl || "");
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice || 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice || 350);
+  const [zettleLinkId, setZettleLinkId] = useState(initialSettings.zettleLinkId || "");
   const [currentDisplayLogo, setCurrentDisplayLogo] = useState(initialSettings.logoUrl);
 
   const handleSave = async () => {
@@ -31,7 +32,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       await updateSiteSettings({ 
         logoUrl: logoUrl,
         weekdayPrice: Number(weekdayPrice),
-        weekendPrice: Number(weekendPrice)
+        weekendPrice: Number(weekendPrice),
+        zettleLinkId: zettleLinkId
        });
       setCurrentDisplayLogo(logoUrl);
       toast({
@@ -55,7 +57,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       <CardHeader>
         <CardTitle>Nettstedinnstillinger</CardTitle>
         <CardDescription>
-          Administrer generelle innstillinger for nettstedet, som priser og logoen som vises på forsiden.
+          Administrer generelle innstillinger for nettstedet, som priser, logo og Zettle-integrasjon.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -87,6 +89,26 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
             </div>
         </div>
         
+        <Separator />
+        
+        <div className="space-y-4">
+            <h3 className="text-lg font-medium">Zettle Betalingsintegrasjon</h3>
+             <div className="space-y-2">
+              <Label htmlFor="zettle-link-id">Aktiv Zettle Terminal ID (Link ID)</Label>
+              <Input
+                id="zettle-link-id"
+                type="text"
+                placeholder="f.eks. 497f6eca-6276-4993-bfeb-53cbbbba6f08"
+                value={zettleLinkId}
+                onChange={(e) => setZettleLinkId(e.target.value)}
+                disabled={isLoading}
+              />
+              <p className="text-sm text-muted-foreground">
+                Dette er den unike ID-en som kobler systemet til en spesifikk kortterminal.
+              </p>
+            </div>
+        </div>
+
         <Separator />
 
         <div className="space-y-4">

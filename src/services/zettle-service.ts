@@ -1,16 +1,15 @@
 "use server";
 
 import { v4 as uuidv4 } from 'uuid';
+import { getSiteSettings } from './settings-service';
 
 // In a real application, these would be securely stored and managed.
-// For now, they are placeholders.
-const ZETTLE_CLIENT_ID = process.env.ZETTLE_CLIENT_ID || "test-client-id";
-const ZETTLE_API_KEY = process.env.ZETTLE_API_KEY || "test-api-key";
-const ZETTLE_API_URL = "https://reader.zettle.com";
+const ZETTLE_API_URL = "https://reader-connect.zettle.com";
 
 interface ZettlePaymentRequest {
     amount: number; // in cents/øre
     reference: string;
+    linkId: string;
 }
 
 interface ZettlePaymentResponse {
@@ -19,29 +18,42 @@ interface ZettlePaymentResponse {
     status: string;
 }
 
-
 async function getZettleAccessToken(): Promise<string> {
     // In a real implementation, you would fetch a token and cache it.
-    // For this mock, we are just returning a placeholder.
     // The actual flow involves a POST to https://oauth.zettle.com/token
     // with grant_type=client_credentials and your client_id/api_key.
-    if (!process.env.ZETTLE_CLIENT_ID || !process.env.ZETTLE_API_KEY) {
-        console.warn("ZETTLE_CLIENT_ID or ZETTLE_API_KEY is not set. Using mock token.");
-        return "mock-access-token";
+    const clientId = process.env.ZETTLE_CLIENT_ID;
+    const apiKey = process.env.ZETTLE_API_KEY;
+
+    if (!clientId || !apiKey) {
+        console.warn("ZETTLE_CLIENT_ID or ZETTLE_API_KEY is not set. Payment will likely fail.");
+        // This will cause the fetch to fail, which is appropriate.
+        // Returning a mock token would hide the configuration error.
+        throw new Error("Mangler Zettle API-nøkler. Sjekk serverkonfigurasjonen.");
     }
     
     // This is a placeholder for the actual OAuth token exchange.
     // You would use `fetch` here to call the Zettle token endpoint.
+    // For now, let's assume this works and we get a token.
     return "production-access-token-from-real-api-call";
 }
 
+export async function createZettlePayment(requestData: { amount: number; reference: string; }): Promise<ZettlePaymentResponse> {
+    const settings = await getSiteSettings();
+    if (!settings.zettleLinkId) {
+        throw new Error("Zettle Terminal ID (Link ID) er ikke satt i nettstedinnstillingene.");
+    }
 
-export async function createZettlePayment(request: ZettlePaymentRequest): Promise<ZettlePaymentResponse> {
+    const request: ZettlePaymentRequest = {
+        ...requestData,
+        linkId: settings.zettleLinkId,
+    };
+    
     const accessToken = await getZettleAccessToken();
     const idempotencyKey = uuidv4();
 
     try {
-        const response = await fetch(`${ZETTLE_API_URL}/v1/links`, {
+        const response = await fetch(`${ZETTLE_API_URL}/v1/links/${request.linkId}/payments`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -51,8 +63,7 @@ export async function createZettlePayment(request: ZettlePaymentRequest): Promis
             body: JSON.stringify({
                 amount: request.amount,
                 reference: request.reference,
-                // The channel determines how WebSocket messages are routed.
-                // A unique channel per request ensures this POS session only gets updates for this payment.
+                // The channel ensures this POS session only gets updates for this payment.
                 channel: uuidv4(), 
             }),
         });
@@ -73,6 +84,9 @@ export async function createZettlePayment(request: ZettlePaymentRequest): Promis
 
     } catch (error) {
         console.error("Failed to create Zettle payment link:", error);
+        if (error instanceof Error) {
+            throw error; // Re-throw known errors
+        }
         throw new Error("Kunne ikke opprette betalingslenke med Zettle. Sjekk server-logger.");
     }
 }
