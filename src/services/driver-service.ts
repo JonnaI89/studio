@@ -61,21 +61,25 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authU
     try {
         const userRecord = await authAdmin.getUserByEmail(email);
         authUid = userRecord.uid;
+        // Optional: Reset password every time a new sibling is added,
+        // to ensure the parent can use the default password.
+        await authAdmin.updateUser(authUid, { password: password });
     } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
             const newUserRecord = await authAdmin.createUser({
                 email: email,
                 password: password,
-                emailVerified: false,
+                emailVerified: false, // You might want to set this to true if you trust the source
                 displayName: driverData.name,
             });
             authUid = newUserRecord.uid;
         } else {
-            console.error("Error fetching auth user:", error);
+            console.error("Error fetching or creating auth user:", error);
             throw new Error(`En feil oppsto under håndtering av bruker: ${error.message}`);
         }
     }
     
+    // Now that we have a valid authUid, create the Firestore driver profile.
     const newDriverProfile: Omit<Driver, 'id'> = {
         ...driverData,
         authUid: authUid,
@@ -88,6 +92,8 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authU
         return createdDriver;
     } catch (error) {
         console.error("Error creating Firestore driver profile:", error);
+        // Optional: Clean up the created auth user if Firestore write fails
+        // await authAdmin.deleteUser(authUid);
         throw new Error("Kunne ikke lagre førerprofilen i databasen.");
     }
 }
