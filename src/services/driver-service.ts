@@ -9,12 +9,8 @@ import {
     getFirebaseDriverByRfid,
     deleteFirebaseDriver,
     getFirebaseDriversByAuthUid,
-    getAnyFirebaseDriverByAuthUid,
 } from './firebase-service';
 import type { Driver } from '@/lib/types';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { firebaseConfig } from '@/lib/firebase-config';
 import { normalizeRfid } from '@/lib/utils';
 import { authAdmin } from '@/lib/firebase-admin-config';
 
@@ -59,47 +55,39 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authU
     }
 
     let authUid: string;
-    let userExists = true;
+    const email = driverData.email;
+    const password = driverData.email; // Default password is the email
 
-    // 1. Check if a user with this email already exists in Firebase Auth
     try {
-        const userRecord = await authAdmin.getUserByEmail(driverData.email);
+        // 1. Try to get user by email.
+        const userRecord = await authAdmin.getUserByEmail(email);
         authUid = userRecord.uid;
+        
+        // 2. If user exists, reset their password to the default.
+        // This ensures the parent can log in easily after adding a new sibling.
+        await authAdmin.updateUser(authUid, { password });
+
     } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
-            userExists = false;
+            // 3. If user does not exist, create them with the default password.
+            const newUserRecord = await authAdmin.createUser({
+                email: email,
+                password: password,
+                emailVerified: false, // Or true, depending on your flow
+                displayName: driverData.name,
+            });
+            authUid = newUserRecord.uid;
         } else {
-            // Rethrow other errors
-            throw error;
+            // Rethrow other errors (e.g., network issues, invalid email format)
+            console.error("Error managing auth user:", error);
+            throw new Error(`En feil oppsto under håndtering av bruker: ${error.message}`);
         }
     }
     
-    // 2. If the user does not exist, create them in Firebase Auth
-    if (!userExists) {
-        // We must use a temporary client-side auth instance to create a user,
-        // as the Admin SDK can't create users with email/password directly
-        // without more complex flows.
-        const tempAppName = `temp-user-creation-${crypto.randomUUID()}`;
-        const tempApp = initializeApp(firebaseConfig, tempAppName);
-        const tempAuth = getAuth(tempApp);
-
-        try {
-            const password = driverData.email; // Default password
-            const userCredential = await createUserWithEmailAndPassword(tempAuth, driverData.email, password);
-            authUid = userCredential.user.uid;
-        } catch(e: any) {
-            console.error("Error creating auth user in temp app", e);
-            throw e;
-        } finally {
-            await deleteApp(tempApp);
-        }
-    }
-
-    // 3. Now, create the new driver profile in Firestore.
-    // This will get its own unique Firestore document ID.
+    // 4. Now that we have an authUid, create the new driver profile in Firestore.
     const newDriverProfile: Omit<Driver, 'id'> = {
         ...driverData,
-        authUid: authUid!,
+        authUid: authUid,
         role: 'driver',
         rfid: normalizeRfid(driverData.rfid),
     };
@@ -109,8 +97,8 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authU
         return createdDriver;
     } catch (error) {
         console.error("Error creating Firestore driver profile:", error);
-        // If Firestore creation fails, we should ideally delete the auth user if we just created them.
-        // This is complex and left out for now, but a production system might need this.
+        // If Firestore creation fails after we've potentially created an auth user,
+        // it's a good idea to log this for manual cleanup if necessary.
         throw new Error("Kunne ikke lagre førerprofilen i databasen.");
     }
 }
