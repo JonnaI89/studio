@@ -6,7 +6,7 @@ import {
     updateFirebaseDriver,
     getFirebaseDriverById,
     getFirebaseDriverByRfid,
-    deleteFirebaseDriver
+    deleteFirebaseDriver,
 } from './firebase-service';
 import { signUp } from './auth-service';
 import type { Driver } from '@/lib/types';
@@ -25,6 +25,12 @@ export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
     return getFirebaseDriverByRfid(rfid);
 }
 
+export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
+    const driver = await getFirebaseDriverById(authUid);
+    return driver ? [driver] : [];
+}
+
+
 export async function updateDriver(driver: Driver): Promise<void> {
     return updateFirebaseDriver(driver);
 }
@@ -39,16 +45,21 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     }
 
     try {
+        // Step 1: Create the Firebase Auth user.
+        // The password is set to the email by default. The user can change it later.
         const user = await signUp(driverData.email, driverData.email);
         
+        // Step 2: Prepare the driver profile for Firestore.
         const newDriverProfile: Omit<Driver, 'id'> = {
             ...driverData,
             role: 'driver',
             rfid: normalizeRfid(driverData.rfid),
         };
         
+        // Step 3: Save the driver profile to Firestore with the same ID as the Auth user's UID.
         await addFirebaseDriver(newDriverProfile, user.uid);
         
+        // Step 4: Return the complete driver object.
         return {
             ...newDriverProfile,
             id: user.uid,
@@ -61,9 +72,4 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
         console.error("Error creating user and driver:", error);
         throw new Error("En ukjent feil oppsto under opprettelse av ny fører.");
     }
-}
-
-export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
-    const driver = await getFirebaseDriverById(authUid);
-    return driver ? [driver] : [];
 }
