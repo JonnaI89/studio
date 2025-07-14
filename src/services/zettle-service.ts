@@ -5,6 +5,7 @@ import { getSiteSettings } from './settings-service';
 
 // In a real application, these would be securely stored and managed.
 const ZETTLE_API_URL = "https://reader-connect.zettle.com";
+const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
 
 interface ZettlePaymentRequest {
     amount: number; // in cents/øre
@@ -19,23 +20,40 @@ interface ZettlePaymentResponse {
 }
 
 async function getZettleAccessToken(): Promise<string> {
-    // In a real implementation, you would fetch a token and cache it.
-    // The actual flow involves a POST to https://oauth.zettle.com/token
-    // with grant_type=client_credentials and your client_id/api_key.
     const clientId = process.env.ZETTLE_CLIENT_ID;
-    const apiKey = process.env.ZETTLE_API_KEY;
+    const userAssertionToken = process.env.ZETTLE_USER_ASSERTION_TOKEN;
 
-    if (!clientId || !apiKey) {
-        console.warn("ZETTLE_CLIENT_ID or ZETTLE_API_KEY is not set. Payment will likely fail.");
-        // This will cause the fetch to fail, which is appropriate.
-        // Returning a mock token would hide the configuration error.
-        throw new Error("Mangler Zettle API-nøkler. Sjekk serverkonfigurasjonen.");
+    if (!clientId || !userAssertionToken) {
+        console.error("ZETTLE_CLIENT_ID or ZETTLE_USER_ASSERTION_TOKEN is not set in environment variables.");
+        throw new Error("Mangler Zettle API-nøkler eller bruker-token. Sjekk serverkonfigurasjonen.");
     }
-    
-    // This is a placeholder for the actual OAuth token exchange.
-    // You would use `fetch` here to call the Zettle token endpoint.
-    // For now, let's assume this works and we get a token.
-    return "production-access-token-from-real-api-call";
+
+    try {
+        const response = await fetch(ZETTLE_OAUTH_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'client_id': clientId,
+                'assertion': userAssertionToken
+            })
+        });
+        
+        if (!response.ok) {
+            const errorBody = await response.json();
+            console.error("Zettle OAuth Error:", response.status, errorBody);
+            throw new Error(`Feil ved henting av Zettle-token: ${errorBody.error_description || response.statusText}`);
+        }
+
+        const tokenData = await response.json();
+        return tokenData.access_token;
+
+    } catch (error) {
+        console.error("Error fetching Zettle access token:", error);
+        throw error;
+    }
 }
 
 export async function createZettlePayment(requestData: { amount: number; reference: string; }): Promise<ZettlePaymentResponse> {
