@@ -8,9 +8,9 @@ import {
     getFirebaseDriverByRfid,
     deleteFirebaseDriver,
 } from './firebase-service';
-import { signUp } from './auth-service';
 import type { Driver } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
+import { authAdmin } from '@/lib/firebase-admin-config';
 
 
 export async function getDrivers(): Promise<Driver[]> {
@@ -44,32 +44,38 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
         throw new Error("E-post er påkrevd for å opprette en ny fører.");
     }
 
+    if (!authAdmin) {
+        throw new Error("Firebase Admin Auth er ikke initialisert på serveren.");
+    }
+
     try {
-        // Step 1: Create the Firebase Auth user.
-        // The password is set to the email by default. The user can change it later.
-        const user = await signUp(driverData.email, driverData.email);
-        
-        // Step 2: Prepare the driver profile for Firestore.
+        const userRecord = await authAdmin.createUser({
+            email: driverData.email,
+            password: driverData.email,
+            emailVerified: true,
+        });
+
         const newDriverProfile: Omit<Driver, 'id'> = {
             ...driverData,
             role: 'driver',
             rfid: normalizeRfid(driverData.rfid),
         };
         
-        // Step 3: Save the driver profile to Firestore with the same ID as the Auth user's UID.
-        await addFirebaseDriver(newDriverProfile, user.uid);
+        await addFirebaseDriver(newDriverProfile, userRecord.uid);
         
-        // Step 4: Return the complete driver object.
         return {
             ...newDriverProfile,
-            id: user.uid,
+            id: userRecord.uid,
         };
 
     } catch (error: any) {
-        if (error.code === 'auth/email-already-in-use') {
+        if (error.code === 'auth/email-already-exists') {
             throw new Error("En fører med denne e-postadressen finnes allerede.");
         }
-        console.error("Error creating user and driver:", error);
+        if (error.code === 'auth/invalid-password') {
+             throw new Error("Passordet er ugyldig. Det må være minst 6 tegn.");
+        }
+        console.error("Error creating user with Admin SDK:", error);
         throw new Error("En ukjent feil oppsto under opprettelse av ny fører.");
     }
 }
