@@ -56,7 +56,6 @@ export function LoginForm() {
         toast({ title: "Innlogging Vellykket" });
         window.location.href = `/driver/${profiles[0].id}`;
       } else {
-        // Multiple profiles found (siblings)
         toast({ title: "Velg Fører", description: "Velg hvilken fører du vil logge inn som." });
         window.location.href = `/velg-forer?authUid=${encodeURIComponent(user.uid)}`;
       }

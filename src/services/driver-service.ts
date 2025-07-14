@@ -56,35 +56,26 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authU
 
     let authUid: string;
     const email = driverData.email;
-    const password = driverData.email; // Default password is the email
+    const password = driverData.email;
 
     try {
-        // 1. Try to get user by email.
         const userRecord = await authAdmin.getUserByEmail(email);
         authUid = userRecord.uid;
-        
-        // 2. If user exists, reset their password to the default.
-        // This ensures the parent can log in easily after adding a new sibling.
-        await authAdmin.updateUser(authUid, { password });
-
     } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
-            // 3. If user does not exist, create them with the default password.
             const newUserRecord = await authAdmin.createUser({
                 email: email,
                 password: password,
-                emailVerified: false, // Or true, depending on your flow
+                emailVerified: false,
                 displayName: driverData.name,
             });
             authUid = newUserRecord.uid;
         } else {
-            // Rethrow other errors (e.g., network issues, invalid email format)
-            console.error("Error managing auth user:", error);
+            console.error("Error fetching auth user:", error);
             throw new Error(`En feil oppsto under håndtering av bruker: ${error.message}`);
         }
     }
     
-    // 4. Now that we have an authUid, create the new driver profile in Firestore.
     const newDriverProfile: Omit<Driver, 'id'> = {
         ...driverData,
         authUid: authUid,
@@ -97,8 +88,6 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'authU
         return createdDriver;
     } catch (error) {
         console.error("Error creating Firestore driver profile:", error);
-        // If Firestore creation fails after we've potentially created an auth user,
-        // it's a good idea to log this for manual cleanup if necessary.
         throw new Error("Kunne ikke lagre førerprofilen i databasen.");
     }
 }
