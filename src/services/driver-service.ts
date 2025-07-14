@@ -57,61 +57,50 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
-    let authUser: { uid: string };
+    let authUid: string;
 
     try {
-        const existingDriversWithEmail = await getFirebaseDriversByEmail(driverData.email);
-
-        if (existingDriversWithEmail.length > 0) {
-            authUser = { uid: existingDriversWithEmail[0].id };
+        const existingUsers = await getDriversByEmail(driverData.email);
+        
+        if (existingUsers.length > 0) {
+            // An auth user with this email already exists, reuse their UID.
+            // All siblings will share the same Auth UID, but have different document IDs.
+            // We can get the auth UID from any of the existing profiles.
+            authUid = existingUsers[0].id;
         } else {
-            const password = driverData.email;
+            // No user with this email exists, create a new Firebase Auth user.
+            const password = driverData.email; // Default password
             const userCredential = await createUserWithEmailAndPassword(tempAuth, driverData.email, password);
-            authUser = userCredential.user;
+            authUid = userCredential.user.uid;
         }
 
-        const newDriverProfile: Driver = {
+        // We now have an auth UID (either new or existing).
+        // Create the new driver profile in Firestore.
+        // It's crucial that this new driver gets its *own* unique document ID.
+        // The driver's `id` field will store the *auth* UID for linking purposes.
+        const newDriverProfile: Omit<Driver, 'id'> & { id: string } = {
             ...driverData,
-            id: authUser.uid,
+            id: authUid, // The shared Auth UID
             role: 'driver',
             rfid: normalizeRfid(driverData.rfid),
         };
 
-        await addDriver(newDriverProfile);
-
-        return newDriverProfile;
+        // Let Firestore generate a unique ID for the document itself.
+        const createdDriver = await addFirebaseDriver(newDriverProfile);
+        return createdDriver;
 
     } catch (error: any) {
         console.error("User creation/linking error: ", error);
-        if (error.code === 'auth/email-already-in-use') {
-             // This is not a fatal error in our new flow. We can proceed.
-             // We need to fetch the user's UID to proceed.
-             const existingDrivers = await getFirebaseDriversByEmail(driverData.email);
-             if (existingDrivers.length > 0) {
-                 authUser = { uid: existingDrivers[0].id };
-                 const newDriverProfile: Driver = {
-                    ...driverData,
-                    id: authUser.uid, 
-                    role: 'driver',
-                    rfid: normalizeRfid(driverData.rfid),
-                };
-                // We must create a new document with a NEW ID for the sibling
-                const siblingDocId = crypto.randomUUID();
-                const siblingProfile = {...newDriverProfile, id: siblingDocId};
-
-                // The ID of the driver doc is NOT the same as the auth UID in this case.
-                await addFirebaseDriver(siblingProfile);
-
-                return siblingProfile;
-             } else {
-                 throw new Error("E-post er i bruk, men kunne ikke finne tilknyttet førerprofil.");
-             }
-        }
+        // We handle specific auth errors that might occur during the creation step.
         if (error.code === 'auth/invalid-email') {
             throw new Error("E-postadressen er ugyldig.");
         }
         if (error.code === 'auth/weak-password') {
             throw new Error("Passordet er for svakt. Det må være minst seks tegn. Passordet settes lik e-posten.");
+        }
+        // This error shouldn't happen with the new logic, but is kept for safety.
+        if (error.code === 'auth/email-already-in-use') {
+             throw new Error("E-post er i bruk, men kunne ikke finne tilknyttet førerprofil. Prøv igjen, eller kontakt admin.");
         }
         throw new Error("En ukjent feil oppstod under opprettelse av ny fører.");
     } finally {

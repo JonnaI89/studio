@@ -23,7 +23,7 @@ export async function getFirebaseDrivers(): Promise<Driver[]> {
         }
         const driversQuery = query(collection(db, DRIVERS_COLLECTION), orderBy("name"));
         const driversSnapshot = await getDocs(driversQuery);
-        const driversList = driversSnapshot.docs.map(doc => doc.data() as Driver);
+        const driversList = driversSnapshot.docs.map(doc => ({ ...(doc.data() as Omit<Driver, 'docId'>), id: doc.id }) as Driver);
         return driversList;
     } catch (error) {
         console.error("Error fetching drivers from Firestore: ", error);
@@ -39,8 +39,17 @@ export async function getFirebaseDriverById(id: string): Promise<Driver | null> 
         const driverRef = doc(db, DRIVERS_COLLECTION, id);
         const docSnap = await getDoc(driverRef);
         if (docSnap.exists()) {
-            return docSnap.data() as Driver;
+            return { ...(docSnap.data() as Omit<Driver, 'id'>), id: docSnap.id };
         }
+        
+        // Fallback for old data structure where ID might be a field
+        const q = query(collection(db, DRIVERS_COLLECTION), where("id", "==", id));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            const doc = querySnapshot.docs[0];
+            return { ...(doc.data() as Omit<Driver, 'id'>), id: doc.id };
+        }
+        
         return null;
     } catch (error) {
         console.error(`Error fetching driver with ID ${id} from Firestore: `, error);
@@ -55,7 +64,8 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
         const q = query(collection(db, DRIVERS_COLLECTION), where("rfid", "==", normalized));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-            return querySnapshot.docs[0].data() as Driver;
+            const doc = querySnapshot.docs[0];
+            return { ...(doc.data() as Omit<Driver, 'id'>), id: doc.id };
         }
         return null;
     } catch (error) {
@@ -69,25 +79,32 @@ export async function getFirebaseDriversByEmail(email: string): Promise<Driver[]
         if (!db) throw new Error("Firestore not initialized");
         const q = query(collection(db, DRIVERS_COLLECTION), where("email", "==", email));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as Driver);
+        return querySnapshot.docs.map(doc => ({ ...(doc.data() as Omit<Driver, 'id'>), id: doc.id }) as Driver);
     } catch (error) {
         console.error(`Error fetching drivers with email ${email} from Firestore: `, error);
         throw new Error("Kunne ikke hente førere med e-post fra Firebase.");
     }
 }
 
-export async function addFirebaseDriver(driver: Driver): Promise<void> {
+export async function addFirebaseDriver(driver: Omit<Driver, 'id'> & { id: string }): Promise<Driver> {
     try {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
         const driverToSave = { ...driver, rfid: normalizeRfid(driver.rfid) };
-        await setDoc(doc(db, DRIVERS_COLLECTION, driverToSave.id), driverToSave);
+        
+        // Firestore will auto-generate an ID for the document.
+        const docRef = await addDoc(collection(db, DRIVERS_COLLECTION), driverToSave);
+        
+        // Return the full driver object including the new Firestore document ID.
+        return { ...driverToSave, id: docRef.id };
+
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
         throw new Error("Kunne ikke legge til fører i Firebase.");
     }
 }
+
 
 export async function updateFirebaseDriver(driver: Driver): Promise<void> {
     try {
@@ -452,5 +469,3 @@ export async function deleteFirebaseCheckinHistory(id: string): Promise<void> {
         throw new Error("Kunne ikke slette innsjekking fra databasen.");
     }
 }
-
-    

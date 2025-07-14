@@ -37,27 +37,11 @@ export function LoginForm() {
     try {
       const user = await signIn(values.email, values.password);
       
-      const ADMIN_EMAIL = 'jingebretsen89@gmail.com';
-      if (user.email?.toLowerCase() === ADMIN_EMAIL) {
-          let adminProfile = await getDriverById(user.uid);
-          if (!adminProfile) {
-              const newAdminProfile: Driver = {
-                  id: user.uid,
-                  rfid: `admin_${user.uid.slice(0, 8)}`,
-                  email: user.email,
-                  name: 'Admin',
-                  dob: '2000-01-01',
-                  club: 'System Admin',
-                  role: 'admin',
-              };
-              await addDriver(newAdminProfile);
-              adminProfile = newAdminProfile;
-          }
-          if (adminProfile?.role === 'admin') {
-              toast({ title: "Admin-innlogging Vellykket" });
-              window.location.href = '/admin';
-              return;
-          }
+      const adminProfile = await getDriverById(user.uid);
+      if (adminProfile?.role === 'admin') {
+          toast({ title: "Admin-innlogging Vellykket" });
+          window.location.href = '/admin';
+          return;
       }
 
       const profiles = await getDriversByEmail(user.email!);
@@ -69,7 +53,6 @@ export function LoginForm() {
           description: "Brukeren din er ikke koblet til en førerprofil. Kontakt administrator.",
         });
         await signOut();
-        setIsLoading(false);
       } else if (profiles.length === 1) {
         toast({ title: "Innlogging Vellykket" });
         window.location.href = `/driver/${profiles[0].id}`;
@@ -85,7 +68,8 @@ export function LoginForm() {
         title: "Innlogging Feilet",
         description: "E-post eller passord er feil. Vennligst prøv igjen.",
       });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 
