@@ -4,7 +4,7 @@
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
 import { addFirebaseDriver, deleteFirebaseDriver, updateFirebaseDriver } from "@/services/firebase-service";
-import { signUp } from "@/services/auth-service";
+import { signUp, signIn } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
 import { UserPlus, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
+import { useAuth } from "@/hooks/use-auth";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
@@ -42,6 +43,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get current admin user
 
   const handleEdit = (driver: Driver) => {
     setDriverToEdit(driver);
@@ -111,17 +113,37 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
           setIsSaving(false);
           return;
         }
+        
+        // This is a temporary solution to a complex problem.
+        // It relies on the admin's password being available in a prompt,
+        // which is not ideal but necessary to avoid being logged out.
+        const adminEmail = user?.email;
+        const adminPassword = prompt("For å bekrefte handlingen, vennligst skriv inn ditt administratorpassord:");
+
+        if (!adminEmail || !adminPassword) {
+            toast({
+                variant: "destructive",
+                title: "Handlingen ble avbrutt",
+                description: "Du må skrive inn administratorpassordet for å opprette en ny fører.",
+            });
+            setIsSaving(false);
+            return;
+        }
+
 
         // 1. Create user on the client-side
-        const user = await signUp(driverData.email, driverData.email);
+        const newUser = await signUp(driverData.email, driverData.email);
         
         // 2. Save the profile to the database using the new user's UID
-        await addFirebaseDriver(driverData, user.uid);
+        await addFirebaseDriver(driverData, newUser.uid);
         
         toast({
             title: 'Fører Opprettet!',
             description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
         });
+
+        // 3. Re-authenticate the admin user to prevent being logged out
+        await signIn(adminEmail, adminPassword);
       }
 
       onDatabaseUpdate();
@@ -133,7 +155,10 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
       let userFriendlyMessage = errorMessage;
       if (errorMessage.includes("auth/email-already-in-use")) {
         userFriendlyMessage = "En fører med denne e-postadressen finnes allerede."
+      } else if (errorMessage.includes("auth/invalid-credential") || errorMessage.includes("auth/wrong-password")) {
+        userFriendlyMessage = "Feil administratorpassord. Handlingen ble avbrutt.";
       }
+
 
       toast({
         variant: 'destructive',
