@@ -15,7 +15,8 @@ interface ZettlePushResponse {
     webSocketUrl: string;
 }
 
-async function getZettleAccessToken(): Promise<string> {
+export async function initiateZettlePushPayment(requestData: ZettlePushRequest): Promise<ZettlePushResponse> {
+    
     const clientId = process.env.ZETTLE_CLIENT_ID;
     const userAssertionToken = process.env.ZETTLE_USER_ASSERTION_TOKEN;
 
@@ -23,32 +24,28 @@ async function getZettleAccessToken(): Promise<string> {
         console.error("ZETTLE_CLIENT_ID or ZETTLE_USER_ASSERTION_TOKEN is not set in environment variables.");
         throw new Error("Mangler Zettle API-nøkler eller bruker-token. Sjekk serverkonfigurasjonen.");
     }
-
-    const tokenResponse = await fetch(ZETTLE_OAUTH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-            'client_id': clientId,
-            'assertion': userAssertionToken
-        }),
-        cache: 'no-store'
-    });
-    
-    if (!tokenResponse.ok) {
-        const errorBody = await tokenResponse.json();
-        console.error("Zettle OAuth Error:", tokenResponse.status, errorBody);
-        throw new Error(`Feil ved henting av Zettle-token: ${errorBody.error_description || tokenResponse.statusText}`);
-    }
-
-    const tokenData = await tokenResponse.json();
-    return tokenData.access_token;
-}
-
-export async function initiateZettlePushPayment(requestData: ZettlePushRequest): Promise<ZettlePushResponse> {
     
     try {
-        const accessToken = await getZettleAccessToken();
+        const tokenResponse = await fetch(ZETTLE_OAUTH_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'client_id': clientId,
+                'assertion': userAssertionToken
+            }),
+            cache: 'no-store'
+        });
+        
+        if (!tokenResponse.ok) {
+            const errorBody = await tokenResponse.json();
+            console.error("Zettle OAuth Error:", tokenResponse.status, errorBody);
+            throw new Error(`Feil ved henting av Zettle-token: ${errorBody.error_description || tokenResponse.statusText}`);
+        }
+
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+
         const { linkId, amount, reference } = requestData;
 
         const payload = {

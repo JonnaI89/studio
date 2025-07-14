@@ -74,7 +74,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 disabled={isLoading}
               />
               <p className="text-[0.8rem] text-muted-foreground">
-                Dette er ID-en som kobler systemet til en spesifikk kortterminal.
+                Dette er ID-en som kobler systemet til en spesifikk kortterminal (PayPal Reader).
               </p>
             </div>
         </div>
