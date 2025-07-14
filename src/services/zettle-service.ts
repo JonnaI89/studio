@@ -74,6 +74,7 @@ export async function createZettlePaymentLink(requestData: { amount: number; ref
                 'X-Idempotency-Key': uuidv4(),
             },
             body: JSON.stringify(payload),
+            cache: 'no-store'
         });
 
         if (!response.ok) {
