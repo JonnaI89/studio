@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CalendarIcon, LoaderCircle, Save } from "lucide-react";
 
 const formSchema = z.object({
@@ -42,7 +42,7 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
     defaultValues: raceToEdit ? {
       name: raceToEdit.name,
       date: new Date(raceToEdit.date),
-      endDate: raceToEdit.endDate ? new Date(raceToEdit.endDate) : undefined,
+      endDate: raceToEdit.endDate ? parseISO(raceToEdit.endDate) : undefined,
       description: raceToEdit.description,
       availableClasses: raceToEdit.availableClasses?.join('\n') || '',
       entryFee: raceToEdit.entryFee || undefined,
@@ -88,7 +88,7 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
                     <FormItem>
                         <FormLabel>Påmeldingsavgift (kr)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="350" {...field} disabled={isLoading} />
+                            <Input type="number" placeholder="350" {...field} value={field.value ?? ''} disabled={isLoading} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
