@@ -7,7 +7,8 @@ import {
     updateFirebaseDriver,
     getFirebaseDriverById,
     getFirebaseDriverByRfid,
-    deleteFirebaseDriver
+    deleteFirebaseDriver,
+    getFirebaseDriversByEmail
 } from './firebase-service';
 import type { Driver } from '@/lib/types';
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -29,6 +30,11 @@ export async function getDriverById(id: string): Promise<Driver | null> {
 export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
     return getFirebaseDriverByRfid(rfid);
 }
+
+export async function getDriversByEmail(email: string): Promise<Driver[]> {
+    return getFirebaseDriversByEmail(email);
+}
+
 
 export async function addDriver(driver: Driver): Promise<void> {
     return addFirebaseDriver(driver);
@@ -59,10 +65,27 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     try {
         const password = driverData.email;
         
-        // Create the user with the temporary auth instance.
-        // This will not affect the auth state of the main application.
-        const userCredential = await createUserWithEmailAndPassword(tempAuth, driverData.email, password);
-        const user = userCredential.user;
+        // Before creating a new auth user, check if one already exists for this email.
+        const existingDriversWithEmail = await getDriversByEmail(driverData.email);
+        
+        let user;
+
+        if (existingDriversWithEmail.length > 0) {
+            // An auth user for this email already exists. We can re-use their UID.
+            // We find one of the existing profiles to get the auth user ID. It should be the same for all.
+            const existingDriver = await getDriverById(existingDriversWithEmail[0].id);
+            if (!existingDriver) throw new Error("Could not find existing driver profile to link new sibling.");
+            
+            // We can't get the UID directly, but we assume the ID on the profile is the UID.
+            // This is a safe assumption based on our `addDriver` logic.
+            user = { uid: existingDriver.id };
+
+        } else {
+            // No user exists with this email, so create a new one.
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, driverData.email, password);
+            user = userCredential.user;
+        }
+
 
         const newDriver: Driver = {
             ...driverData,
@@ -80,6 +103,7 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
     } catch (error: any) {
         console.error("Client-side user creation error: ", error);
         if (error.code === 'auth/email-already-in-use') {
+            // This case should now be handled gracefully by our check above, but we keep the catch for safety.
             throw new Error("En bruker med denne e-postadressen finnes allerede.");
         }
         if (error.code === 'auth/invalid-email') {
@@ -94,4 +118,3 @@ export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'
         await deleteApp(tempApp);
     }
 }
-

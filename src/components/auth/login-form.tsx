@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn, signOut } from "@/services/auth-service";
-import { getDriverById, addDriver } from "@/services/driver-service";
+import { getDriverById, addDriver, getDriversByEmail } from "@/services/driver-service";
 import type { Driver } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,44 +35,47 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      let profile = await getDriverById(user.uid);
-
-      if (!profile) {
-        const ADMIN_EMAIL = 'jingebretsen89@gmail.com';
-
-        if (values.email.toLowerCase() === ADMIN_EMAIL) {
-          const newAdminProfile: Driver = {
-            id: user.uid,
-            rfid: `admin_${user.uid.slice(0, 8)}`,
-            email: values.email,
-            name: 'Admin',
-            dob: '2000-01-01',
-            club: 'System Admin',
-            role: 'admin',
-          };
-          await addDriver(newAdminProfile);
-          profile = newAdminProfile;
-          toast({
-            title: "Admin-profil Opprettet",
-            description: "En ny admin-profil er opprettet for deg.",
-          });
-        }
+      
+      const ADMIN_EMAIL = 'jingebretsen89@gmail.com';
+      if (user.email?.toLowerCase() === ADMIN_EMAIL) {
+          let adminProfile = await getDriverById(user.uid);
+          if (!adminProfile) {
+              const newAdminProfile: Driver = {
+                  id: user.uid,
+                  rfid: `admin_${user.uid.slice(0, 8)}`,
+                  email: user.email,
+                  name: 'Admin',
+                  dob: '2000-01-01',
+                  club: 'System Admin',
+                  role: 'admin',
+              };
+              await addDriver(newAdminProfile);
+              adminProfile = newAdminProfile;
+          }
+          if (adminProfile?.role === 'admin') {
+              toast({ title: "Admin-innlogging Vellykket" });
+              window.location.href = '/admin';
+              return;
+          }
       }
 
-      if (profile?.role === 'admin') {
-        toast({ title: "Admin-innlogging Vellykket" });
-        window.location.href = '/admin';
-      } else if (profile) {
-        toast({ title: "Innlogging Vellykket" });
-        window.location.href = `/driver/${user.uid}`;
-      } else {
+      const profiles = await getDriversByEmail(user.email!);
+
+      if (profiles.length === 0) {
         toast({
           variant: "destructive",
           title: "Profil Mangler",
-          description: "Brukeren din er ikke koblet til en profil. Kontakt administrator.",
+          description: "Brukeren din er ikke koblet til en førerprofil. Kontakt administrator.",
         });
         await signOut();
         setIsLoading(false);
+      } else if (profiles.length === 1) {
+        toast({ title: "Innlogging Vellykket" });
+        window.location.href = `/driver/${profiles[0].id}`;
+      } else {
+        // Multiple profiles found (siblings)
+        toast({ title: "Velg Fører", description: "Velg hvilken fører du vil logge inn som." });
+        window.location.href = `/velg-forer?email=${encodeURIComponent(user.email!)}`;
       }
 
     } catch (error) {

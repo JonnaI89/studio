@@ -64,6 +64,18 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
+export async function getFirebaseDriversByEmail(email: string): Promise<Driver[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const q = query(collection(db, DRIVERS_COLLECTION), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as Driver);
+    } catch (error) {
+        console.error(`Error fetching drivers with email ${email} from Firestore: `, error);
+        throw new Error("Kunne ikke hente førere med e-post fra Firebase.");
+    }
+}
+
 export async function addFirebaseDriver(driver: Driver): Promise<void> {
     try {
         if (!db) {
