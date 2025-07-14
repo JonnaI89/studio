@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
-import { UserPlus, Download, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
+import { UserPlus, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 
 interface DriverManagementDialogProps {
@@ -36,7 +36,6 @@ interface DriverManagementDialogProps {
 export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverManagementDialogProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
@@ -76,12 +75,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     } finally {
       setIsDeleting(false);
       setDriverToDelete(null);
-    }
-  };
-
-  const handleImport = async () => {
-    if (!confirm("Denne funksjonen er midlertidig deaktivert.")) {
-      return;
     }
   };
 
@@ -147,10 +140,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 </Button>
             </DialogClose>
             <div className="flex items-center gap-2">
-                 <Button onClick={handleImport} variant="outline" disabled>
-                    <Download className="mr-2 h-4 w-4" />
-                    Importer fra Google Sheet
-                </Button>
                 <Button onClick={handleAddNew}>
                     <UserPlus className="mr-2 h-4 w-4" />
                     Registrer ny fører

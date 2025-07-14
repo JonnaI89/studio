@@ -627,7 +627,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
         <PaymentDialog 
             isOpen={isPaymentOpen}
             onOpenChange={setIsPaymentOpen}
-            onConfirm={handlePaymentSuccess}
+            onPaymentSuccess={handlePaymentSuccess}
             driver={driverForPayment}
             settings={siteSettings}
         />
