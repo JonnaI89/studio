@@ -1,4 +1,3 @@
-
 'use server';
 
 import { 
@@ -8,10 +7,9 @@ import {
     getFirebaseDriverById,
     getFirebaseDriverByRfid,
     deleteFirebaseDriver,
-    getFirebaseDriverByEmail,
     getFirebaseDriversByAuthUid
 } from './firebase-service';
-import { authAdmin } from '@/lib/firebase-admin-config';
+import { signUp } from './auth-service';
 import type { Driver } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
 
@@ -41,53 +39,32 @@ export async function deleteDriver(id: string): Promise<void> {
     return deleteFirebaseDriver(id);
 }
 
-export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role' | 'authUid'>): Promise<Driver> {
+export async function createDriverAndUser(driverData: Omit<Driver, 'id' | 'role'>): Promise<Driver> {
     if (!driverData.email) {
         throw new Error("E-post er påkrevd for å opprette en ny fører.");
     }
-    if (!authAdmin) {
-        throw new Error("Firebase Admin SDK er ikke initialisert. Handlingen kan ikke fullføres.");
-    }
-
-    const email = driverData.email;
-    const password = driverData.email;
     
-    let authUid: string;
-    let existingUser = null;
-
     try {
-        existingUser = await authAdmin.getUserByEmail(email);
-        authUid = existingUser.uid;
+        const userCredential = await signUp(driverData.email, driverData.email);
+        
+        const newDriverProfile: Omit<Driver, 'id'> = {
+            ...driverData,
+            role: 'driver',
+            rfid: normalizeRfid(driverData.rfid),
+        };
+
+        const newDriverId = await addFirebaseDriver(newDriverProfile, userCredential.user.uid);
+        
+        return {
+            ...newDriverProfile,
+            id: newDriverId,
+        };
+
     } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
-            // User does not exist, create a new one
-            const newUserRecord = await authAdmin.createUser({
-                email: email,
-                emailVerified: false,
-                password: password,
-            });
-            authUid = newUserRecord.uid;
-        } else {
-            // Some other error occurred
-            console.error("Error fetching user by email:", error);
-            throw new Error("En feil oppstod ved verifisering av bruker.");
+        console.error("Error creating user and driver:", error);
+        if (error.code === 'auth/email-already-in-use') {
+             throw new Error("E-postadressen er allerede i bruk av en annen fører.");
         }
+        throw new Error("En feil oppstod under opprettelse av ny fører.");
     }
-    
-    // Nå har vi en authUid, enten fra en eksisterende eller ny bruker.
-    // Opprett førerprofilen i databasen.
-    const newDriverProfile: Omit<Driver, 'id'> = {
-        ...driverData,
-        authUid: authUid,
-        role: 'driver',
-        rfid: normalizeRfid(driverData.rfid),
-    };
-
-    const newDriverId = await addFirebaseDriver(newDriverProfile);
-
-    return {
-        ...newDriverProfile,
-        id: newDriverId,
-    };
 }
-

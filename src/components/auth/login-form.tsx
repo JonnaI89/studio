@@ -5,8 +5,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { signIn, signOut } from "@/services/auth-service";
-import { getDriverById } from "@/services/driver-service";
+import { signIn } from "@/services/auth-service";
+import { getFirebaseDriverById } from "@/services/firebase-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -35,7 +35,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      const driverProfile = await getDriverById(user.uid);
+      const driverProfile = await getFirebaseDriverById(user.uid);
 
       if (driverProfile) {
         if (driverProfile.role === 'admin') {
@@ -46,12 +46,11 @@ export function LoginForm() {
           window.location.href = `/driver/${driverProfile.id}`;
         }
       } else {
-        toast({
-          variant: "destructive",
-          title: "Profil Mangler",
-          description: "Brukeren din er ikke koblet til en førerprofil. Kontakt administrator.",
+         toast({
+            variant: "destructive",
+            title: "Profil Mangler",
+            description: "Fant ingen førerprofil knyttet til denne innloggingen.",
         });
-        await signOut();
       }
     } catch (error) {
       toast({
