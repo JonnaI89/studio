@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { updateDriver, deleteDriver, createDriverAndUser } from "@/services/driver-service";
+import { addFirebaseDriver, deleteFirebaseDriver, updateFirebaseDriver } from "@/services/firebase-service";
+import { signUp } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +40,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const handleEdit = (driver: Driver) => {
@@ -58,10 +61,10 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     if (!driverToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteDriver(driverToDelete.id);
+      await deleteFirebaseDriver(driverToDelete.id);
       toast({
         title: "Fører Slettet",
-        description: `${driverToDelete.name} har blitt fjernet fra databasen. Selve innloggingen er ikke slettet.`,
+        description: `${driverToDelete.name} har blitt fjernet fra databasen.`,
       });
       onDatabaseUpdate();
     } catch (error) {
@@ -77,11 +80,12 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   };
 
   const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
+    setIsSaving(true);
     try {
       if (driverToEdit && id) {
         // This is an update to an existing driver.
         const driverToUpdate: Driver = { ...driverToEdit, ...driverData, id: id };
-        await updateDriver(driverToUpdate);
+        await updateFirebaseDriver(driverToUpdate);
         toast({
             title: `Fører oppdatert`,
             description: `${driverData.name} er lagret i databasen.`,
@@ -94,6 +98,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 title: "E-post er påkrevd",
                 description: "E-post må fylles ut for å opprette en ny fører.",
             });
+            setIsSaving(false);
             return;
         }
 
@@ -103,14 +108,19 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
             title: "RFID Finnes Allerede",
             description: "En fører med denne RFID-brikken finnes allerede.",
           });
+          setIsSaving(false);
           return;
         }
 
-        const newDriver = await createDriverAndUser(driverData);
+        // 1. Create user on the client-side
+        const user = await signUp(driverData.email, driverData.email);
+        
+        // 2. Save the profile to the database using the new user's UID
+        await addFirebaseDriver(driverData, user.uid);
         
         toast({
             title: 'Fører Opprettet!',
-            description: `Profil for ${newDriver.name} er opprettet. Passord er det samme som e-post.`,
+            description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
         });
       }
 
@@ -120,11 +130,18 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
 
     } catch (error) {
       const errorMessage = (error as Error).message;
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes("auth/email-already-in-use")) {
+        userFriendlyMessage = "En fører med denne e-postadressen finnes allerede."
+      }
+
       toast({
         variant: 'destructive',
         title: 'Lagring feilet',
-        description: errorMessage || 'En ukjent feil oppsto.',
+        description: userFriendlyMessage || 'En ukjent feil oppsto.',
       });
+    } finally {
+        setIsSaving(false);
     }
   };
 

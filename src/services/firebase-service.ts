@@ -1,6 +1,8 @@
 
+'use server';
+
 import { db } from '@/lib/firebase-config';
-import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc } from 'firebase/firestore';
 import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup, CheckinHistoryEntry } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
@@ -56,8 +58,8 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
         const q = query(collection(db, DRIVERS_COLLECTION), where("rfid", "==", normalized));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
-            return { ...(doc.data() as Omit<Driver, 'id'>), id: doc.id };
+            const docData = querySnapshot.docs[0];
+            return { ...(docData.data() as Omit<Driver, 'id'>), id: docData.id };
         }
         return null;
     } catch (error) {
@@ -66,8 +68,7 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
-
-export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>, id: string): Promise<string> {
+export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>, id: string): Promise<void> {
     try {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
@@ -75,13 +76,11 @@ export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>, id: stri
         const driverToSave = { ...driverData, rfid: normalizeRfid(driverData.rfid) };
         const docRef = doc(db, DRIVERS_COLLECTION, id);
         await setDoc(docRef, driverToSave);
-        return id;
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
         throw new Error("Kunne ikke legge til fører i Firebase.");
     }
 }
-
 
 export async function updateFirebaseDriver(driver: Driver): Promise<void> {
     try {
@@ -446,5 +445,3 @@ export async function deleteFirebaseCheckinHistory(id: string): Promise<void> {
         throw new Error("Kunne ikke slette innsjekking fra databasen.");
     }
 }
-
-    
