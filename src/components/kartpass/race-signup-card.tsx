@@ -89,6 +89,12 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
         }
     };
 
+    const getEntryFeeForClass = (race: Race, klasse: string | undefined): number | undefined => {
+        if (!klasse) return race.entryFee;
+        const classFee = race.classFees?.find(cf => cf.klasse.toLowerCase() === klasse.toLowerCase());
+        return classFee ? classFee.fee : race.entryFee;
+    }
+
 
     return (
         <div className="space-y-8">
@@ -100,7 +106,11 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                 <CardContent>
                     {upcomingRaces.length > 0 ? (
                         <Accordion type="single" collapsible className="w-full">
-                            {upcomingRaces.map(race => (
+                            {upcomingRaces.map(race => {
+                                const selectedClass = selectedClasses[race.id];
+                                const entryFee = getEntryFeeForClass(race, selectedClass);
+
+                                return (
                                 <AccordionItem value={race.id} key={race.id}>
                                     <AccordionTrigger disabled={signedUpRaceIds.has(race.id)}>
                                         <div className='flex justify-between w-full pr-4 items-center'>
@@ -115,10 +125,10 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                         <div className="p-2 space-y-4">
                                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
                                             
-                                            {race.entryFee && (
+                                            {entryFee !== undefined && (
                                                 <div className="flex items-center gap-2 font-semibold text-primary p-2 bg-primary/10 rounded-md">
                                                     <CreditCard className="h-5 w-5" />
-                                                    <span>Påmeldingsavgift: {race.entryFee},- kr</span>
+                                                    <span>Påmeldingsavgift: {entryFee},- kr</span>
                                                 </div>
                                             )}
 
@@ -134,7 +144,7 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
-                                                    <Button onClick={() => handleRaceSignup(race, selectedClasses[race.id])} disabled={!selectedClasses[race.id] || isSubmitting}>
+                                                    <Button onClick={() => handleRaceSignup(race, selectedClass)} disabled={!selectedClass || isSubmitting}>
                                                         <Flag className="mr-2 h-4 w-4"/>Meld på
                                                     </Button>
                                                 </div>
@@ -144,7 +154,7 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
-                            ))}
+                            )})}
                         </Accordion>
                     ) : (
                         <p className="text-center text-muted-foreground py-4">Ingen kommende løp er lagt til enda.</p>

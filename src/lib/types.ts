@@ -74,6 +74,11 @@ export type SiteSettings = {
   weekendPrice?: number;
 };
 
+export type ClassFee = {
+    klasse: string;
+    fee: number;
+};
+
 export type Race = {
   id: string; // Firestore document ID
   name: string;
@@ -84,6 +89,7 @@ export type Race = {
   createdAt: string; // ISO string
   availableClasses?: string[];
   entryFee?: number;
+  classFees?: ClassFee[];
 };
 
 export type RaceSignup = {
