@@ -60,12 +60,13 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
         return;
     }
 
-    const headers = ["Klasse", "Navn", "TransponderNr"];
+    const headers = ["Klasse", "Navn", "StartNr", "TransponderNr"];
     const csvContent = [
         headers.join(","),
         ...signups.map(signup => [
             `"${signup.driverKlasse || ''}"`,
             `"${signup.driverName}"`,
+            `"${signup.driver?.startNr || ''}"`,
             `"${signup.driver?.transponderNr || ''}"`
         ].join(","))
     ].join("\n");
