@@ -20,6 +20,7 @@ const formSchema = z.object({
   endDate: z.date().optional(),
   description: z.string().min(10, { message: "Beskrivelse må være minst 10 tegn." }),
   availableClasses: z.string().optional(),
+  entryFee: z.coerce.number().positive().optional(),
 }).refine(data => !data.endDate || data.endDate >= data.date, {
     message: "Sluttdato kan ikke være før startdato.",
     path: ["endDate"],
@@ -44,10 +45,12 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
       endDate: raceToEdit.endDate ? new Date(raceToEdit.endDate) : undefined,
       description: raceToEdit.description,
       availableClasses: raceToEdit.availableClasses?.join('\n') || '',
+      entryFee: raceToEdit.entryFee || undefined,
     } : {
       name: "",
       description: "",
       availableClasses: "",
+      entryFee: undefined,
     },
   });
 
@@ -64,19 +67,34 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Navn på løp</FormLabel>
-              <FormControl>
-                <Input placeholder="Klubbmesterskap Vår" {...field} disabled={isLoading} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                <FormLabel>Navn på løp</FormLabel>
+                <FormControl>
+                    <Input placeholder="Klubbmesterskap Vår" {...field} disabled={isLoading} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+                control={form.control}
+                name="entryFee"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Påmeldingsavgift (kr)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="350" {...field} disabled={isLoading} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
             control={form.control}

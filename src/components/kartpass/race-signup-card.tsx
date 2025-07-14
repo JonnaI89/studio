@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addRaceSignup, deleteRaceSignup } from '@/services/race-service';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { nb } from 'date-fns/locale';
-import { Flag, CheckCircle, Trophy, Trash2, Calendar, User } from 'lucide-react';
+import { Flag, CheckCircle, Trophy, Trash2, Calendar, User, CreditCard } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RaceSignupsDialog } from './race-signups-dialog';
@@ -115,6 +115,13 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                         <div className="p-2 space-y-4">
                                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
                                             
+                                            {race.entryFee && (
+                                                <div className="flex items-center gap-2 font-semibold text-primary p-2 bg-primary/10 rounded-md">
+                                                    <CreditCard className="h-5 w-5" />
+                                                    <span>Påmeldingsavgift: {race.entryFee},- kr</span>
+                                                </div>
+                                            )}
+
                                             {race.availableClasses && race.availableClasses.length > 0 ? (
                                                 <div className="flex items-center gap-4">
                                                     <Select onValueChange={(value) => setSelectedClasses(prev => ({ ...prev, [race.id]: value }))}>
