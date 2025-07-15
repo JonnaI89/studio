@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { RaceSignupWithDriver } from '@/services/race-service';
 import type { Race, SiteSettings } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -223,4 +223,3 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
     </Dialog>
   );
 }
-
