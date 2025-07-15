@@ -42,11 +42,13 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
 export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
     const { isAdmin } = useAuth();
 
     const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
         if (!id) return;
+        setIsSaving(true);
         try {
             const updatedDriverData: Driver = { ...driver, ...driverData, id: id };
             await updateDriver(updatedDriverData);
@@ -62,6 +64,8 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                 title: 'Lagring feilet',
                 description: (error as Error).message || 'Kunne ikke lagre endringene.',
             });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -93,6 +97,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                                 <DriverForm
                                     driverToEdit={driver}
                                     onSave={handleSave}
+                                    isSaving={isSaving}
                                     closeDialog={() => setIsEditing(false)}
                                     isRestrictedView={!isAdmin}
                                 />

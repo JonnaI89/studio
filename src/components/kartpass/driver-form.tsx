@@ -43,7 +43,6 @@ const guardianSchema = z.object({
   licenses: z.array(z.object({ value: z.string() })).optional(),
 });
 
-// This schema is for a SINGLE driver
 const driverFormSchema = z.object({
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
     email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
@@ -66,19 +65,18 @@ const driverFormSchema = z.object({
 type FormValues = z.infer<typeof driverFormSchema>;
 
 interface DriverFormProps {
-    driverToEdit?: Driver | null;
-    profileToEdit?: DriverProfile | null;
-    onSave: (data: Omit<Driver, 'id'>, profileId?: string) => void;
+    driverToEdit?: DriverProfile | null;
+    onSave: (data: Omit<Driver, 'id'>, id?: string) => void;
     isSaving: boolean;
+    closeDialog: () => void;
     isRestrictedView?: boolean;
 }
 
-export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRestrictedView = false }: DriverFormProps) {
+export function DriverForm({ driverToEdit, onSave, isSaving, closeDialog, isRestrictedView = false }: DriverFormProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(driverFormSchema),
         defaultValues: driverToEdit ? {
             ...driverToEdit,
-            email: profileToEdit?.email || '',
             dob: driverToEdit.dob ? format(parseDateString(driverToEdit.dob)!, 'dd.MM.yyyy') : '',
             hasSeasonPass: driverToEdit.hasSeasonPass || false,
             guardians: driverToEdit.guardians?.map(g => ({
@@ -88,7 +86,7 @@ export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRe
         } : {
             rfid: "",
             name: "",
-            email: profileToEdit?.email || '',
+            email: "",
             club: "",
             dob: "",
             hasSeasonPass: false,
@@ -119,8 +117,9 @@ export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRe
             return;
         }
 
-        const driverData: Omit<Driver, 'id'> = {
+        const driverData: Omit<Driver, 'id' | 'role'> = {
             rfid: values.rfid,
+            email: values.email,
             name: values.name,
             dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
             club: values.club,
@@ -140,7 +139,7 @@ export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRe
             })) || [],
         };
         
-        onSave(driverData, profileToEdit?.id || values.email);
+        onSave(driverData, driverToEdit?.id);
     }
 
     return (
@@ -183,7 +182,6 @@ export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRe
                                 </FormItem>
                             )}
                         />
-                        {/* Email is part of the profile, not the individual driver */}
                         <FormField
                             control={form.control}
                             name="email"
@@ -193,13 +191,13 @@ export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRe
                                     <FormControl>
                                         <Input
                                             type="email"
-                                            placeholder="familien@epost.no"
+                                            placeholder="din@epost.no"
                                             {...field}
-                                            disabled={isSaving || !!profileToEdit}
+                                            disabled={isSaving || !!driverToEdit}
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        Hver familie/innlogging må ha en unik e-post.
+                                        Hver fører må ha en unik e-post.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -406,7 +404,8 @@ export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRe
                         </div>
                     </div>
                 </div>
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex justify-between items-center pt-4 border-t">
+                    <Button type="button" variant="ghost" onClick={closeDialog} disabled={isSaving}>Avbryt</Button>
                     <Button type="submit" disabled={isSaving}>
                         {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {driverToEdit ? 'Lagre Endringer' : 'Registrer Fører'}

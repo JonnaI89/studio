@@ -29,6 +29,7 @@ interface DriverInfoCardProps {
 export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime, paymentStatus, onProfileUpdate }: DriverInfoCardProps) {
   const isUnderage = age !== null && age < 18;
   const [activeTab, setActiveTab] = useState("info");
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const getInitials = (name: string) => {
@@ -41,6 +42,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
 
   const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
     if (!id) return;
+    setIsSaving(true);
     try {
         const updatedDriverData: Driver = { ...driver, ...driverData, id: id };
         await updateDriver(updatedDriverData);
@@ -56,6 +58,8 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
             title: 'Lagring feilet',
             description: (error as Error).message || 'Kunne ikke lagre endringene.',
         });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -138,6 +142,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                         <DriverForm 
                             driverToEdit={driver} 
                             onSave={handleSave} 
+                            isSaving={isSaving}
                             closeDialog={() => setActiveTab("info")} 
                         />
                     </div>
