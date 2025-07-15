@@ -719,6 +719,7 @@ export function CheckInDashboard() {
             onOpenChange={(isOpen) => !isOpen && setSignupForCheckin(null)}
             signup={signupForCheckin ?? undefined}
             race={typeof selectedEvent === 'object' ? selectedEvent : null}
+            settings={siteSettings}
             onCheckinSuccess={handleRaceCheckinSuccess}
         />
     </div>

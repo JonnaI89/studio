@@ -7,12 +7,19 @@ import { getRaceSignupsWithDriverData, deleteRaceSignup, getRaceById } from "@/s
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LoaderCircle, User, Trash2, Download, LogIn, Tent } from "lucide-react";
+import { LoaderCircle, User, Trash2, Download, Tent } from "lucide-react";
 import type { RaceSignupWithDriver } from "@/services/race-service";
-import { RaceCheckinDialog } from "./race-checkin-dialog";
-
 
 interface RaceSignupsDialogProps {
   raceId: string;
@@ -24,7 +31,7 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
   const [race, setRace] = useState<Race | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const [signupToInteract, setSignupToInteract] = useState<{ type: 'delete' | 'checkin', data: RaceSignupWithDriver } | null>(null);
+  const [signupToDelete, setSignupToDelete] = useState<RaceSignupWithDriver | null>(null);
 
   useEffect(() => {
     const fetchSignups = async () => {
@@ -51,9 +58,7 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
   }, [raceId, toast]);
 
   const handleConfirmDelete = async () => {
-    if (!signupToInteract || signupToInteract.type !== 'delete') return;
-    const { data: signupToDelete } = signupToInteract;
-
+    if (!signupToDelete) return;
     try {
       await deleteRaceSignup(signupToDelete.id);
       setSignups(prev => prev.filter(s => s.id !== signupToDelete.id));
@@ -61,7 +66,7 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
     } catch (error) {
       toast({ variant: "destructive", title: "Fjerning feilet", description: (error as Error).message });
     } finally {
-      setSignupToInteract(null);
+      setSignupToDelete(null);
     }
   };
 
@@ -156,20 +161,10 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
                           {showAdminControls && (
                               <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7"
-                                  onClick={() => setSignupToInteract({ type: 'checkin', data: signup })}
-                                  title={`Sjekk inn ${signup.driverName}`}
-                                >
-                                  <LogIn className="mr-2 h-4 w-4 text-green-600" />
-                                  Ankomst
-                                </Button>
-                                <Button
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7"
-                                    onClick={() => setSignupToInteract({ type: 'delete', data: signup })}
+                                    onClick={() => setSignupToDelete(signup)}
                                     title={`Fjern påmelding for ${signup.driverName}`}
                                 >
                                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -187,14 +182,14 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
         {showAdminControls && (
             <>
               <AlertDialog 
-                open={signupToInteract?.type === 'delete'} 
-                onOpenChange={(isOpen) => !isOpen && setSignupToInteract(null)}
+                open={!!signupToDelete} 
+                onOpenChange={(isOpen) => !isOpen && setSignupToDelete(null)}
               >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Fjerne påmelding?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Er du sikker på at du vil fjerne påmeldingen for <span className="font-bold">{signupToInteract?.data.driverName}</span>?
+                            Er du sikker på at du vil fjerne påmeldingen for <span className="font-bold">{signupToDelete?.driverName}</span>?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -209,14 +204,6 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
                     </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-
-              <RaceCheckinDialog
-                isOpen={signupToInteract?.type === 'checkin'}
-                onOpenChange={(isOpen) => !isOpen && setSignupToInteract(null)}
-                signup={signupToInteract?.type === 'checkin' ? signupToInteract.data : undefined}
-                race={race}
-                onCheckinSuccess={() => setSignupToInteract(null)}
-              />
             </>
         )}
     </div>
