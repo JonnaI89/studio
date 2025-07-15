@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { recordCheckin } from '@/services/checkin-service';
 import { initiateZettlePushPayment } from '@/services/zettle-service';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { LoaderCircle, CreditCard, User, Trophy, Tent, CheckCircle2, XCircle, Wifi, ServerCrash, Pencil } from 'lucide-react';
 import { Input } from '../ui/input';
 
@@ -51,6 +51,8 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
 
   useEffect(() => {
       setCurrentAmount(calculatedAmount);
+      setStatus("idle");
+      setError(null);
   }, [calculatedAmount, isOpen]);
 
 
@@ -101,14 +103,17 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
 
 
   const startPaymentProcess = useCallback(async () => {
-    if (!signup || !settings?.zettleLinkId) {
-        if(currentAmount === 0) {
-           await handlePaymentCompleted();
-           setStatus("successful");
-        } else if (!settings?.zettleLinkId) {
-            setError("Zettle Terminal ID er ikke konfigurert i nettstedinnstillingene.");
-            setStatus("failed");
-        }
+    if (!signup) return;
+    
+    if (currentAmount === 0) {
+        await handlePaymentCompleted();
+        setStatus("successful");
+        return;
+    }
+
+    if (!settings?.zettleLinkId) {
+        setError("Zettle Terminal ID er ikke konfigurert i nettstedinnstillingene.");
+        setStatus("failed");
         return;
     }
     
@@ -170,19 +175,17 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
   }, [signup, settings, currentAmount, cleanUpSocket, status, handlePaymentCompleted, toast]);
   
   useEffect(() => {
-    if (isOpen && signup) {
-      startPaymentProcess();
-    } else {
-      setStatus("idle");
-      setError(null);
-      cleanUpSocket();
-    }
-    return () => cleanUpSocket();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, signup]);
+    // Only cleanup on unmount or when isOpen changes to false
+    return () => {
+        if (!isOpen) {
+            cleanUpSocket();
+        }
+    };
+  }, [isOpen, cleanUpSocket]);
 
   const getStatusContent = () => {
     switch (status) {
+      case "idle": return null; // Don't show status when idle
       case "initializing": return { icon: <LoaderCircle className="h-16 w-16 text-primary animate-spin" />, title: "Initialiserer betaling...", description: "Klargjør sikker forespørsel." };
       case "connecting_ws": return { icon: <Wifi className="h-16 w-16 text-primary animate-pulse" />, title: "Kobler til terminal...", description: "Etablerer sanntids-kobling." };
       case "waiting_for_reader": return { icon: <CreditCard className="h-16 w-16 text-primary" />, title: "Venter på terminal", description: "Sendt forespørsel. Sjekk terminal-skjermen." };
@@ -194,7 +197,7 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
     }
   };
 
-  const { icon, title, description } = getStatusContent();
+  const statusContent = getStatusContent();
 
   if (!isOpen || !signup || !race) return null;
 
@@ -208,11 +211,13 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
           </DialogDescription>
         </DialogHeader>
 
-        <div className="my-8 flex flex-col items-center gap-4 text-center">
-          {icon}
-          <p className="text-lg font-semibold">{title}</p>
-          <p className="text-sm text-muted-foreground h-4">{description}</p>
-        </div>
+        {statusContent && (
+            <div className="my-8 flex flex-col items-center gap-4 text-center">
+                {statusContent.icon}
+                <p className="text-lg font-semibold">{statusContent.title}</p>
+                <p className="text-sm text-muted-foreground h-4">{statusContent.description}</p>
+            </div>
+        )}
 
         <div className="mt-4 w-full rounded-md border p-4 text-center space-y-2">
             {isEditingAmount ? (
@@ -242,6 +247,12 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
             </div>
         </div>
         
+        {status === "idle" && (
+            <div className="flex justify-center gap-2 pt-4">
+                 <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+                 <Button onClick={startPaymentProcess} disabled={isEditingAmount}>Start Betaling & Sjekk inn</Button>
+            </div>
+        )}
         {(status === "failed" || status === "cancelled") && (
             <div className="flex justify-center gap-2 pt-4">
                  <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
