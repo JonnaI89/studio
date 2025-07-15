@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { Driver, DriverProfile } from "@/lib/types";
-import { addNewDriver, deleteDriver as deleteServerDriver } from "@/services/driver-service";
+import { addNewDriver, deleteDriver as deleteServerDriver, updateDriver } from "@/services/driver-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,11 +26,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DriversTable } from "./drivers-table";
 import { DriverForm } from "./driver-form";
-import { UserPlus, LoaderCircle, Trash2, ArrowLeft, Users } from "lucide-react";
+import { UserPlus, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
 
 interface DriverManagementDialogProps {
   profiles: DriverProfile[];
@@ -41,17 +41,17 @@ type AddMode = "new" | "existing";
 
 export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverManagementDialogProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [driverToEdit, setDriverToEdit] = useState<{ driver: Driver, profileId: string } | null>(null);
-  const [driverToDelete, setDriverToDelete] = useState<{ driver: Driver, profileId: string } | null>(null);
+  const [driverToEdit, setDriverToEdit] = useState<{ driver: Driver; profileId: string } | null>(null);
+  const [driverToDelete, setDriverToDelete] = useState<{ driver: Driver; profileId: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [addMode, setAddMode] = useState<AddMode>("new");
   const [existingEmail, setExistingEmail] = useState("");
-
   const { toast } = useToast();
 
   const handleEdit = (driver: Driver, profileId: string) => {
     setDriverToEdit({ driver, profileId });
+    setAddMode("new"); // Not relevant for edit, but reset state
     setIsFormOpen(true);
   };
   
@@ -61,6 +61,8 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
 
   const handleAddNew = () => {
     setDriverToEdit(null);
+    setAddMode("new");
+    setExistingEmail("");
     setIsFormOpen(true);
   };
   
@@ -90,38 +92,27 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
     setIsSaving(true);
     try {
       if (driverToEdit) {
-         // This is an update to an existing driver.
-        const updatedDriver: Driver = { ...driverToEdit.driver, ...driverData };
-        
-        // Find profile and update driver in it
-        const profile = profiles.find(p => p.id === driverToEdit.profileId);
-        if(!profile) throw new Error("Could not find profile for driver");
-
-        const driverIndex = profile.drivers.findIndex(d => d.id === updatedDriver.id);
-        profile.drivers[driverIndex] = updatedDriver;
-        
-        // TODO: We need an updateProfile server action
-        // await updateProfile(profile);
-        
+        // This is an update to an existing driver.
+        const driverToUpdate: Driver = { ...driverToEdit.driver, ...driverData, id: driverToEdit.driver.id };
+        await updateDriver(driverToEdit.profileId, driverToUpdate);
         toast({
             title: `Fører oppdatert`,
             description: `${driverData.name} er lagret i databasen.`,
         });
-
       } else {
         // This is a new driver registration.
-        if (!driverData.email && addMode === 'new') {
+        if (addMode === 'new' && !driverData.email) {
             toast({ variant: "destructive", title: "E-post er påkrevd", description: "E-post må fylles ut for å opprette en ny familieprofil."});
             setIsSaving(false);
             return;
         }
-        if (!existingEmail && addMode === 'existing') {
+        if (addMode === 'existing' && !existingEmail) {
             toast({ variant: "destructive", title: "E-post er påkrevd", description: "E-post må fylles ut for å finne en eksisterende profil."});
             setIsSaving(false);
             return;
         }
 
-        await addNewDriver(driverData, addMode === 'existing' ? existingEmail : undefined);
+        await addNewDriver(driverData, addMode === 'existing' ? existingEmail : driverData.email);
         
         toast({
             title: 'Fører Opprettet!',
@@ -134,8 +125,8 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
       setDriverToEdit(null);
 
     } catch (error) {
-      const errorMessage = (error as Error).message;
-      toast({
+       const errorMessage = (error as Error).message;
+       toast({
         variant: 'destructive',
         title: 'Lagring feilet',
         description: errorMessage || 'En ukjent feil oppsto.',
@@ -145,9 +136,6 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
     }
   };
 
-  const allDrivers = profiles.flatMap(p => 
-    p.drivers ? p.drivers.map(d => ({ ...d, profileId: p.id, profileEmail: p.email })) : []
-  );
 
   return (
     <div className="flex flex-col gap-4 flex-1 min-h-0">
@@ -179,7 +167,7 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
                 </DialogHeader>
                 {!driverToEdit && (
                     <div className="p-4 border bg-muted/50 rounded-lg">
-                        <RadioGroup defaultValue="new" onValueChange={(value: AddMode) => setAddMode(value)}>
+                        <RadioGroup defaultValue="new" value={addMode} onValueChange={(value: AddMode) => setAddMode(value)}>
                             <Label className="font-medium">Type registrering</Label>
                             <div className="flex items-center space-x-2 pt-2">
                                 <RadioGroupItem value="new" id="r1" />
