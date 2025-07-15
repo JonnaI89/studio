@@ -145,7 +145,9 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
     }
   };
 
-  const allDrivers = profiles.flatMap(p => p.drivers.map(d => ({ ...d, profileId: p.id, profileEmail: p.email })));
+  const allDrivers = profiles.flatMap(p => 
+    p.drivers ? p.drivers.map(d => ({ ...d, profileId: p.id, profileEmail: p.email })) : []
+  );
 
   return (
     <div className="flex flex-col gap-4 flex-1 min-h-0">
