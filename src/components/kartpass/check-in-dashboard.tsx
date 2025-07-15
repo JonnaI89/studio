@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Driver, CheckedInEntry, SiteSettings, Race } from "@/lib/types";
-import { getDrivers, getDriverByRfid } from "@/services/driver-service";
+import type { Driver, CheckedInEntry, SiteSettings, Race, DriverProfile } from "@/lib/types";
+import { getDriverProfiles, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
@@ -52,7 +51,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const [isDriverMgmtOpen, setIsDriverMgmtOpen] = useState(false);
   const [isSignupsOpen, setIsSignupsOpen] = useState(false);
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [profiles, setProfiles] = useState<DriverProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
@@ -79,17 +78,19 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const [fetchedDrivers, fetchedSettings, fetchedCheckins] = await Promise.all([
-        getDrivers(),
+      const [fetchedProfiles, fetchedSettings, fetchedCheckins] = await Promise.all([
+        getDriverProfiles(),
         getSiteSettings(),
         getCheckinsForDate(today),
       ]);
       
-      setDrivers(fetchedDrivers);
+      setProfiles(fetchedProfiles);
       setSiteSettings(fetchedSettings);
       
+      const allDrivers = fetchedProfiles.flatMap(p => p.drivers);
+
       const reconstructedCheckins: CheckedInEntry[] = fetchedCheckins.map(historyEntry => {
-          const driverProfile = fetchedDrivers.find(d => d.id === historyEntry.driverId);
+          const driverProfile = allDrivers.find(d => d.id === historyEntry.driverId);
           
           if (driverProfile) {
               return {
@@ -110,7 +111,6 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                       club: 'Engangslisens',
                       dob: '2000-01-01',
                       email: '',
-                      role: 'driver',
                       hasSeasonPass: false,
                       klasse: historyEntry.driverKlasse,
                   },
@@ -128,7 +128,6 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                   club: 'Ukjent',
                   dob: '2000-01-01',
                   email: '',
-                  role: 'driver',
               },
               checkInTime: historyEntry.checkinTime,
               paymentStatus: historyEntry.paymentStatus,
@@ -361,7 +360,6 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
         club: 'Engangslisens',
         dob: '2000-01-01',
         email: '',
-        role: 'driver',
         hasSeasonPass: false,
         driverLicense: licenseNumber,
         klasse: 'Engangslisens',
@@ -435,7 +433,10 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const handleProfileUpdate = (updatedDriver: Driver) => {
     setDriver(updatedDriver); // Update the state for the info card
     // Also update the main drivers list to reflect changes in management dialogs etc.
-    setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
+    setProfiles(prev => prev.map(p => ({
+        ...p,
+        drivers: p.drivers.map(d => d.id === updatedDriver.id ? updatedDriver : d)
+    })));
   };
 
 
@@ -583,7 +584,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                 </DialogDescription>
               </DialogHeader>
               <ManualCheckInForm 
-                drivers={drivers} 
+                profiles={profiles} 
                 onDriverSelect={handleManualSelect}
                 closeDialog={() => setIsManualCheckInOpen(false)}
               />
@@ -608,7 +609,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <DriverManagementDialog 
-                    drivers={drivers}
+                    profiles={profiles}
                     onDatabaseUpdate={fetchData}
                 />
             </DialogContent>

@@ -67,19 +67,19 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface DriverFormProps {
     driverToEdit?: Driver | null;
-    onSave: (data: Omit<Driver, 'id' | 'role'>, id?: string) => void;
+    onSave: (data: Omit<Driver, 'id'>, id?: string) => void;
     closeDialog: () => void;
     rfidFromScan?: string;
     isRestrictedView?: boolean;
+    addMode?: 'new' | 'existing';
 }
 
-export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, isRestrictedView = false }: DriverFormProps) {
+export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, isRestrictedView = false, addMode }: DriverFormProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: driverToEdit ? {
             ...driverToEdit,
             dob: driverToEdit.dob ? format(parseDateString(driverToEdit.dob)!, 'dd.MM.yyyy') : '',
-            email: driverToEdit.email || "",
             rfid: driverToEdit.rfid || "",
             hasSeasonPass: driverToEdit.hasSeasonPass || false,
             klasse: driverToEdit.klasse || "",
@@ -129,9 +129,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             return;
         }
 
-        const driverData: Omit<Driver, 'id' | 'role'> = {
+        const driverData: Omit<Driver, 'id'> = {
             rfid: values.rfid,
-            email: values.email || '',
             name: values.name,
             dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
             club: values.club,
@@ -149,11 +148,14 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                 ...g,
                 licenses: g.licenses?.map(l => l.value).filter(Boolean) || []
             })) || [],
+            email: values.email || '',
         };
         
         onSave(driverData, values.id);
         // closeDialog(); // Let the parent component handle closing
     }
+
+    const showEmailField = addMode === 'new' || !!driverToEdit;
 
     return (
         <Form {...form}>
@@ -195,29 +197,31 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>E-post (for innlogging)</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="email"
-                                            placeholder="ola@nordmann.no"
-                                            {...field}
-                                            value={field.value ?? ''}
-                                            readOnly={!!driverToEdit?.email && !isRestrictedView}
-                                            className={cn(!!driverToEdit?.email && !isRestrictedView && "cursor-not-allowed opacity-70")}
-                                        />
-                                    </FormControl>
-                                    <FormDescription>
-                                        Søsken som registreres med samme e-post vil bli knyttet til samme innlogging.
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {showEmailField && (
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>E-post (for innlogging)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="email"
+                                                placeholder="ola@nordmann.no"
+                                                {...field}
+                                                value={field.value ?? ''}
+                                                readOnly={!!driverToEdit?.email && !isRestrictedView}
+                                                className={cn(!!driverToEdit?.email && !isRestrictedView && "cursor-not-allowed opacity-70")}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Søsken som registreres med samme e-post vil bli knyttet til samme innlogging.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <FormField
                             control={form.control}
                             name="dob"
@@ -515,4 +519,3 @@ function GuardianFormSection({ index, removeGuardian, form }: GuardianFormSectio
         </div>
     );
 }
-

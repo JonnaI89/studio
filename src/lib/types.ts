@@ -1,3 +1,4 @@
+
 export type Guardian = {
   id: string;
   name: string;
@@ -6,13 +7,11 @@ export type Guardian = {
 }
 
 export type Driver = {
-  id: string; // Firestore doc ID / Corresponds to Firebase Auth UID
+  id: string; // Unik ID for denne føreren, f.eks. en UUID
   rfid: string;
-  email: string;
   name: string;
   dob: string; // YYYY-MM-DD, can be empty
   club: string;
-  role: 'admin' | 'driver';
   hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
@@ -24,6 +23,13 @@ export type Driver = {
   vehicleLicense?: string;
   teamLicense?: string;
   guardians?: Guardian[];
+};
+
+export type DriverProfile = {
+  id: string; // Firestore doc ID / Corresponds to Firebase Auth UID
+  email: string;
+  role: 'admin' | 'driver';
+  drivers: Driver[];
 };
 
 export type CheckedInEntry = {

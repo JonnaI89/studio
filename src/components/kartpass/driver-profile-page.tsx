@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
+    profileId: string;
 }
 
 interface InfoItemProps {
@@ -39,17 +40,17 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     )
 }
 
-export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
+export function DriverProfilePage({ initialDriver, profileId }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
     const { isAdmin } = useAuth();
 
-    const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
+    const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
         if (!id) return;
         try {
-            const updatedDriverData: Driver = { ...driver, ...driverData, id: id, role: driver.role };
-            await updateDriver(updatedDriverData);
+            const updatedDriverData: Driver = { ...driver, ...driverData, id: id };
+            await updateDriver(profileId, updatedDriverData);
             setDriver(updatedDriverData);
             setIsEditing(false);
             toast({

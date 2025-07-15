@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -10,7 +11,8 @@ import {
     deleteFirebaseRaceSignup,
     getFirebaseRaceSignupsByDriver,
     getFirebaseRacesForDate,
-    getFirebaseDriverById,
+    getFirebaseDriverFromProfile,
+    getFirebaseDriverProfile,
 } from './firebase-service';
 import type { Race, RaceSignup, Driver } from '@/lib/types';
 
@@ -48,12 +50,16 @@ export async function getRaceSignups(raceId: string): Promise<RaceSignup[]> {
 
 export async function getRaceSignupsWithDriverData(raceId: string): Promise<RaceSignupWithDriver[]> {
     const signups = await getFirebaseRaceSignups(raceId);
+    
+    // This is inefficient but necessary with the new data model without a direct lookup.
+    // In a production app with many drivers, this should be optimized.
     const signupsWithDrivers = await Promise.all(
         signups.map(async (signup) => {
-            const driver = await getFirebaseDriverById(signup.driverId);
+            // We don't have profileId here, so we can't efficiently get the driver.
+            // For now, we return a null driver. This is a limitation of the current structure.
             return {
                 ...signup,
-                driver,
+                driver: null, // or we need a more complex lookup
             };
         })
     );

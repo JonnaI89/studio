@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import type { RaceSignupWithDriver } from "@/services/race-service";
+import type { RaceSignup } from "@/lib/types";
 import { getRaceSignupsWithDriverData, deleteRaceSignup } from "@/services/race-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoaderCircle, User, Trash2, Download } from "lucide-react";
+import type { RaceSignupWithDriver } from "@/services/race-service";
+
 
 interface RaceSignupsDialogProps {
   raceId: string;

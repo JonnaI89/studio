@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getDriverById } from "@/services/driver-service";
+import { getDriverProfile } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
+import { setCookie } from 'cookies-next';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -38,7 +39,7 @@ export function LoginForm() {
     try {
       const user = await signIn(values.email, values.password);
       
-      const driverProfile = await getDriverById(user.uid);
+      const driverProfile = await getDriverProfile(user.uid);
 
       if (!driverProfile) {
         toast({
@@ -56,7 +57,20 @@ export function LoginForm() {
       }
       
       toast({ title: "Innlogging Vellykket" });
-      router.push(`/driver/${driverProfile.id}`);
+
+      if (driverProfile.drivers.length > 1) {
+        // More than one driver, let them choose
+        // We'll store the profile in a cookie to be read on the selection page
+        setCookie('driverProfile', JSON.stringify(driverProfile), { path: '/' });
+        router.push(`/velg-forer`);
+      } else if (driverProfile.drivers.length === 1) {
+        // Only one driver, go directly to their profile
+        router.push(`/driver/${driverProfile.drivers[0].id}`);
+      } else {
+        // No drivers in profile yet
+        toast({ variant: "destructive", title: "Ingen førere", description: "Denne profilen har ingen førere registrert." });
+      }
+
 
     } catch (error) {
       toast({

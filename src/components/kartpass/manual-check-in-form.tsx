@@ -1,26 +1,28 @@
+
 "use client";
 
 import { useState } from 'react';
-import type { Driver } from '@/lib/types';
+import type { Driver, DriverProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { User, Check } from 'lucide-react';
 
 interface ManualCheckInFormProps {
-  drivers: Driver[];
+  profiles: DriverProfile[];
   onDriverSelect: (driver: Driver) => void;
   closeDialog: () => void;
 }
 
-export function ManualCheckInForm({ drivers, onDriverSelect, closeDialog }: ManualCheckInFormProps) {
+export function ManualCheckInForm({ profiles, onDriverSelect, closeDialog }: ManualCheckInFormProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
+  const allDrivers = profiles.flatMap(p => p.drivers);
+
   const filteredDrivers = searchQuery
-    ? drivers.filter(driver => 
+    ? allDrivers.filter(driver => 
         driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        driver.rfid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (driver.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+        driver.rfid.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
 
@@ -32,7 +34,7 @@ export function ManualCheckInForm({ drivers, onDriverSelect, closeDialog }: Manu
   return (
     <div className="flex flex-col gap-4">
       <Input
-        placeholder="Søk etter navn, e-post eller RFID..."
+        placeholder="Søk etter navn, eller RFID..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         autoFocus

@@ -11,24 +11,28 @@ export default function DriverLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, profile } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const pageId = params.id as string;
+  const pageDriverId = params.id as string;
 
   useEffect(() => {
     if (!loading) {
       if (isAdmin) {
-        // Admin can see all profiles
         return;
       }
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      
+      const userHasAccessToThisDriver = profile?.drivers.some(d => d.id === pageDriverId);
 
-      if (!user || user.uid !== pageId) {
-        // If not admin, and not owner of the profile, send to login
+      if (!userHasAccessToThisDriver) {
         router.push("/login");
       }
     }
-  }, [user, loading, isAdmin, pageId, router]);
+  }, [user, loading, isAdmin, pageDriverId, router, profile]);
 
   if (loading) {
     return (
@@ -39,8 +43,10 @@ export default function DriverLayout({
     );
   }
 
+  const userHasAccessToThisDriver = profile?.drivers.some(d => d.id === pageDriverId);
+
   // Extra check to avoid "flash" of content
-  if (!isAdmin && (!user || user.uid !== pageId)) {
+  if (!isAdmin && !userHasAccessToThisDriver) {
      return (
         <div className="w-full h-screen flex flex-col items-center justify-center gap-4 text-muted-foreground">
             <LoaderCircle className="h-10 w-10 animate-spin" />

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { updateDriver } from "@/services/driver-service";
 import { calculateAge, parseDateString } from "@/lib/utils";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
 
 interface DriverInfoCardProps {
   driver: Driver;
@@ -30,6 +31,7 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   const isUnderage = age !== null && age < 18;
   const [activeTab, setActiveTab] = useState("info");
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   const getInitials = (name: string) => {
     const names = name.split(' ');
@@ -40,11 +42,11 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   }
 
   const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
-    if (!id) return;
+    if (!id || !profile?.id) return;
     try {
-        const updatedDriver: Driver = { ...driverData, id: id, role: driver.role };
-        await updateDriver(updatedDriver);
-        onProfileUpdate(updatedDriver);
+        const updatedDriverData: Driver = { ...driver, ...driverData };
+        await updateDriver(profile.id, updatedDriverData);
+        onProfileUpdate(updatedDriverData);
         setActiveTab("info");
         toast({
             title: "Profil Oppdatert",
@@ -213,4 +215,3 @@ function InfoItem({ icon, label, value, children }: InfoItemProps) {
         </div>
     )
 }
-
