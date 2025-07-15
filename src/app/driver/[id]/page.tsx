@@ -1,3 +1,4 @@
+
 import { getDriverById, getDriversByAuthUid } from '@/services/driver-service';
 import { getRaces, getRaceSignupsByDriver } from '@/services/race-service';
 import { getTrainingSettings, getTrainingSignupsByDriver } from '@/services/training-service';
@@ -9,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RaceSignupCard } from '@/components/kartpass/race-signup-card';
 import { TrainingSignupCard } from '@/components/kartpass/training-signup-card';
 import { SiblingSwitcher } from '@/components/kartpass/sibling-switcher';
+import type { Driver } from '@/lib/types';
 
 export default async function Page({ params }: { params: { id: string } }) {
     const driver = await getDriverById(params.id);
@@ -17,13 +19,17 @@ export default async function Page({ params }: { params: { id: string } }) {
         notFound();
     }
 
-    // Fetch all data needed for the tabs and sibling switcher
-    const [races, driverRaceSignups, trainingSettings, driverTrainingSignups, siblings] = await Promise.all([
+    let siblings: Driver[] = [];
+    if (driver.authUid) {
+        siblings = await getDriversByAuthUid(driver.authUid);
+    }
+    
+    // Fetch all other data needed for the tabs
+    const [races, driverRaceSignups, trainingSettings, driverTrainingSignups] = await Promise.all([
         getRaces(),
         getRaceSignupsByDriver(driver.id),
         getTrainingSettings(),
         getTrainingSignupsByDriver(driver.id),
-        getDriversByAuthUid(driver.authUid),
     ]);
 
     const otherSiblings = siblings.filter(s => s.id !== driver.id);
