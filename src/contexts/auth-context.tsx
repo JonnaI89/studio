@@ -1,8 +1,9 @@
+
 "use client";
 
 import { createContext, useState, useEffect, ReactNode } from "react";
 import { onAuthStateChanged } from "@/services/auth-service";
-import { getFirebaseDriverById } from "@/services/firebase-service";
+import { getDriverById } from "@/services/driver-service";
 import type { User } from "firebase/auth";
 import type { Driver } from "@/lib/types";
 import { LoaderCircle } from "lucide-react";
@@ -31,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
-        const driverProfile = await getFirebaseDriverById(user.uid);
+        const driverProfile = await getDriverById(user.uid);
         setProfile(driverProfile);
       } else {
         setUser(null);

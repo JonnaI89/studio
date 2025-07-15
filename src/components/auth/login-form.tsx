@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getFirebaseDriversByAuthUid, getFirebaseDriverById, updateFirebaseDriver } from "@/services/firebase-service";
+import { getDriverById } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -38,29 +38,9 @@ export function LoginForm() {
     try {
       const user = await signIn(values.email, values.password);
       
-      // First, check for an admin profile (old method)
-      let adminProfile = await getFirebaseDriverById(user.uid);
-      if (adminProfile && adminProfile.role === 'admin') {
-          toast({ title: "Admin-innlogging Vellykket" });
-          router.push('/admin');
-          return;
-      }
-      
-      // If not admin, check for driver profiles using the new authUid method
-      let driverProfiles = await getFirebaseDriversByAuthUid(user.uid);
+      const driverProfile = await getDriverById(user.uid);
 
-      // If no profiles found with new method, check the old way (for legacy users)
-      if (!driverProfiles || driverProfiles.length === 0) {
-        const legacyProfile = await getFirebaseDriverById(user.uid);
-        if (legacyProfile) {
-          // Found a legacy profile, upgrade it by adding the authUid
-          legacyProfile.authUid = user.uid;
-          await updateFirebaseDriver(legacyProfile);
-          driverProfiles = [legacyProfile];
-        }
-      }
-
-      if (!driverProfiles || driverProfiles.length === 0) {
+      if (!driverProfile) {
         toast({
             variant: "destructive",
             title: "Profil Mangler",
@@ -69,14 +49,14 @@ export function LoginForm() {
         return; 
       }
       
-      if (driverProfiles.length > 1) {
-        // Multiple drivers associated, redirect to selection page
-        router.push(`/velg-forer?authUid=${user.uid}`);
-      } else {
-        // Single driver, go directly to their profile
-        toast({ title: "Innlogging Vellykket" });
-        router.push(`/driver/${driverProfiles[0].id}`);
+      if (driverProfile.role === 'admin') {
+          toast({ title: "Admin-innlogging Vellykket" });
+          router.push('/admin');
+          return;
       }
+      
+      toast({ title: "Innlogging Vellykket" });
+      router.push(`/driver/${driverProfile.id}`);
 
     } catch (error) {
       toast({

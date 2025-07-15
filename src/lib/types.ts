@@ -6,8 +6,7 @@ export type Guardian = {
 }
 
 export type Driver = {
-  id: string; // Firestore doc ID
-  authUid: string; // The corresponding Firebase Auth user UID. Can be shared.
+  id: string; // Firestore doc ID / Corresponds to Firebase Auth UID
   rfid: string;
   email: string;
   name: string;

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -18,12 +19,12 @@ export default function DriverLayout({
   useEffect(() => {
     if (!loading) {
       if (isAdmin) {
-        // Admin kan se alle profiler
+        // Admin can see all profiles
         return;
       }
 
       if (!user || user.uid !== pageId) {
-        // Hvis ikke admin, og ikke eier av profilen, send til login
+        // If not admin, and not owner of the profile, send to login
         router.push("/login");
       }
     }
@@ -38,7 +39,7 @@ export default function DriverLayout({
     );
   }
 
-  // Ekstra sjekk for å unngå "flash" av innhold
+  // Extra check to avoid "flash" of content
   if (!isAdmin && (!user || user.uid !== pageId)) {
      return (
         <div className="w-full h-screen flex flex-col items-center justify-center gap-4 text-muted-foreground">

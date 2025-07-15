@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import type { Driver, Guardian } from '@/lib/types';
+import type { Driver } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const { toast } = useToast();
     const { isAdmin } = useAuth();
 
-    const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
+    const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
         if (!id) return;
         try {
             const updatedDriverData: Driver = { ...driver, ...driverData, id: id, role: driver.role };

@@ -3,7 +3,9 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { addFirebaseDriver, deleteFirebaseDriver, getFirebaseDriverByEmail, updateFirebaseDriver, createFirebaseUser } from "@/services/firebase-service";
+import { updateDriver, deleteDriver } from "@/services/driver-service";
+import { addDriverProfile } from "@/services/firebase-service";
+import { signUp, signIn } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +44,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth(); // Get current admin user
+  const { user: adminUser } = useAuth();
 
   const handleEdit = (driver: Driver) => {
     setDriverToEdit(driver);
@@ -62,7 +64,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     if (!driverToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteFirebaseDriver(driverToDelete.id);
+      await deleteDriver(driverToDelete.id);
       toast({
         title: "Fører Slettet",
         description: `${driverToDelete.name} har blitt fjernet fra databasen.`,
@@ -80,13 +82,13 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     }
   };
 
-  const handleSave = async (driverData: Omit<Driver, 'id' | 'role' | 'authUid'>, id?: string) => {
+  const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
     setIsSaving(true);
     try {
       if (driverToEdit && id) {
         // This is an update to an existing driver.
         const driverToUpdate: Driver = { ...driverToEdit, ...driverData, id: id };
-        await updateFirebaseDriver(driverToUpdate);
+        await updateDriver(driverToUpdate);
         toast({
             title: `Fører oppdatert`,
             description: `${driverData.name} er lagret i databasen.`,
@@ -103,29 +105,31 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
             return;
         }
 
-        let authUid: string;
-        const existingDriverWithEmail = await getFirebaseDriverByEmail(driverData.email);
-
-        if (existingDriverWithEmail) {
-            // Re-use the authUid for the new sibling driver
-            authUid = existingDriverWithEmail.authUid;
-             toast({
-                title: 'Søsken Lagt Til!',
-                description: `Profil for ${driverData.name} er opprettet og knyttet til ${driverData.email}.`,
-            });
-        } else {
-            // This is a new user/family. Create a new auth user on the server.
-            const newUser = await createFirebaseUser(driverData.email, driverData.email);
-            authUid = newUser.uid;
-            
-            toast({
-                title: 'Fører Opprettet!',
-                description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
-            });
+        const adminEmail = adminUser?.email;
+        if (!adminEmail) {
+           throw new Error("Admin user email not found. Cannot re-authenticate.");
         }
         
-        // Save the profile to the database with the correct authUid
-        await addFirebaseDriver({ ...driverData, role: 'driver', authUid: authUid });
+        const adminPassword = prompt("Vennligst skriv inn ditt admin-passord for å bekrefte handlingen.");
+        if (!adminPassword) {
+            toast({ variant: 'destructive', title: 'Handling avbrutt', description: 'Passord er påkrevd for å opprette en ny bruker.' });
+            setIsSaving(false);
+            return;
+        }
+
+        // Create the new user
+        const newUser = await signUp(driverData.email, driverData.email);
+        
+        // Save the new driver's profile to Firestore
+        await addDriverProfile(driverData, newUser.uid);
+        
+        toast({
+            title: 'Fører Opprettet!',
+            description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
+        });
+        
+        // Sign the admin back in to not lose the session
+        await signIn(adminEmail, adminPassword);
       }
 
       onDatabaseUpdate();
@@ -135,8 +139,8 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     } catch (error) {
       const errorMessage = (error as Error).message;
       let userFriendlyMessage = errorMessage;
-      if (errorMessage.includes("auth/email-already-exists")) {
-        userFriendlyMessage = "En bruker med denne e-postadressen finnes allerede."
+      if (errorMessage.includes("auth/email-already-in-use")) {
+        userFriendlyMessage = "En fører med denne e-postadressen finnes allerede."
       }
 
       toast({
