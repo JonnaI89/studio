@@ -2,8 +2,10 @@
 "use client";
 
 import { useState } from "react";
-import type { Driver, DriverProfile } from "@/lib/types";
-import { addNewDriver, deleteDriver as deleteServerDriver, updateDriver } from "@/services/driver-service";
+import type { Driver } from "@/lib/types";
+import { updateDriver, deleteDriver } from "@/services/driver-service";
+import { addFirebaseDriverProfile } from "@/services/firebase-service";
+import { signUp } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,45 +26,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DriversTable } from "./drivers-table";
-import { DriverForm } from "./driver-form";
+import { DriversTable } from "../drivers-table";
+import { DriverForm } from "../driver-form";
 import { UserPlus, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
 
 interface DriverManagementDialogProps {
-  profiles: DriverProfile[];
+  drivers: Driver[];
   onDatabaseUpdate: () => void;
 }
 
-type AddMode = "new" | "existing";
-
-export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverManagementDialogProps) {
+export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverManagementDialogProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [driverToEdit, setDriverToEdit] = useState<{ driver: Driver; profileId: string } | null>(null);
-  const [driverToDelete, setDriverToDelete] = useState<{ driver: Driver; profileId: string } | null>(null);
+  const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [addMode, setAddMode] = useState<AddMode>("new");
-  const [existingEmail, setExistingEmail] = useState("");
   const { toast } = useToast();
 
-  const handleEdit = (driver: Driver, profileId: string) => {
-    setDriverToEdit({ driver, profileId });
-    setAddMode("new"); // Not relevant for edit, but reset state
+  const handleEdit = (driver: Driver) => {
+    setDriverToEdit(driver);
     setIsFormOpen(true);
   };
   
-  const handleOpenDeleteDialog = (driver: Driver, profileId: string) => {
-    setDriverToDelete({ driver, profileId });
+  const handleOpenDeleteDialog = (driver: Driver) => {
+    setDriverToDelete(driver);
   };
 
   const handleAddNew = () => {
     setDriverToEdit(null);
-    setAddMode("new");
-    setExistingEmail("");
     setIsFormOpen(true);
   };
   
@@ -70,10 +62,10 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
     if (!driverToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteServerDriver(driverToDelete.profileId, driverToDelete.driver.id);
+      await deleteDriver(driverToDelete.id);
       toast({
         title: "Fører Slettet",
-        description: `${driverToDelete.driver.name} har blitt fjernet fra databasen.`,
+        description: `${driverToDelete.name} har blitt fjernet fra databasen.`,
       });
       onDatabaseUpdate();
     } catch (error) {
@@ -91,32 +83,42 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
   const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
     setIsSaving(true);
     try {
-      if (driverToEdit) {
+      if (driverToEdit && id) {
         // This is an update to an existing driver.
-        const driverToUpdate: Driver = { ...driverToEdit.driver, ...driverData, id: driverToEdit.driver.id };
-        await updateDriver(driverToEdit.profileId, driverToUpdate);
+        const driverToUpdate: Driver = { ...driverToEdit, ...driverData, id: id };
+        await updateDriver(driverToUpdate);
         toast({
             title: `Fører oppdatert`,
             description: `${driverData.name} er lagret i databasen.`,
         });
       } else {
         // This is a new driver registration.
-        if (addMode === 'new' && !driverData.email) {
-            toast({ variant: "destructive", title: "E-post er påkrevd", description: "E-post må fylles ut for å opprette en ny familieprofil."});
-            setIsSaving(false);
-            return;
-        }
-        if (addMode === 'existing' && !existingEmail) {
-            toast({ variant: "destructive", title: "E-post er påkrevd", description: "E-post må fylles ut for å finne en eksisterende profil."});
+        if (!driverData.email) {
+            toast({
+                variant: "destructive",
+                title: "E-post er påkrevd",
+                description: "E-post må fylles ut for å opprette en ny fører.",
+            });
             setIsSaving(false);
             return;
         }
 
-        await addNewDriver(driverData, addMode === 'existing' ? existingEmail : driverData.email);
+        if (drivers.some(d => d.rfid === driverData.rfid && d.rfid)) {
+          toast({
+            variant: "destructive",
+            title: "RFID Finnes Allerede",
+            description: "En fører med denne RFID-brikken finnes allerede.",
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        const user = await signUp(driverData.email, driverData.email);
+        await addFirebaseDriverProfile(driverData, user.uid);
         
         toast({
             title: 'Fører Opprettet!',
-            description: `Profil for ${driverData.name} er opprettet/oppdatert.`,
+            description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
         });
       }
 
@@ -125,17 +127,21 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
       setDriverToEdit(null);
 
     } catch (error) {
-       const errorMessage = (error as Error).message;
-       toast({
+      const errorMessage = (error as Error).message;
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes("auth/email-already-in-use")) {
+        userFriendlyMessage = "En fører med denne e-postadressen finnes allerede."
+      }
+
+      toast({
         variant: 'destructive',
         title: 'Lagring feilet',
-        description: errorMessage || 'En ukjent feil oppsto.',
+        description: userFriendlyMessage || 'En ukjent feil oppsto.',
       });
     } finally {
         setIsSaving(false);
     }
   };
-
 
   return (
     <div className="flex flex-col gap-4 flex-1 min-h-0">
@@ -154,7 +160,7 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
             </div>
         </div>
         <div className="flex-1 min-h-0">
-          <DriversTable profiles={profiles} onEdit={handleEdit} onDelete={handleOpenDeleteDialog} />
+          <DriversTable drivers={drivers} onEdit={handleEdit} onDelete={handleOpenDeleteDialog} />
         </div>
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -165,41 +171,12 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
                         {driverToEdit ? 'Oppdater informasjonen for føreren.' : 'Fyll ut detaljene for den nye føreren.'}
                     </DialogDescription>
                 </DialogHeader>
-                {!driverToEdit && (
-                    <div className="p-4 border bg-muted/50 rounded-lg">
-                        <RadioGroup defaultValue="new" value={addMode} onValueChange={(value: AddMode) => setAddMode(value)}>
-                            <Label className="font-medium">Type registrering</Label>
-                            <div className="flex items-center space-x-2 pt-2">
-                                <RadioGroupItem value="new" id="r1" />
-                                <Label htmlFor="r1">Ny familie/bruker</Label>
-                            </div>
-                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="existing" id="r2" />
-                                <Label htmlFor="r2">Søsken (legg til i eksisterende familie)</Label>
-                            </div>
-                        </RadioGroup>
-                        {addMode === 'existing' && (
-                             <div className="mt-4">
-                                <Label htmlFor="existing-email">E-post til foresatt</Label>
-                                <Input 
-                                    id="existing-email"
-                                    type="email"
-                                    placeholder="Skriv inn e-posten til den eksisterende profilen" 
-                                    value={existingEmail}
-                                    onChange={(e) => setExistingEmail(e.target.value)}
-                                    className="mt-1"
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
-                <ScrollArea className="max-h-[60vh] pr-4">
+                <ScrollArea className="max-h-[70vh] pr-4">
                   <DriverForm
-                      driverToEdit={driverToEdit?.driver}
+                      driverToEdit={driverToEdit}
                       onSave={handleSave}
                       closeDialog={() => setIsFormOpen(false)}
                       isRestrictedView={false}
-                      addMode={driverToEdit ? undefined : addMode}
                   />
                 </ScrollArea>
             </DialogContent>
@@ -210,7 +187,7 @@ export function DriverManagementDialog({ profiles, onDatabaseUpdate }: DriverMan
                 <AlertDialogHeader>
                     <AlertDialogTitle>Er du helt sikker?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Dette vil permanent slette profilen for <span className="font-bold">{driverToDelete?.driver.name}</span> fra databasen. Selve innloggingskontoen blir ikke fjernet. Handlingen kan ikke angres.
+                        Dette vil permanent slette profilen for <span className="font-bold">{driverToDelete?.name}</span> fra databasen. Selve innloggingskontoen blir ikke fjernet. Handlingen kan ikke angres.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

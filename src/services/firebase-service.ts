@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase-config';
-import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup, CheckinHistoryEntry, DriverProfile } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
@@ -16,29 +16,29 @@ const RACES_COLLECTION = 'races';
 const RACE_SIGNUPS_COLLECTION = 'raceSignups';
 const CHECKIN_HISTORY_COLLECTION = 'checkinHistory';
 
-
-export async function getFirebaseDriverProfiles(): Promise<DriverProfile[]> {
+// Driver Profiles (now one driver per doc)
+export async function getFirebaseDriverProfiles(): Promise<Driver[]> {
     try {
         if (!db) {
             console.warn("Firestore is not initialized. Returning empty array. Check your Firebase config.");
             return [];
         }
-        const profilesQuery = query(collection(db, DRIVERS_COLLECTION), orderBy("email"));
+        const profilesQuery = query(collection(db, DRIVERS_COLLECTION), orderBy("name"));
         const profilesSnapshot = await getDocs(profilesQuery);
-        return profilesSnapshot.docs.map(doc => doc.data() as DriverProfile);
+        return profilesSnapshot.docs.map(doc => doc.data() as Driver);
     } catch (error) {
         console.error("Error fetching driver profiles from Firestore: ", error);
         throw new Error("Kunne ikke hente førerprofiler fra Firebase.");
     }
 }
 
-export async function getFirebaseDriverProfile(id: string): Promise<DriverProfile | null> {
+export async function getFirebaseDriverProfile(id: string): Promise<Driver | null> {
     try {
         if (!db) throw new Error("Firestore is not initialized.");
         const profileRef = doc(db, DRIVERS_COLLECTION, id);
         const docSnap = await getDoc(profileRef);
         if (docSnap.exists()) {
-            return docSnap.data() as DriverProfile;
+            return docSnap.data() as Driver;
         }
         return null;
     } catch (error) {
@@ -47,14 +47,14 @@ export async function getFirebaseDriverProfile(id: string): Promise<DriverProfil
     }
 }
 
-export async function getFirebaseDriverProfileByEmail(email: string): Promise<DriverProfile | null> {
+export async function getFirebaseDriverProfileByEmail(email: string): Promise<Driver | null> {
     try {
         if (!db) throw new Error("Firestore not initialized");
         const q = query(collection(db, DRIVERS_COLLECTION), where("email", "==", email));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             const docData = querySnapshot.docs[0];
-            return docData.data() as DriverProfile;
+            return docData.data() as Driver;
         }
         return null;
     } catch (error) {
@@ -68,15 +68,10 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     try {
         if (!db) throw new Error("Firestore not initialized");
         const normalized = normalizeRfid(rfid);
-        const q = query(collection(db, DRIVERS_COLLECTION), where("drivers", "array-contains", { rfid: normalized }));
-
-        const profilesSnapshot = await getDocs(collection(db, DRIVERS_COLLECTION));
-        for (const doc of profilesSnapshot.docs) {
-            const profile = doc.data() as DriverProfile;
-            const foundDriver = profile.drivers.find(d => normalizeRfid(d.rfid) === normalized);
-            if (foundDriver) {
-                return foundDriver;
-            }
+        const q = query(collection(db, DRIVERS_COLLECTION), where("rfid", "==", normalized));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs[0].data() as Driver;
         }
         return null;
     } catch (error) {
@@ -85,75 +80,34 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
-export async function createFirebaseDriverProfile(driverData: Omit<Driver, 'id'>, authUid: string): Promise<DriverProfile> {
+export async function addFirebaseDriverProfile(driverData: Omit<Driver, 'id'>, authUid: string): Promise<Driver> {
     try {
         if (!db) throw new Error("Firestore is not initialized.");
         
         const newDriver: Driver = {
             ...driverData,
-            id: crypto.randomUUID(),
+            id: authUid, // The document ID is the auth UID
             rfid: normalizeRfid(driverData.rfid),
-        };
-
-        const newProfile: DriverProfile = {
-            id: authUid,
-            email: driverData.email,
-            role: 'driver',
-            drivers: [newDriver],
         };
         
         const docRef = doc(db, DRIVERS_COLLECTION, authUid);
-        await setDoc(docRef, newProfile);
-        return newProfile;
+        await setDoc(docRef, newDriver);
+        return newDriver;
     } catch (error) {
         console.error("Error creating driver profile in Firestore: ", error);
         throw new Error("Kunne ikke opprette førerprofil i databasen.");
     }
 }
 
-export async function addFirebaseDriverToProfile(profileId: string, driverData: Omit<Driver, 'id'>): Promise<Driver> {
-    if (!db) throw new Error("Firestore is not initialized.");
-    const newDriver: Driver = {
-        ...driverData,
-        id: crypto.randomUUID(),
-        rfid: normalizeRfid(driverData.rfid),
-    };
-    const profileRef = doc(db, DRIVERS_COLLECTION, profileId);
-    await updateDoc(profileRef, {
-        drivers: arrayUnion(newDriver)
-    });
-    return newDriver;
-}
-
-
-export async function updateFirebaseDriverProfile(profile: DriverProfile): Promise<void> {
+export async function updateFirebaseDriverProfile(driver: Driver): Promise<void> {
     try {
         if (!db) throw new Error("Firestore not initialized.");
-        const profileRef = doc(db, DRIVERS_COLLECTION, profile.id);
-        await setDoc(profileRef, profile, { merge: true });
+        const profileRef = doc(db, DRIVERS_COLLECTION, driver.id);
+        await setDoc(profileRef, driver, { merge: true });
     } catch (error) {
         console.error("Error updating driver profile in Firestore: ", error);
         throw new Error("Kunne ikke oppdatere førerprofil i Firebase.");
     }
-}
-
-export async function deleteFirebaseDriverFromProfile(profileId: string, driverId: string): Promise<void> {
-    if (!db) throw new Error("Firestore not initialized.");
-    const profile = await getFirebaseDriverProfile(profileId);
-    if (!profile) throw new Error("Profile not found");
-
-    const driverToRemove = profile.drivers.find(d => d.id === driverId);
-    if (!driverToRemove) throw new Error("Driver not found in profile");
-
-    const profileRef = doc(db, DRIVERS_COLLECTION, profileId);
-    await updateDoc(profileRef, {
-        drivers: arrayRemove(driverToRemove)
-    });
-}
-
-export async function getFirebaseDriverFromProfile(profileId: string, driverId: string): Promise<Driver | null> {
-    const profile = await getFirebaseDriverProfile(profileId);
-    return profile?.drivers.find(d => d.id === driverId) || null;
 }
 
 
@@ -169,7 +123,7 @@ export async function deleteFirebaseProfile(id: string): Promise<void> {
     }
 }
 
-
+// Training Signups
 export async function addFirebaseTrainingSignup(signupData: Omit<TrainingSignup, 'id'>): Promise<TrainingSignup> {
     try {
         if (!db) throw new Error("Firestore not initialized.");
@@ -234,7 +188,8 @@ export async function getFirebaseTrainingSignupsByDriver(driverId: string): Prom
         const signups = querySnapshot.docs.map(doc => doc.data() as TrainingSignup);
 
         return signups;
-    } catch (error) {
+    } catch (error)
+ {
         console.error(`Error fetching training signups for driver ${driverId}: `, error);
         throw new Error("En feil oppstod under henting av påmeldinger for trening.");
     }
@@ -329,7 +284,6 @@ export async function getFirebaseRacesForDate(date: string): Promise<Race[]> {
       if (!db) throw new Error("Firestore not initialized.");
       const targetDate = parseISO(date);
 
-      // Fetch all races and filter in the code to avoid complex composite indexes
       const allRaces = await getFirebaseRaces();
 
       const activeRaces = allRaces.filter(race => {
@@ -403,7 +357,6 @@ export async function getFirebaseRaceSignups(raceId: string): Promise<RaceSignup
         const snapshot = await getDocs(q);
         const signups = snapshot.docs.map(doc => doc.data() as RaceSignup);
         
-        // Sort in-memory to avoid needing a composite index in Firestore
         signups.sort((a, b) => {
             const klasseA = a.driverKlasse || 'Z-Ukjent Klasse';
             const klasseB = b.driverKlasse || 'Z-Ukjent Klasse';
@@ -466,7 +419,6 @@ export async function getFirebaseCheckinHistoryForDate(date: string): Promise<Ch
         const querySnapshot = await getDocs(q);
         const entries = querySnapshot.docs.map(doc => doc.data() as CheckinHistoryEntry);
         
-        // Sort in-memory to avoid needing a composite index
         entries.sort((a, b) => b.checkinTime.localeCompare(a.checkinTime));
 
         return entries;

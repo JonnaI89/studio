@@ -13,8 +13,8 @@ import { DriverForm } from "./driver-form";
 import { useToast } from "@/hooks/use-toast";
 import { updateDriver } from "@/services/driver-service";
 import { calculateAge, parseDateString } from "@/lib/utils";
-import { format } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
+import { format } from "date-fns";
 
 interface DriverInfoCardProps {
   driver: Driver;
@@ -42,10 +42,10 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   }
 
   const handleSave = async (driverData: Omit<Driver, 'id'>, id?: string) => {
-    if (!id || !profile?.id) return;
+    if (!id) return;
     try {
         const updatedDriverData: Driver = { ...driver, ...driverData };
-        await updateDriver(profile.id, updatedDriverData);
+        await updateDriver(updatedDriverData);
         onProfileUpdate(updatedDriverData);
         setActiveTab("info");
         toast({

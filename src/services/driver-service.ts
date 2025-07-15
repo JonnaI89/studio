@@ -5,21 +5,18 @@ import {
     getFirebaseDriverProfiles,
     updateFirebaseDriverProfile,
     getFirebaseDriverProfile,
-    getFirebaseDriverProfileByEmail,
     getFirebaseDriverByRfid,
-    deleteFirebaseDriverFromProfile,
-    addFirebaseDriverToProfile,
-    createFirebaseDriverProfile,
-    getFirebaseDriverFromProfile,
+    deleteFirebaseProfile,
+    addFirebaseDriverProfile
 } from './firebase-service';
 import type { Driver, DriverProfile } from '@/lib/types';
-import { createFirebaseUser } from './auth-server-service';
 
-export async function getDriverProfiles(): Promise<DriverProfile[]> {
+export async function getDriverProfiles(): Promise<Driver[]> {
     return getFirebaseDriverProfiles();
 }
 
-export async function getDriverProfile(id: string): Promise<DriverProfile | null> {
+export async function getDriverProfile(id: string): Promise<Driver | null> {
+    // This now fetches a single Driver document, not a profile with a list.
     return getFirebaseDriverProfile(id);
 }
 
@@ -28,40 +25,14 @@ export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
 }
 
 export async function getDriver(profileId: string, driverId: string): Promise<Driver | null> {
-    return getFirebaseDriverFromProfile(profileId, driverId);
+    // In the old model, profileId and driverId are the same.
+    return getFirebaseDriverProfile(profileId);
 }
 
-export async function updateDriver(profileId: string, driver: Driver): Promise<void> {
-    const profile = await getFirebaseDriverProfile(profileId);
-    if (!profile) {
-        throw new Error("Profil ikke funnet for å oppdatere fører.");
-    }
-    const driverIndex = profile.drivers.findIndex(d => d.id === driver.id);
-    if (driverIndex === -1) {
-        throw new Error("Fører ikke funnet i profilen.");
-    }
-    profile.drivers[driverIndex] = driver;
-    await updateFirebaseDriverProfile(profile);
+export async function updateDriver(driver: Driver): Promise<void> {
+    await updateFirebaseDriverProfile(driver);
 }
 
-export async function deleteDriver(profileId: string, driverId: string): Promise<void> {
-    return deleteFirebaseDriverFromProfile(profileId, driverId);
-}
-
-export async function addNewDriver(driverData: Omit<Driver, 'id'>, existingProfileEmail?: string): Promise<DriverProfile> {
-    if (existingProfileEmail) {
-        // Find existing profile by email and add driver to it
-        const profile = await getFirebaseDriverProfileByEmail(existingProfileEmail);
-        if (!profile) {
-            throw new Error(`Fant ingen profil med e-post: ${existingProfileEmail}`);
-        }
-        const newDriver = await addFirebaseDriverToProfile(profile.id, driverData);
-        profile.drivers.push(newDriver);
-        return profile;
-    } else {
-        // Create new user and new profile
-        const user = await createFirebaseUser(driverData.email, driverData.email);
-        const newProfile = await createFirebaseDriverProfile(driverData, user.uid);
-        return newProfile;
-    }
+export async function deleteDriver(id: string): Promise<void> {
+    return deleteFirebaseProfile(id);
 }

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect } from "react";
 import { LoaderCircle } from "lucide-react";
+import type { Driver } from "@/lib/types";
 
 export default function DriverLayout({
   children,
@@ -21,14 +22,7 @@ export default function DriverLayout({
       if (isAdmin) {
         return;
       }
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-      
-      const userHasAccessToThisDriver = profile?.drivers.some(d => d.id === pageDriverId);
-
-      if (!userHasAccessToThisDriver) {
+      if (!user || (profile as Driver)?.id !== pageDriverId) {
         router.push("/login");
       }
     }
@@ -43,10 +37,8 @@ export default function DriverLayout({
     );
   }
 
-  const userHasAccessToThisDriver = profile?.drivers.some(d => d.id === pageDriverId);
-
   // Extra check to avoid "flash" of content
-  if (!isAdmin && !userHasAccessToThisDriver) {
+  if (!isAdmin && (profile as Driver)?.id !== pageDriverId) {
      return (
         <div className="w-full h-screen flex flex-col items-center justify-center gap-4 text-muted-foreground">
             <LoaderCircle className="h-10 w-10 animate-spin" />

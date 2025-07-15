@@ -14,7 +14,9 @@ import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { setCookie } from 'cookies-next';
+import type { DriverProfile as AdminProfileType } from '@/lib/types'; // Using old structure for admin check
+import { getFirebaseDriverProfile } from "@/services/firebase-service";
+
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -39,6 +41,14 @@ export function LoginForm() {
     try {
       const user = await signIn(values.email, values.password);
       
+      const adminProfile = await getFirebaseDriverProfile(user.uid);
+      
+      if (adminProfile && (adminProfile as any).role === 'admin') {
+          toast({ title: "Admin-innlogging Vellykket" });
+          router.push('/admin');
+          return;
+      }
+
       const driverProfile = await getDriverProfile(user.uid);
 
       if (!driverProfile) {
@@ -47,30 +57,12 @@ export function LoginForm() {
             title: "Profil Mangler",
             description: "Fant ingen førerprofil knyttet til denne innloggingen.",
         });
+        setIsLoading(false);
         return; 
       }
       
-      if (driverProfile.role === 'admin') {
-          toast({ title: "Admin-innlogging Vellykket" });
-          router.push('/admin');
-          return;
-      }
-      
       toast({ title: "Innlogging Vellykket" });
-
-      if (driverProfile.drivers.length > 1) {
-        // More than one driver, let them choose
-        // We'll store the profile in a cookie to be read on the selection page
-        setCookie('driverProfile', JSON.stringify(driverProfile), { path: '/' });
-        router.push(`/velg-forer`);
-      } else if (driverProfile.drivers.length === 1) {
-        // Only one driver, go directly to their profile
-        router.push(`/driver/${driverProfile.drivers[0].id}`);
-      } else {
-        // No drivers in profile yet
-        toast({ variant: "destructive", title: "Ingen førere", description: "Denne profilen har ingen førere registrert." });
-      }
-
+      router.push(`/driver/${driverProfile.id}`);
 
     } catch (error) {
       toast({

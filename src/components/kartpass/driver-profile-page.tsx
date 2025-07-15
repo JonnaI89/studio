@@ -18,7 +18,6 @@ import { format } from 'date-fns';
 
 interface DriverProfilePageProps {
     initialDriver: Driver;
-    profileId: string;
 }
 
 interface InfoItemProps {
@@ -40,7 +39,7 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     )
 }
 
-export function DriverProfilePage({ initialDriver, profileId }: DriverProfilePageProps) {
+export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const [driver, setDriver] = useState<Driver>(initialDriver);
     const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
@@ -50,7 +49,7 @@ export function DriverProfilePage({ initialDriver, profileId }: DriverProfilePag
         if (!id) return;
         try {
             const updatedDriverData: Driver = { ...driver, ...driverData, id: id };
-            await updateDriver(profileId, updatedDriverData);
+            await updateDriver(updatedDriverData);
             setDriver(updatedDriverData);
             setIsEditing(false);
             toast({
@@ -147,7 +146,7 @@ export function DriverProfilePage({ initialDriver, profileId }: DriverProfilePag
                 </CardContent>
             </Card>
 
-            {!isEditing && (
+            {!isEditing && !isAdmin && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Endre Passord</CardTitle>

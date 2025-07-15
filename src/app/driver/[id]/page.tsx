@@ -1,5 +1,5 @@
 
-import { getDriver, getDriverProfile } from '@/services/driver-service';
+import { getDriverProfile } from '@/services/driver-service';
 import { getRaces, getRaceSignupsByDriver } from '@/services/race-service';
 import { getTrainingSettings, getTrainingSignupsByDriver } from '@/services/training-service';
 import { DriverProfilePage } from '@/components/kartpass/driver-profile-page';
@@ -9,32 +9,16 @@ import { LogoutButton } from '@/components/auth/logout-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RaceSignupCard } from '@/components/kartpass/race-signup-card';
 import { TrainingSignupCard } from '@/components/kartpass/training-signup-card';
-import { SiblingSwitcher } from '@/components/kartpass/sibling-switcher';
-import { getDriverProfileByAuthUid } from '@/services/firebase-service';
-import { auth } from '@/lib/firebase-config';
 
 export default async function Page({ params }: { params: { id: string } }) {
-    // The ID in the URL is now the driver's ID, not the profile ID.
     const driverId = params.id;
-    const profileId = auth.currentUser?.uid;
 
-    if (!profileId) {
-        notFound();
-    }
-
-    const profile = await getDriverProfile(profileId);
+    const driver = await getDriverProfile(driverId);
     
-    if (!profile) {
-        notFound();
-    }
-    
-    const driver = profile.drivers.find(d => d.id === driverId);
-
     if (!driver) {
         notFound();
     }
     
-    // Fetch all other data needed for the tabs
     const [races, driverRaceSignups, trainingSettings, driverTrainingSignups] = await Promise.all([
         getRaces(),
         getRaceSignupsByDriver(driver.id),
@@ -47,7 +31,6 @@ export default async function Page({ params }: { params: { id: string } }) {
             <header className="flex justify-between items-center mb-8">
                  <FoererportalenLogo />
                  <div className="flex items-center gap-4">
-                    {profile.drivers.length > 1 && <SiblingSwitcher profile={profile} currentDriverId={driver.id} />}
                     <LogoutButton variant="outline" />
                  </div>
             </header>
@@ -61,7 +44,6 @@ export default async function Page({ params }: { params: { id: string } }) {
                 <TabsContent value="profile" className="mt-6">
                     <DriverProfilePage 
                         initialDriver={driver}
-                        profileId={profile.id}
                     />
                 </TabsContent>
                 <TabsContent value="races" className="mt-6">

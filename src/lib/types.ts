@@ -7,11 +7,12 @@ export type Guardian = {
 }
 
 export type Driver = {
-  id: string; // Unik ID for denne føreren, f.eks. en UUID
+  id: string; // Firestore doc ID. Should match Firebase Auth UID.
   rfid: string;
   name: string;
   dob: string; // YYYY-MM-DD, can be empty
   club: string;
+  email: string; // The email used for login.
   hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
@@ -26,11 +27,12 @@ export type Driver = {
 };
 
 export type DriverProfile = {
-  id: string; // Firestore doc ID / Corresponds to Firebase Auth UID
+  id: string; // Corresponds to Firebase Auth UID
   email: string;
   role: 'admin' | 'driver';
-  drivers: Driver[];
+  // Note: 'drivers' array is removed. The top-level document IS the driver profile.
 };
+
 
 export type CheckedInEntry = {
   historyId: string;
