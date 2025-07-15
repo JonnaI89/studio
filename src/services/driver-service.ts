@@ -2,41 +2,35 @@
 'use server';
 
 import {
-    getFirebaseDriverProfiles,
-    updateFirebaseDriverProfile,
-    getFirebaseDriverProfile,
-    getFirebaseDriverByRfid,
-    deleteFirebaseDriverFromProfile,
-    addOrUpdateFirebaseDriverInProfile,
-    getFirebaseDriverProfileByAuthUid,
-    getFirebaseDriversByAuthUid
+    getFirebaseDrivers,
+    updateFirebaseDriver,
+    getFirebaseDriver,
+    deleteFirebaseDriver,
+    addFirebaseDriverProfile,
+    getFirebaseDriverByRfid
 } from './firebase-service';
-import type { Driver, DriverProfile } from '@/lib/types';
+import type { Driver } from '@/lib/types';
 
-export async function getDriverProfiles(): Promise<DriverProfile[]> {
-    return getFirebaseDriverProfiles();
+export async function getDrivers(): Promise<Driver[]> {
+    return getFirebaseDrivers();
 }
 
-export async function getDriverProfile(driverId: string): Promise<Driver | null> {
-    return getFirebaseDriverProfile(driverId);
-}
-
-export async function getDriverProfileByAuthUid(authUid: string): Promise<DriverProfile | null> {
-    return getFirebaseDriverProfileByAuthUid(authUid);
-}
-
-export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
-    return getFirebaseDriversByAuthUid(authUid);
+export async function getDriverProfile(id: string): Promise<Driver | null> {
+    return getFirebaseDriver(id);
 }
 
 export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
     return getFirebaseDriverByRfid(rfid);
 }
 
-export async function addOrUpdateDriverInProfile(profileId: string, driver: Omit<Driver, 'id' | 'authUid'> | Driver): Promise<Driver> {
-    return addOrUpdateFirebaseDriverInProfile(profileId, driver);
+export async function updateDriver(driver: Driver): Promise<void> {
+    return updateFirebaseDriver(driver);
 }
 
-export async function deleteDriverFromProfile(driverId: string): Promise<void> {
-    return deleteFirebaseDriverFromProfile(driverId);
+export async function deleteDriver(id: string): Promise<void> {
+    return deleteFirebaseDriver(id);
+}
+
+export async function addDriverProfile(driverData: Omit<Driver, 'id' | 'role'>, uid: string): Promise<void> {
+    return addFirebaseDriverProfile(driverData, uid);
 }

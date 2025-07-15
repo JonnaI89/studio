@@ -66,14 +66,13 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface DriverFormProps {
     driverToEdit?: Driver | null;
-    onSave: (data: Omit<Driver, 'id' | 'authUid'>) => void;
+    onSave: (data: Omit<Driver, 'id' | 'role'>, id?: string) => void;
     closeDialog: () => void;
     rfidFromScan?: string;
     isRestrictedView?: boolean;
-    addMode?: 'new' | 'existing';
 }
 
-export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, isRestrictedView = false, addMode }: DriverFormProps) {
+export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, isRestrictedView = false }: DriverFormProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: driverToEdit ? {
@@ -128,7 +127,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             return;
         }
 
-        const driverData: Omit<Driver, 'id' | 'authUid'> = {
+        const driverData: Omit<Driver, 'id' | 'role'> = {
             rfid: values.rfid,
             name: values.name,
             dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
@@ -150,10 +149,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             email: values.email || '',
         };
         
-        onSave(driverData);
+        onSave(driverData, driverToEdit?.id);
     }
-
-    const showEmailField = addMode === 'new' || !!driverToEdit;
 
     return (
         <Form {...form}>
@@ -195,7 +192,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 </FormItem>
                             )}
                         />
-                        {showEmailField && (
+                        {!driverToEdit && (
                             <FormField
                                 control={form.control}
                                 name="email"
@@ -205,15 +202,13 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                         <FormControl>
                                             <Input
                                                 type="email"
-                                                placeholder="familie@epost.no"
+                                                placeholder="din@epost.no"
                                                 {...field}
                                                 value={field.value ?? ''}
-                                                readOnly={!!driverToEdit?.email && addMode === 'existing'}
-                                                className={cn(!!driverToEdit?.email && addMode === 'existing' && "cursor-not-allowed opacity-70")}
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            Søsken som registreres med samme e-post vil bli knyttet til samme innlogging.
+                                            Hver fører må ha en unik e-post for å logge inn.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>

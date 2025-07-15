@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Driver, CheckedInEntry, SiteSettings, Race, DriverProfile } from "@/lib/types";
-import { getDriverProfiles, getDriverByRfid } from "@/services/driver-service";
+import type { Driver, CheckedInEntry, SiteSettings, Race } from "@/lib/types";
+import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
@@ -51,7 +51,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const [isDriverMgmtOpen, setIsDriverMgmtOpen] = useState(false);
   const [isSignupsOpen, setIsSignupsOpen] = useState(false);
   const [newRfidId, setNewRfidId] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<DriverProfile[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [driverForPayment, setDriverForPayment] = useState<Driver | null>(null);
@@ -74,25 +74,21 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     }
   }, [todaysRaces]);
 
-  const allDrivers = profiles.flatMap(p => p.drivers || []);
-
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const [fetchedProfiles, fetchedSettings, fetchedCheckins] = await Promise.all([
-        getDriverProfiles(),
+      const [fetchedDrivers, fetchedSettings, fetchedCheckins] = await Promise.all([
+        getDrivers(),
         getSiteSettings(),
         getCheckinsForDate(today),
       ]);
       
-      setProfiles(fetchedProfiles);
+      setDrivers(fetchedDrivers);
       setSiteSettings(fetchedSettings);
       
-      const allDriversFromProfiles = fetchedProfiles.flatMap(p => p.drivers || []);
-      
       const reconstructedCheckins: CheckedInEntry[] = fetchedCheckins.map(historyEntry => {
-          const driverProfile = allDriversFromProfiles.find(d => d.id === historyEntry.driverId);
+          const driverProfile = fetchedDrivers.find(d => d.id === historyEntry.driverId);
           
           if (driverProfile) {
               return {
@@ -108,12 +104,12 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                   historyId: historyEntry.id,
                   driver: {
                       id: historyEntry.driverId,
-                      authUid: `onetime_${historyEntry.driverId}`,
                       name: historyEntry.driverName,
                       rfid: `onetime_${historyEntry.driverId}`,
                       club: 'Engangslisens',
                       dob: '2000-01-01',
                       email: '',
+                      role: 'driver',
                       hasSeasonPass: false,
                       klasse: historyEntry.driverKlasse,
                   },
@@ -126,12 +122,12 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
               historyId: historyEntry.id,
               driver: {
                   id: historyEntry.driverId,
-                  authUid: 'unknown',
                   name: `${historyEntry.driverName} (Slettet)`,
                   rfid: 'unknown',
                   club: 'Ukjent',
                   dob: '2000-01-01',
                   email: '',
+                  role: 'driver',
               },
               checkInTime: historyEntry.checkinTime,
               paymentStatus: historyEntry.paymentStatus,
@@ -359,12 +355,12 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     
     const oneTimeDriver: Driver = {
         id: `onetime_${Date.now()}`,
-        authUid: `onetime_${Date.now()}`,
         name: name,
         rfid: `onetime_${licenseNumber}`,
         club: 'Engangslisens',
         dob: '2000-01-01',
         email: '',
+        role: 'driver',
         hasSeasonPass: false,
         driverLicense: licenseNumber,
         klasse: 'Engangslisens',
@@ -585,7 +581,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                 </DialogDescription>
               </DialogHeader>
               <ManualCheckInForm 
-                drivers={allDrivers} 
+                drivers={drivers} 
                 onDriverSelect={handleManualSelect}
                 closeDialog={() => setIsManualCheckInOpen(false)}
               />
@@ -610,7 +606,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <DriverManagementDialog 
-                    profiles={profiles}
+                    drivers={drivers}
                     onDatabaseUpdate={fetchData}
                 />
             </DialogContent>

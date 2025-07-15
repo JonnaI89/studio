@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import type { Driver } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addOrUpdateDriverInProfile } from '@/services/driver-service';
+import { updateDriver } from '@/services/driver-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DriverForm } from './driver-form';
@@ -45,15 +45,11 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
     const { toast } = useToast();
     const { isAdmin } = useAuth();
 
-    const handleSave = async (driverData: Omit<Driver, 'id' | 'authUid'>) => {
-        const authUid = driver.authUid;
-        if (!authUid) {
-            toast({ variant: 'destructive', title: 'Lagring feilet', description: 'Kunne ikke finne familie-ID.' });
-            return;
-        }
-
+    const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
+        if (!id) return;
         try {
-            const updatedDriverData = await addOrUpdateDriverInProfile(authUid, { ...driverData, id: driver.id, authUid: authUid });
+            const updatedDriverData: Driver = { ...driver, ...driverData, id: id };
+            await updateDriver(updatedDriverData);
             setDriver(updatedDriverData);
             setIsEditing(false);
             toast({
@@ -99,7 +95,6 @@ export function DriverProfilePage({ initialDriver }: DriverProfilePageProps) {
                                     onSave={handleSave}
                                     closeDialog={() => setIsEditing(false)}
                                     isRestrictedView={!isAdmin}
-                                    addMode="existing"
                                 />
                              </ScrollArea>
                         </div>

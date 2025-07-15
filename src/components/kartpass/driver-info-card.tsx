@@ -11,9 +11,8 @@ import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck
 import { useState } from "react";
 import { DriverForm } from "./driver-form";
 import { useToast } from "@/hooks/use-toast";
-import { addOrUpdateDriverInProfile } from "@/services/driver-service";
+import { updateDriver } from "@/services/driver-service";
 import { calculateAge, parseDateString } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 
 interface DriverInfoCardProps {
@@ -31,8 +30,6 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   const isUnderage = age !== null && age < 18;
   const [activeTab, setActiveTab] = useState("info");
   const { toast } = useToast();
-  const { profile } = useAuth();
-  const familyProfile = profile as DriverProfile;
 
   const getInitials = (name: string) => {
     const names = name.split(' ');
@@ -42,16 +39,11 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
     return name.substring(0, 2).toUpperCase();
   }
 
-  const handleSave = async (driverData: Omit<Driver, 'id' | 'authUid'>) => {
-    const authUid = driver.authUid;
-    if (!authUid) {
-      toast({ variant: 'destructive', title: 'Lagring feilet', description: 'Kunne ikke finne familie-ID.' });
-      return;
-    };
-
+  const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
+    if (!id) return;
     try {
-        const updatedDriverData: Driver = { ...driver, ...driverData, id: driver.id, authUid: authUid };
-        await addOrUpdateDriverInProfile(authUid, updatedDriverData);
+        const updatedDriverData: Driver = { ...driver, ...driverData, id: id };
+        await updateDriver(updatedDriverData);
         onProfileUpdate(updatedDriverData);
         setActiveTab("info");
         toast({
@@ -147,7 +139,6 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                             driverToEdit={driver} 
                             onSave={handleSave} 
                             closeDialog={() => setActiveTab("info")} 
-                            addMode='existing'
                         />
                     </div>
                 </TabsContent>

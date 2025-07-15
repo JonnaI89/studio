@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getDriverProfileByAuthUid } from "@/services/driver-service";
+import { getDriverProfile } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { setCookie } from 'cookies-next';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -38,7 +37,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      const driverProfile = await getDriverProfileByAuthUid(user.uid);
+      const driverProfile = await getDriverProfile(user.uid);
 
       if (!driverProfile) {
         toast({
@@ -57,18 +56,7 @@ export function LoginForm() {
       }
       
       toast({ title: "Innlogging Vellykket" });
-
-      if (driverProfile.drivers.length > 1) {
-        router.push('/velg-forer');
-      } else if (driverProfile.drivers.length === 1) {
-        const driverId = driverProfile.drivers[0].id;
-        setCookie('selectedDriverId', driverId, { path: '/' });
-        router.push(`/driver/${driverId}`);
-      } else {
-        // This case should ideally not happen for a driver role.
-        // Maybe redirect to a page to create the first driver?
-        toast({ variant: 'destructive', title: 'Ingen førere funnet', description: 'Denne profilen har ingen førere.' });
-      }
+      router.push(`/driver/${driverProfile.id}`);
 
     } catch (error) {
       toast({

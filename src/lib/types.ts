@@ -9,13 +9,13 @@ export type Guardian = {
 }
 
 export type Driver = {
-  id: string; // Unique ID for this specific driver, e.g., a UUID.
-  authUid: string; // The auth UID of the parent/family account.
+  id: string; // Corresponds to Firebase Auth UID
   rfid: string;
   name: string;
   dob: string; // YYYY-MM-DD, can be empty
   club: string;
-  email: string; // The family's login email, denormalized for easier access.
+  email: string; // The login email
+  role: 'admin' | 'driver';
   hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
@@ -29,13 +29,8 @@ export type Driver = {
   guardians?: Guardian[];
 };
 
-// Represents the document stored in the database, linked to a single auth user.
-export type DriverProfile = {
-  id: string; // Corresponds to Firebase Auth UID
-  email: string;
-  role: 'admin' | 'driver';
-  drivers: Driver[]; // A list of all drivers associated with this account.
-};
+// Kept for legacy compatibility in some components, but Driver is the primary type.
+export type DriverProfile = Driver;
 
 export type CheckedInEntry = {
   historyId: string;

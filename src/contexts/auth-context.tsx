@@ -3,7 +3,7 @@
 
 import { createContext, useState, useEffect, ReactNode } from "react";
 import { onAuthStateChanged } from "@/services/auth-service";
-import { getDriverProfileByAuthUid } from "@/services/driver-service";
+import { getDriverProfile } from "@/services/driver-service";
 import type { User } from "firebase/auth";
 import type { DriverProfile } from "@/lib/types";
 import { LoaderCircle } from "lucide-react";
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
-        const userProfile = await getDriverProfileByAuthUid(user.uid);
+        const userProfile = await getDriverProfile(user.uid);
         setProfile(userProfile);
       } else {
         setUser(null);
