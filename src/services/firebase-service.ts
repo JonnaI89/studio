@@ -417,7 +417,6 @@ export async function getFirebaseCheckinHistoryForDate(date: string): Promise<Ch
     }
 }
 
-
 export async function getAllFirebaseCheckinHistory(): Promise<CheckinHistoryEntry[]> {
     try {
         if (!db) throw new Error("Firestore not initialized.");

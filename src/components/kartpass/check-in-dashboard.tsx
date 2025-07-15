@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry, TrainingSignup } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
-import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
+import { recordCheckin, deleteCheckin } from "@/services/checkin-service";
 import { getRacesForDate, getRaceSignupsWithDriverData, type RaceSignupWithDriver } from "@/services/race-service";
 import { getSignupsByDate as getTrainingSignupsByDate } from "@/services/training-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
@@ -42,6 +42,8 @@ import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { RaceCheckinDialog } from "./race-checkin-dialog";
+import { db } from "@/lib/firebase-config";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 
 export function CheckInDashboard() {
@@ -180,21 +182,13 @@ export function CheckInDashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const [fetchedDrivers, fetchedSettings, fetchedCheckins] = await Promise.all([
+      const [fetchedDrivers, fetchedSettings] = await Promise.all([
         getDrivers(),
         getSiteSettings(),
-        getCheckinsForDate(today),
       ]);
       
       setDrivers(fetchedDrivers);
       setSiteSettings(fetchedSettings);
-      
-      const reconstructedCheckins = fetchedCheckins
-          .map(entry => mapHistoryToCheckinEntry(entry, fetchedDrivers))
-          .filter((entry): entry is CheckedInEntry => entry !== null);
-          
-      setCheckedInDrivers(reconstructedCheckins);
       
       await fetchTodaysEvents();
 
@@ -213,6 +207,35 @@ export function CheckInDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!db) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    
+    const q = query(
+        collection(db, "checkinHistory"),
+        where("checkinDate", "==", today)
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const checkinHistory = querySnapshot.docs.map(doc => doc.data() as CheckinHistoryEntry);
+        const reconstructedCheckins = checkinHistory
+          .map(entry => mapHistoryToCheckinEntry(entry, drivers))
+          .filter((entry): entry is CheckedInEntry => entry !== null);
+        
+        reconstructedCheckins.sort((a, b) => b.checkInTime.localeCompare(a.checkInTime));
+        setCheckedInDrivers(reconstructedCheckins);
+    }, (error) => {
+        console.error("Error listening to check-in history:", error);
+        toast({
+            variant: "destructive",
+            title: "Sanntidsoppdatering feilet",
+            description: "Kunne ikke lytte til endringer i innsjekkinger."
+        });
+    });
+    
+    return () => unsubscribe();
+  }, [drivers, toast]);
 
   const processRfidScan = useCallback(async (rfid: string) => {
     try {
@@ -313,21 +336,8 @@ export function CheckInDashboard() {
             ...getEventDetails(),
             amountPaid: 0,
         };
-        const newHistoryEntry = await recordCheckin(historyData);
-
-        const newEntry = mapHistoryToCheckinEntry(newHistoryEntry, drivers);
-        
-        if (newEntry) {
-            setCheckedInDrivers(prev => {
-                const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driver.id);
-                if (existingEntryIndex > -1) {
-                    const updatedList = [...prev];
-                    updatedList[existingEntryIndex] = newEntry;
-                    return updatedList;
-                }
-                return [newEntry, ...prev];
-            });
-        }
+        await recordCheckin(historyData);
+        // State update is now handled by the onSnapshot listener
 
         toast({
             title: 'Innsjekk Vellykket (Årskort)',
@@ -387,22 +397,8 @@ export function CheckInDashboard() {
             ...getEventDetails(),
         };
 
-        const newHistoryEntry = await recordCheckin(historyData);
-        
-        const newEntry = mapHistoryToCheckinEntry(newHistoryEntry, drivers);
-
-        if(newEntry) {
-          setCheckedInDrivers(prev => {
-              const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driverForPayment.id);
-              if (existingEntryIndex > -1) {
-                  const updatedList = [...prev];
-                  updatedList[existingEntryIndex] = newEntry;
-                  return updatedList;
-              }
-              return [newEntry, ...prev];
-          });
-        }
-
+        await recordCheckin(historyData);
+        // State update is now handled by the onSnapshot listener
 
         toast({
             title: 'Betaling Vellykket',
@@ -438,14 +434,8 @@ export function CheckInDashboard() {
           paymentStatus: 'one_time_license',
           ...getEventDetails(),
         };
-        const newHistoryEntry = await recordCheckin(historyData);
-
-        const newEntry = mapHistoryToCheckinEntry(newHistoryEntry, drivers);
-
-        if (newEntry) {
-            setCheckedInDrivers(prev => [newEntry, ...prev]);
-        }
-
+        await recordCheckin(historyData);
+        // State update is now handled by the onSnapshot listener
 
         toast({
             title: 'Innsjekk Vellykket (Engangslisens)',
@@ -478,7 +468,7 @@ export function CheckInDashboard() {
     setIsDeletingCheckin(true);
     try {
       await deleteCheckin(checkinToDelete.historyId);
-      setCheckedInDrivers(prev => prev.filter(entry => entry.historyId !== checkinToDelete.historyId));
+      // State update is now handled by the onSnapshot listener
       toast({ title: "Innsjekking slettet" });
     } catch (error) {
       toast({
@@ -499,7 +489,7 @@ export function CheckInDashboard() {
 
   const handleRaceCheckinSuccess = () => {
     setSignupForCheckin(null);
-    fetchData(); // Refresh all data, including checked-in list
+    // No need to call fetchData(), onSnapshot listener handles updates
     if (driver) {
       resetViewAfterDelay(driver.id);
     }
@@ -779,5 +769,7 @@ export function CheckInDashboard() {
     </div>
   );
 }
+
+    
 
     
