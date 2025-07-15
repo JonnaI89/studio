@@ -1,3 +1,4 @@
+
 import type { CheckedInEntry } from "@/lib/types";
 import {
   Table,
@@ -32,9 +33,9 @@ export function CheckedInTable({ entries, onDelete }: CheckedInTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Navn</TableHead>
-            <TableHead>Klubb</TableHead>
             <TableHead>Betalingsstatus</TableHead>
-            <TableHead>Tidspunkt</TableHead>
+            <TableHead>Beløp</TableHead>
+            <TableHead>Tid</TableHead>
             {onDelete && <TableHead className="text-right">Handlinger</TableHead>}
           </TableRow>
         </TableHeader>
@@ -42,7 +43,6 @@ export function CheckedInTable({ entries, onDelete }: CheckedInTableProps) {
           {entries.map((entry) => (
             <TableRow key={entry.historyId}>
               <TableCell className="font-medium">{entry.driver.name}</TableCell>
-              <TableCell>{entry.driver.club}</TableCell>
               <TableCell>
                 <Badge variant={
                   entry.paymentStatus === 'paid' 
@@ -63,6 +63,9 @@ export function CheckedInTable({ entries, onDelete }: CheckedInTableProps) {
                     : 'Ubetalt'
                   }
                 </Badge>
+              </TableCell>
+              <TableCell>
+                {entry.amountPaid !== undefined ? `${entry.amountPaid},- kr` : 'N/A'}
               </TableCell>
               <TableCell className="text-right">{entry.checkInTime}</TableCell>
               {onDelete && (

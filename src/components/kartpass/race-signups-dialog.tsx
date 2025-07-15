@@ -2,15 +2,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { RaceSignup } from "@/lib/types";
-import { getRaceSignupsWithDriverData, deleteRaceSignup } from "@/services/race-service";
+import type { RaceSignup, Race } from "@/lib/types";
+import { getRaceSignupsWithDriverData, deleteRaceSignup, getRaceById } from "@/services/race-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LoaderCircle, User, Trash2, Download } from "lucide-react";
+import { LoaderCircle, User, Trash2, Download, LogIn, Tent } from "lucide-react";
 import type { RaceSignupWithDriver } from "@/services/race-service";
+import { RaceCheckinDialog } from "./race-checkin-dialog";
 
 
 interface RaceSignupsDialogProps {
@@ -20,21 +21,26 @@ interface RaceSignupsDialogProps {
 
 export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSignupsDialogProps) {
   const [signups, setSignups] = useState<RaceSignupWithDriver[]>([]);
+  const [race, setRace] = useState<Race | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const [signupToDelete, setSignupToDelete] = useState<RaceSignupWithDriver | null>(null);
+  const [signupToInteract, setSignupToInteract] = useState<{ type: 'delete' | 'checkin', data: RaceSignupWithDriver } | null>(null);
 
   useEffect(() => {
     const fetchSignups = async () => {
       if (!raceId) return;
       setIsLoading(true);
       try {
-        const fetchedSignups = await getRaceSignupsWithDriverData(raceId);
+        const [fetchedSignups, fetchedRace] = await Promise.all([
+          getRaceSignupsWithDriverData(raceId),
+          getRaceById(raceId),
+        ]);
         setSignups(fetchedSignups);
+        setRace(fetchedRace);
       } catch (error) {
         toast({
           variant: "destructive",
-          title: "Feil ved henting av påmeldinger",
+          title: "Feil ved henting av data",
           description: (error as Error).message || "En ukjent feil oppsto.",
         });
       } finally {
@@ -45,7 +51,9 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
   }, [raceId, toast]);
 
   const handleConfirmDelete = async () => {
-    if (!signupToDelete) return;
+    if (!signupToInteract || signupToInteract.type !== 'delete') return;
+    const { data: signupToDelete } = signupToInteract;
+
     try {
       await deleteRaceSignup(signupToDelete.id);
       setSignups(prev => prev.filter(s => s.id !== signupToDelete.id));
@@ -53,7 +61,7 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
     } catch (error) {
       toast({ variant: "destructive", title: "Fjerning feilet", description: (error as Error).message });
     } finally {
-      setSignupToDelete(null);
+      setSignupToInteract(null);
     }
   };
 
@@ -63,18 +71,20 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
         return;
     }
 
-    const headers = ["Klasse", "Navn", "StartNr", "TransponderNr"];
+    const headers = ["Klasse", "Navn", "StartNr", "TransponderNr", "Klubb", "Camping"];
     const csvContent = [
         headers.join(","),
         ...signups.map(signup => [
             `"${signup.driverKlasse || ''}"`,
             `"${signup.driverName}"`,
             `"${signup.driver?.startNr || ''}"`,
-            `"${signup.driver?.transponderNr || ''}"`
+            `"${signup.driver?.transponderNr || ''}"`,
+            `"${signup.driver?.club || ''}"`,
+            `"${signup.wantsCamping ? 'Ja' : 'Nei'}"`,
         ].join(","))
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -136,21 +146,36 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
                     <ul className="space-y-1 pt-2">
                     {drivers.map((signup) => (
                         <li key={signup.id} className="flex items-center justify-between gap-3 ml-2 group hover:bg-muted/50 rounded-md p-1">
-                        <div className="flex items-center gap-3">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            {signup.driverName}
-                        </div>
-                        {showAdminControls && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => setSignupToDelete(signup)}
-                                title={`Fjern påmelding for ${signup.driverName}`}
-                            >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                        )}
+                          <div className="flex items-center gap-3">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex items-center gap-2">
+                                {signup.driverName}
+                                {signup.wantsCamping && <Tent className="h-4 w-4 text-sky-600" title="Ønsker camping" />}
+                              </div>
+                          </div>
+                          {showAdminControls && (
+                              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7"
+                                  onClick={() => setSignupToInteract({ type: 'checkin', data: signup })}
+                                  title={`Sjekk inn ${signup.driverName}`}
+                                >
+                                  <LogIn className="mr-2 h-4 w-4 text-green-600" />
+                                  Ankomst
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => setSignupToInteract({ type: 'delete', data: signup })}
+                                    title={`Fjern påmelding for ${signup.driverName}`}
+                                >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                          )}
                         </li>
                     ))}
                     </ul>
@@ -160,12 +185,16 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
             </Accordion>
         </ScrollArea>
         {showAdminControls && (
-            <AlertDialog open={!!signupToDelete} onOpenChange={(isOpen) => !isOpen && setSignupToDelete(null)}>
+            <>
+              <AlertDialog 
+                open={signupToInteract?.type === 'delete'} 
+                onOpenChange={(isOpen) => !isOpen && setSignupToInteract(null)}
+              >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Fjerne påmelding?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Er du sikker på at du vil fjerne påmeldingen for <span className="font-bold">{signupToDelete?.driverName}</span>?
+                            Er du sikker på at du vil fjerne påmeldingen for <span className="font-bold">{signupToInteract?.data.driverName}</span>?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -179,7 +208,16 @@ export function RaceSignupsDialog({ raceId, showAdminControls = false }: RaceSig
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </AlertDialog>
+              </AlertDialog>
+
+              <RaceCheckinDialog
+                isOpen={signupToInteract?.type === 'checkin'}
+                onOpenChange={(isOpen) => !isOpen && setSignupToInteract(null)}
+                signup={signupToInteract?.type === 'checkin' ? signupToInteract.data : undefined}
+                race={race}
+                onCheckinSuccess={() => setSignupToInteract(null)}
+              />
+            </>
         )}
     </div>
   );

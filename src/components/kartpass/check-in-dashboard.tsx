@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Driver, CheckedInEntry, SiteSettings, Race } from "@/lib/types";
+import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
@@ -74,6 +74,57 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     }
   }, [todaysRaces]);
 
+  const mapHistoryToCheckinEntry = (historyEntry: CheckinHistoryEntry, driverProfiles: Driver[]): CheckedInEntry | null => {
+    if (historyEntry.paymentStatus === 'one_time_license') {
+        return {
+            historyId: historyEntry.id,
+            driver: {
+                id: historyEntry.driverId,
+                name: historyEntry.driverName,
+                rfid: `onetime_${historyEntry.driverId}`,
+                club: 'Engangslisens',
+                dob: '2000-01-01',
+                email: '',
+                role: 'driver',
+                hasSeasonPass: false,
+                klasse: historyEntry.driverKlasse,
+            },
+            checkInTime: historyEntry.checkinTime,
+            paymentStatus: historyEntry.paymentStatus,
+            amountPaid: historyEntry.amountPaid
+        };
+    }
+    
+    const driverProfile = driverProfiles.find(d => d.id === historyEntry.driverId);
+    
+    if (driverProfile) {
+        return {
+            historyId: historyEntry.id,
+            driver: driverProfile,
+            checkInTime: historyEntry.checkinTime,
+            paymentStatus: historyEntry.paymentStatus,
+            amountPaid: historyEntry.amountPaid,
+        };
+    }
+
+    return {
+        historyId: historyEntry.id,
+        driver: {
+            id: historyEntry.driverId,
+            name: `${historyEntry.driverName} (Slettet)`,
+            rfid: 'unknown',
+            club: 'Ukjent',
+            dob: '2000-01-01',
+            email: '',
+            role: 'driver',
+        },
+        checkInTime: historyEntry.checkinTime,
+        paymentStatus: historyEntry.paymentStatus,
+        amountPaid: historyEntry.amountPaid
+    };
+  }
+
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -87,53 +138,10 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
       setDrivers(fetchedDrivers);
       setSiteSettings(fetchedSettings);
       
-      const reconstructedCheckins: CheckedInEntry[] = fetchedCheckins.map(historyEntry => {
-          const driverProfile = fetchedDrivers.find(d => d.id === historyEntry.driverId);
+      const reconstructedCheckins = fetchedCheckins
+          .map(entry => mapHistoryToCheckinEntry(entry, fetchedDrivers))
+          .filter((entry): entry is CheckedInEntry => entry !== null);
           
-          if (driverProfile) {
-              return {
-                  historyId: historyEntry.id,
-                  driver: driverProfile,
-                  checkInTime: historyEntry.checkinTime,
-                  paymentStatus: historyEntry.paymentStatus,
-              };
-          }
-
-          if (historyEntry.paymentStatus === 'one_time_license') {
-              return {
-                  historyId: historyEntry.id,
-                  driver: {
-                      id: historyEntry.driverId,
-                      name: historyEntry.driverName,
-                      rfid: `onetime_${historyEntry.driverId}`,
-                      club: 'Engangslisens',
-                      dob: '2000-01-01',
-                      email: '',
-                      role: 'driver',
-                      hasSeasonPass: false,
-                      klasse: historyEntry.driverKlasse,
-                  },
-                  checkInTime: historyEntry.checkinTime,
-                  paymentStatus: historyEntry.paymentStatus,
-              };
-          }
-          
-          return {
-              historyId: historyEntry.id,
-              driver: {
-                  id: historyEntry.driverId,
-                  name: `${historyEntry.driverName} (Slettet)`,
-                  rfid: 'unknown',
-                  club: 'Ukjent',
-                  dob: '2000-01-01',
-                  email: '',
-                  role: 'driver',
-              },
-              checkInTime: historyEntry.checkinTime,
-              paymentStatus: historyEntry.paymentStatus,
-          };
-      });
-
       setCheckedInDrivers(reconstructedCheckins);
 
     } catch (error) {
@@ -241,32 +249,31 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     const date = now.toISOString().split('T')[0];
     
     try {
-        const newHistoryEntry = await recordCheckin({
+        const historyData: Omit<CheckinHistoryEntry, 'id'> = {
             driverId: driver.id,
             driverName: driver.name,
             driverKlasse: driver.klasse,
             checkinDate: date,
             checkinTime: time,
             paymentStatus: 'season_pass',
-            ...getEventDetails()
-        });
-
-        const newEntry: CheckedInEntry = { 
-            driver, 
-            checkInTime: time, 
-            paymentStatus: 'season_pass',
-            historyId: newHistoryEntry.id 
+            ...getEventDetails(),
+            amountPaid: 0,
         };
+        const newHistoryEntry = await recordCheckin(historyData);
+
+        const newEntry = mapHistoryToCheckinEntry(newHistoryEntry, drivers);
         
-        setCheckedInDrivers(prev => {
-            const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driver.id);
-            if (existingEntryIndex > -1) {
-                const updatedList = [...prev];
-                updatedList[existingEntryIndex] = newEntry;
-                return updatedList;
-            }
-            return [newEntry, ...prev];
-        });
+        if (newEntry) {
+            setCheckedInDrivers(prev => {
+                const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driver.id);
+                if (existingEntryIndex > -1) {
+                    const updatedList = [...prev];
+                    updatedList[existingEntryIndex] = newEntry;
+                    return updatedList;
+                }
+                return [newEntry, ...prev];
+            });
+        }
 
         toast({
             title: 'Innsjekk Vellykket (Årskort)',
@@ -302,32 +309,32 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     const date = now.toISOString().split('T')[0];
     
     try {
-        const newHistoryEntry = await recordCheckin({
+        const historyData: Omit<CheckinHistoryEntry, 'id'> = {
             driverId: driverForPayment.id,
             driverName: driverForPayment.name,
             driverKlasse: driverForPayment.klasse,
             checkinDate: date,
             checkinTime: time,
             paymentStatus: 'paid',
-            ...getEventDetails()
-        });
-        
-        const newEntry: CheckedInEntry = { 
-            driver: driverForPayment, 
-            checkInTime: time, 
-            paymentStatus: 'paid',
-            historyId: newHistoryEntry.id
+            ...getEventDetails(),
         };
 
-        setCheckedInDrivers(prev => {
-            const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driverForPayment.id);
-            if (existingEntryIndex > -1) {
-                const updatedList = [...prev];
-                updatedList[existingEntryIndex] = newEntry;
-                return updatedList;
-            }
-            return [newEntry, ...prev];
-        });
+        const newHistoryEntry = await recordCheckin(historyData);
+        
+        const newEntry = mapHistoryToCheckinEntry(newHistoryEntry, drivers);
+
+        if(newEntry) {
+          setCheckedInDrivers(prev => {
+              const existingEntryIndex = prev.findIndex(entry => entry.driver.id === driverForPayment.id);
+              if (existingEntryIndex > -1) {
+                  const updatedList = [...prev];
+                  updatedList[existingEntryIndex] = newEntry;
+                  return updatedList;
+              }
+              return [newEntry, ...prev];
+          });
+        }
+
 
         toast({
             title: 'Betaling Vellykket',
@@ -353,38 +360,24 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
     const time = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const date = now.toISOString().split('T')[0];
     
-    const oneTimeDriver: Driver = {
-        id: `onetime_${Date.now()}`,
-        name: name,
-        rfid: `onetime_${licenseNumber}`,
-        club: 'Engangslisens',
-        dob: '2000-01-01',
-        email: '',
-        role: 'driver',
-        hasSeasonPass: false,
-        driverLicense: licenseNumber,
-        klasse: 'Engangslisens',
-    };
-
     try {
-        const newHistoryEntry = await recordCheckin({
-            driverId: oneTimeDriver.id,
-            driverName: oneTimeDriver.name,
-            driverKlasse: oneTimeDriver.klasse,
-            checkinDate: date,
-            checkinTime: time,
-            paymentStatus: 'one_time_license',
-            ...getEventDetails()
-        });
-
-        const newEntry: CheckedInEntry = {
-            driver: oneTimeDriver,
-            checkInTime: time,
-            paymentStatus: 'one_time_license',
-            historyId: newHistoryEntry.id,
+        const historyData: Omit<CheckinHistoryEntry, 'id'> = {
+          driverId: `onetime_${Date.now()}`,
+          driverName: name,
+          driverKlasse: 'Engangslisens',
+          checkinDate: date,
+          checkinTime: time,
+          paymentStatus: 'one_time_license',
+          ...getEventDetails(),
         };
+        const newHistoryEntry = await recordCheckin(historyData);
 
-        setCheckedInDrivers(prev => [newEntry, ...prev]);
+        const newEntry = mapHistoryToCheckinEntry(newHistoryEntry, drivers);
+
+        if (newEntry) {
+            setCheckedInDrivers(prev => [newEntry, ...prev]);
+        }
+
 
         toast({
             title: 'Innsjekk Vellykket (Engangslisens)',

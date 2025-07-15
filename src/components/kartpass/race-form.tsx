@@ -30,6 +30,7 @@ const formSchema = z.object({
   availableClasses: z.string().optional(),
   entryFee: z.coerce.number().positive().optional(),
   classFees: z.array(classFeeSchema).optional(),
+  campingFee: z.coerce.number().positive().optional(),
 }).refine(data => !data.endDate || data.endDate >= data.date, {
     message: "Sluttdato kan ikke være før startdato.",
     path: ["endDate"],
@@ -53,14 +54,16 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
       date: new Date(raceToEdit.date),
       endDate: raceToEdit.endDate ? parseISO(raceToEdit.endDate) : undefined,
       availableClasses: raceToEdit.availableClasses?.join('\n') || '',
-      entryFee: raceToEdit.entryFee ?? '',
+      entryFee: raceToEdit.entryFee ?? undefined,
       classFees: raceToEdit.classFees || [],
+      campingFee: raceToEdit.campingFee ?? undefined,
     } : {
       name: "",
       description: "",
       availableClasses: "",
-      entryFee: '',
+      entryFee: undefined,
       classFees: [],
+      campingFee: undefined,
     },
   });
   
@@ -78,8 +81,6 @@ export function RaceForm({ raceToEdit, onSave, closeDialog, isLoading }: RaceFor
     };
     onSave(raceData, raceToEdit?.id);
   }
-
-  const availableClasses = form.watch('availableClasses')?.split('\n').map(s => s.trim()).filter(Boolean) || [];
 
   return (
     <Form {...form}>
@@ -225,7 +226,7 @@ Cadetti"
         <Separator />
         
         <div>
-            <h3 className="text-lg font-medium mb-2">Påmeldingsavgifter</h3>
+            <h3 className="text-lg font-medium mb-2">Påmeldings- og campingavgifter</h3>
             <div className="p-4 border rounded-md bg-muted/30 space-y-4">
                  <FormField
                     control={form.control}
@@ -237,6 +238,20 @@ Cadetti"
                                 <Input type="number" placeholder="350" {...field} value={field.value ?? ''} disabled={isLoading} className="max-w-xs" />
                             </FormControl>
                             <FormDescription>Dette er standardavgiften som gjelder for alle klasser med mindre et unntak er definert under.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="campingFee"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Campingavgift (kr)</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="200" {...field} value={field.value ?? ''} disabled={isLoading} className="max-w-xs" />
+                            </FormControl>
+                            <FormDescription>Avgift for camping. Førere kan velge dette ved påmelding. La stå tomt hvis ikke aktuelt.</FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}

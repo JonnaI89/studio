@@ -253,6 +253,18 @@ export async function getFirebaseRaces(): Promise<Race[]> {
     }
 }
 
+export async function getFirebaseRace(id: string): Promise<Race | null> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const docRef = doc(db, RACES_COLLECTION, id);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? docSnap.data() as Race : null;
+    } catch (error) {
+        console.error(`Error fetching race with ID ${id} from Firestore: `, error);
+        throw new Error("Kunne ikke hente løpsdata.");
+    }
+}
+
 export async function getFirebaseRacesForDate(date: string): Promise<Race[]> {
     try {
       if (!db) throw new Error("Firestore not initialized.");

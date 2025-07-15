@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -11,10 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import { addRaceSignup, deleteRaceSignup } from '@/services/race-service';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { nb } from 'date-fns/locale';
-import { Flag, CheckCircle, Trophy, Trash2, Calendar, User, CreditCard } from 'lucide-react';
+import { Flag, CheckCircle, Trophy, Trash2, Calendar, User, CreditCard, Tent } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RaceSignupsDialog } from './race-signups-dialog';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
 
 interface RaceSignupCardProps {
     driver: Driver;
@@ -24,6 +27,7 @@ interface RaceSignupCardProps {
 
 export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupCardProps) {
     const [selectedClasses, setSelectedClasses] = useState<Record<string, string>>({});
+    const [wantsCamping, setWantsCamping] = useState<Record<string, boolean>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
@@ -62,7 +66,8 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                 raceId: race.id,
                 driverId: driver.id,
                 driverName: driver.name,
-                driverKlasse: selectedClass
+                driverKlasse: selectedClass,
+                wantsCamping: wantsCamping[race.id] || false,
             });
             toast({
                 title: "Løpspåmelding Vellykket!",
@@ -109,6 +114,7 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                             {upcomingRaces.map(race => {
                                 const selectedClass = selectedClasses[race.id];
                                 const entryFee = getEntryFeeForClass(race, selectedClass);
+                                const totalFee = (entryFee || 0) + ((wantsCamping[race.id] && race.campingFee) ? race.campingFee : 0);
 
                                 return (
                                 <AccordionItem value={race.id} key={race.id}>
@@ -125,32 +131,48 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                         <div className="p-2 space-y-4">
                                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{race.description}</p>
                                             
-                                            {entryFee !== undefined && (
-                                                <div className="flex items-center gap-2 font-semibold text-primary p-2 bg-primary/10 rounded-md">
-                                                    <CreditCard className="h-5 w-5" />
-                                                    <span>Påmeldingsavgift: {entryFee},- kr</span>
-                                                </div>
-                                            )}
+                                            <div className="space-y-2">
+                                                {race.availableClasses && race.availableClasses.length > 0 ? (
+                                                    <div className="flex items-end gap-4">
+                                                        <div className="flex-1">
+                                                            <Label>Klasse</Label>
+                                                            <Select onValueChange={(value) => setSelectedClasses(prev => ({ ...prev, [race.id]: value }))}>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Velg klasse..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {race.availableClasses.map(cls => (
+                                                                        <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm font-semibold text-destructive">Påmelding er ikke mulig (ingen klasser definert).</p>
+                                                )}
 
-                                            {race.availableClasses && race.availableClasses.length > 0 ? (
-                                                <div className="flex items-center gap-4">
-                                                    <Select onValueChange={(value) => setSelectedClasses(prev => ({ ...prev, [race.id]: value }))}>
-                                                        <SelectTrigger className="w-[220px]">
-                                                            <SelectValue placeholder="Velg klasse..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {race.availableClasses.map(cls => (
-                                                                <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <Button onClick={() => handleRaceSignup(race, selectedClass)} disabled={!selectedClass || isSubmitting}>
-                                                        <Flag className="mr-2 h-4 w-4"/>Meld på
-                                                    </Button>
+                                                {race.campingFee && (
+                                                    <div className="flex items-center space-x-2 pt-2">
+                                                        <Checkbox 
+                                                            id={`camping-${race.id}`} 
+                                                            checked={wantsCamping[race.id] || false}
+                                                            onCheckedChange={(checked) => setWantsCamping(prev => ({...prev, [race.id]: !!checked}))}
+                                                        />
+                                                        <Label htmlFor={`camping-${race.id}`}>Jeg ønsker camping (+{race.campingFee},- kr)</Label>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg">
+                                                <div className="flex items-center gap-2 font-semibold text-primary">
+                                                    <CreditCard className="h-5 w-5" />
+                                                    <span>Totalbeløp: {totalFee},- kr</span>
                                                 </div>
-                                            ) : (
-                                                <p className="text-sm font-semibold text-destructive">Påmelding er ikke mulig (ingen klasser definert).</p>
-                                            )}
+                                                <Button onClick={() => handleRaceSignup(race, selectedClass)} disabled={!selectedClass || isSubmitting}>
+                                                    <Flag className="mr-2 h-4 w-4"/>Meld på
+                                                </Button>
+                                            </div>
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
@@ -174,9 +196,10 @@ export function RaceSignupCard({ driver, races, driverRaceSignups }: RaceSignupC
                                 <li key={signup.id} className="p-4 bg-muted/50 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <div>
                                         <p className="font-bold text-lg">{race.name}</p>
-                                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                                             <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {formatDateRange(race.date, race.endDate)}</span>
                                             <span className="flex items-center gap-1.5"><Trophy className="h-4 w-4" /> {signup.driverKlasse}</span>
+                                            {signup.wantsCamping && <span className="flex items-center gap-1.5 text-sky-600"><Tent className="h-4 w-4" /> Inkl. Camping</span>}
                                         </div>
                                     </div>
                                     <div className="flex gap-2 self-start sm:self-center">

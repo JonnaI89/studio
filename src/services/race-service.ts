@@ -12,6 +12,7 @@ import {
     getFirebaseRaceSignupsByDriver,
     getFirebaseRacesForDate,
     getFirebaseDriver,
+    getFirebaseRace,
 } from './firebase-service';
 import type { Race, RaceSignup, Driver } from '@/lib/types';
 
@@ -25,6 +26,10 @@ export async function createRace(raceData: Omit<Race, 'id' | 'createdAt' | 'stat
 
 export async function getRaces(): Promise<Race[]> {
     return getFirebaseRaces();
+}
+
+export async function getRaceById(raceId: string): Promise<Race | null> {
+    return getFirebaseRace(raceId);
 }
 
 export async function getRacesForDate(date: string): Promise<Race[]> {

@@ -36,6 +36,7 @@ export type CheckedInEntry = {
   driver: Driver;
   checkInTime: string;
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
+  amountPaid?: number;
 };
 
 export type CheckinHistoryEntry = {
@@ -49,6 +50,7 @@ export type CheckinHistoryEntry = {
   eventType: 'training' | 'race';
   eventId?: string; // e.g., raceId
   eventName?: string; // e.g., raceName
+  amountPaid?: number; // Amount paid in NOK
 };
 
 export type TrainingSignup = {
@@ -96,6 +98,7 @@ export type Race = {
   availableClasses?: string[];
   entryFee?: number;
   classFees?: ClassFee[];
+  campingFee?: number;
 };
 
 export type RaceSignup = {
@@ -105,4 +108,5 @@ export type RaceSignup = {
   driverName: string;
   driverKlasse: string | undefined;
   signedUpAt: string; // ISO string
+  wantsCamping: boolean;
 };
