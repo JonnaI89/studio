@@ -1,5 +1,6 @@
 
 
+
 'use server';
 
 import { db } from '@/lib/firebase-config';
@@ -411,6 +412,18 @@ export async function getFirebaseCheckinHistoryForDate(date: string): Promise<Ch
     } catch (error) {
         console.error(`Error fetching check-in history for date ${date}: `, error);
         throw new Error("Kunne ikke hente innsjekkingshistorikk for i dag.");
+    }
+}
+
+
+export async function getAllFirebaseCheckinHistory(): Promise<CheckinHistoryEntry[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized.");
+        const querySnapshot = await getDocs(collection(db, CHECKIN_HISTORY_COLLECTION));
+        return querySnapshot.docs.map(doc => doc.data() as CheckinHistoryEntry);
+    } catch (error) {
+        console.error(`Error fetching all check-in history: `, error);
+        throw new Error("Kunne ikke hente all innsjekkingshistorikk.");
     }
 }
 

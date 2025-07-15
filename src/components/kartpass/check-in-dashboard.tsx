@@ -11,7 +11,7 @@ import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { List, UserPlus, Users, LoaderCircle, CalendarDays, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2, Bike, Trash2 } from "lucide-react";
+import { List, UserPlus, Users, LoaderCircle, CalendarDays, Image as ImageIcon, Flag, AlertTriangle, ScanLine, FilePlus2, Bike, Trash2, BarChart2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -551,6 +551,12 @@ export function CheckInDashboard() {
                     <Button variant="ghost" onClick={() => setIsSignupsOpen(true)} disabled={isLoading}>
                         <CalendarDays className="mr-2 h-4 w-4" />
                         Påmeldte
+                    </Button>
+                     <Button variant="ghost" asChild disabled={isLoading}>
+                        <Link href="/admin/reports">
+                            <BarChart2 className="mr-2 h-4 w-4" />
+                            Rapporter
+                        </Link>
                     </Button>
                     <Separator orientation="vertical" className="h-6 mx-2" />
                     <Button variant="ghost" asChild disabled={isLoading}>
