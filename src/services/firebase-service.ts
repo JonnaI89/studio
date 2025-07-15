@@ -1,6 +1,5 @@
 
 
-
 'use server';
 
 import { db } from '@/lib/firebase-config';
@@ -63,13 +62,16 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
 export async function addFirebaseDriver(driverData: Omit<Driver, 'id' | 'role'>, uid: string): Promise<void> {
     try {
         if (!db) throw new Error("Firestore not initialized.");
+        const docRef = doc(db, DRIVERS_COLLECTION, uid);
+        const existingDoc = await getDoc(docRef);
+        
         const newDriver: Driver = {
             id: uid,
             ...driverData,
-            role: 'driver',
+            role: existingDoc.exists() ? existingDoc.data().role : 'driver',
             rfid: normalizeRfid(driverData.rfid),
         };
-        const docRef = doc(db, DRIVERS_COLLECTION, uid);
+
         await setDoc(docRef, newDriver);
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
@@ -438,3 +440,5 @@ export async function deleteFirebaseCheckinHistory(id: string): Promise<void> {
         throw new Error("Kunne ikke slette innsjekking fra databasen.");
     }
 }
+
+    
