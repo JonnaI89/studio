@@ -8,14 +8,13 @@ export type Guardian = {
   licenses?: string[];
 }
 
+// Represents an individual driver
 export type Driver = {
-  id: string; // Corresponds to Firebase Auth UID
+  id: string; // Unique ID for the driver within the profile, e.g., a UUID
   rfid: string;
   name: string;
   dob: string; // YYYY-MM-DD, can be empty
   club: string;
-  email: string; // The login email
-  role: 'admin' | 'driver';
   hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
@@ -29,19 +28,26 @@ export type Driver = {
   guardians?: Guardian[];
 };
 
-// Kept for legacy compatibility in some components, but Driver is the primary type.
-export type DriverProfile = Driver;
+// Represents the entire login/family unit
+export type DriverProfile = {
+  id: string; // Corresponds to Firebase Auth UID
+  email: string; // The login email
+  role: 'admin' | 'driver';
+  drivers: Driver[];
+};
+
 
 export type CheckedInEntry = {
   historyId: string;
-  driver: Driver;
+  driver: Driver; // The specific driver who checked in
   checkInTime: string;
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
 };
 
 export type CheckinHistoryEntry = {
   id: string; // Firestore doc ID
-  driverId: string;
+  driverId: string; // The ID of the individual driver from the profile
+  profileId: string; // The ID of the family profile (auth UID)
   driverName: string;
   driverKlasse: string | undefined;
   checkinDate: string; // YYYY-MM-DD
@@ -55,6 +61,7 @@ export type CheckinHistoryEntry = {
 export type TrainingSignup = {
   id: string; // auto-generated doc id
   driverId: string;
+  profileId: string; // The ID of the family profile (auth UID)
   driverName: string;
   driverKlasse: string | undefined;
   trainingDate: string; // YYYY-MM-DD
@@ -87,7 +94,7 @@ export type ClassFee = {
 };
 
 export type Race = {
-  id: string; // Firestore document ID
+  id:string; // Firestore document ID
   name: string;
   date: string; // YYYY-MM-DD (Start Date)
   endDate?: string; // YYYY-MM-DD (Optional End Date)
@@ -102,7 +109,8 @@ export type Race = {
 export type RaceSignup = {
   id:string; // Firestore document ID
   raceId: string;
-  driverId: string;
+  driverId: string; // The ID of the individual driver
+  profileId: string; // The ID of the family profile
   driverName: string;
   driverKlasse: string | undefined;
   signedUpAt: string; // ISO string

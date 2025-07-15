@@ -4,7 +4,7 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Driver } from "@/lib/types";
+import type { Driver, DriverProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Save, PlusCircle, Trash2 } from "lucide-react";
+import { Save, LoaderCircle, PlusCircle, Trash2 } from "lucide-react";
 import { cn, parseDateString } from "@/lib/utils";
 import { format } from "date-fns";
 import { Separator } from "../ui/separator";
@@ -43,7 +43,8 @@ const guardianSchema = z.object({
   licenses: z.array(z.object({ value: z.string() })).optional(),
 });
 
-const formSchema = z.object({
+// This schema is for a SINGLE driver
+const driverFormSchema = z.object({
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
     email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
@@ -62,41 +63,32 @@ const formSchema = z.object({
     guardians: z.array(guardianSchema).optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof driverFormSchema>;
 
 interface DriverFormProps {
     driverToEdit?: Driver | null;
-    onSave: (data: Omit<Driver, 'id' | 'role'>, id?: string) => void;
-    closeDialog: () => void;
-    rfidFromScan?: string;
+    profileToEdit?: DriverProfile | null;
+    onSave: (data: Omit<Driver, 'id'>, profileId?: string) => void;
+    isSaving: boolean;
     isRestrictedView?: boolean;
 }
 
-export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, isRestrictedView = false }: DriverFormProps) {
+export function DriverForm({ driverToEdit, profileToEdit, onSave, isSaving, isRestrictedView = false }: DriverFormProps) {
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(driverFormSchema),
         defaultValues: driverToEdit ? {
             ...driverToEdit,
+            email: profileToEdit?.email || '',
             dob: driverToEdit.dob ? format(parseDateString(driverToEdit.dob)!, 'dd.MM.yyyy') : '',
-            rfid: driverToEdit.rfid || "",
             hasSeasonPass: driverToEdit.hasSeasonPass || false,
-            klasse: driverToEdit.klasse || "",
-            startNr: driverToEdit.startNr || "",
-            transponderNr: driverToEdit.transponderNr || "",
-            chassiNr: driverToEdit.chassiNr || "",
-            motorNr1: driverToEdit.motorNr1 || "",
-            motorNr2: driverToEdit.motorNr2 || "",
-            driverLicense: driverToEdit.driverLicense || "",
-            vehicleLicense: driverToEdit.vehicleLicense || "",
-            teamLicense: driverToEdit.teamLicense || "",
             guardians: driverToEdit.guardians?.map(g => ({
                 ...g,
                 licenses: g.licenses?.map(l => ({ value: l })) || []
             })) || [],
         } : {
-            rfid: rfidFromScan || "",
+            rfid: "",
             name: "",
-            email: "",
+            email: profileToEdit?.email || '',
             club: "",
             dob: "",
             hasSeasonPass: false,
@@ -127,7 +119,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             return;
         }
 
-        const driverData: Omit<Driver, 'id' | 'role'> = {
+        const driverData: Omit<Driver, 'id'> = {
             rfid: values.rfid,
             name: values.name,
             dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
@@ -146,10 +138,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                 ...g,
                 licenses: g.licenses?.map(l => l.value).filter(Boolean) || []
             })) || [],
-            email: values.email || '',
         };
         
-        onSave(driverData, driverToEdit?.id);
+        onSave(driverData, profileToEdit?.id || values.email);
     }
 
     return (
@@ -168,7 +159,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                             <Input
                                                 placeholder="Skann eller skriv inn ID"
                                                 {...field}
-                                                value={field.value ?? ''}
+                                                disabled={isSaving}
                                             />
                                         </FormControl>
                                         <FormDescription>
@@ -186,35 +177,34 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Fullt Navn</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Ola Nordmann" {...field} value={field.value ?? ''} autoFocus />
+                                        <Input placeholder="Ola Nordmann" {...field} autoFocus disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        {!driverToEdit && (
-                            <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>E-post (for innlogging)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="email"
-                                                placeholder="din@epost.no"
-                                                {...field}
-                                                value={field.value ?? ''}
-                                            />
-                                        </FormControl>
-                                        <FormDescription>
-                                            Hver fører må ha en unik e-post for å logge inn.
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
+                        {/* Email is part of the profile, not the individual driver */}
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>E-post (for innlogging)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="email"
+                                            placeholder="familien@epost.no"
+                                            {...field}
+                                            disabled={isSaving || !!profileToEdit}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Hver familie/innlogging må ha en unik e-post.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField
                             control={form.control}
                             name="dob"
@@ -225,7 +215,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                     <Input
                                         placeholder="DD.MM.YYYY"
                                         {...field}
-                                        value={field.value ?? ''}
+                                        disabled={isSaving}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -239,7 +229,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Klubb</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Oslo Karting Klubb" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Oslo Karting Klubb" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -252,7 +242,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Klasse</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="F.eks. Rotax, KZ2" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="F.eks. Rotax, KZ2" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -265,7 +255,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Startnummer</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="F.eks. 42" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="F.eks. 42" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -278,7 +268,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Transponder nr</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Transpondernummer" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Transpondernummer" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -291,7 +281,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Førerlisens</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Lisensnummer for fører" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Lisensnummer for fører" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -304,7 +294,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Vognlisens</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Lisensnummer for vogn" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Lisensnummer for vogn" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -317,7 +307,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Chassi nr</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Chassisnummer" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Chassisnummer" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -330,7 +320,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Motor nr 1</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Motornummer 1" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Motornummer 1" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -343,7 +333,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 <FormItem>
                                     <FormLabel>Motor nr 2</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Motornummer 2" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="Motornummer 2" {...field} disabled={isSaving}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -367,6 +357,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                             <Switch
                                                 checked={field.value}
                                                 onCheckedChange={field.onChange}
+                                                disabled={isSaving}
                                             />
                                         </FormControl>
                                     </FormItem>
@@ -382,7 +373,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                             <FormItem>
                                 <FormLabel>Anmelder / Team-lisens</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Lisensnummer for team" {...field} value={field.value ?? ''} />
+                                    <Input placeholder="Lisensnummer for team" {...field} disabled={isSaving}/>
                                 </FormControl>
                                 <FormDescription>
                                     Hvis denne er fylt ut, overstyrer den informasjon om foresatte for førere under 18.
@@ -407,6 +398,7 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                 size="sm"
                                 onClick={() => appendGuardian({ id: crypto.randomUUID(), name: "", contact: "", licenses: [] })}
                                 className="mt-4"
+                                disabled={isSaving}
                             >
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Legg til foresatt
@@ -415,8 +407,8 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                     </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t">
-                    <Button type="submit">
-                        <Save className="mr-2 h-4 w-4" />
+                    <Button type="submit" disabled={isSaving}>
+                        {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {driverToEdit ? 'Lagre Endringer' : 'Registrer Fører'}
                     </Button>
                 </div>
