@@ -6,33 +6,37 @@ import {
     updateFirebaseDriverProfile,
     getFirebaseDriverProfile,
     getFirebaseDriverByRfid,
-    deleteFirebaseProfile,
-    addFirebaseDriverProfile
+    deleteFirebaseDriverFromProfile,
+    addOrUpdateFirebaseDriverInProfile,
+    getFirebaseDriverProfileByAuthUid,
+    getFirebaseDriversByAuthUid
 } from './firebase-service';
 import type { Driver, DriverProfile } from '@/lib/types';
 
-export async function getDriverProfiles(): Promise<Driver[]> {
+export async function getDriverProfiles(): Promise<DriverProfile[]> {
     return getFirebaseDriverProfiles();
 }
 
-export async function getDriverProfile(id: string): Promise<Driver | null> {
-    // This now fetches a single Driver document, not a profile with a list.
-    return getFirebaseDriverProfile(id);
+export async function getDriverProfile(driverId: string): Promise<Driver | null> {
+    return getFirebaseDriverProfile(driverId);
+}
+
+export async function getDriverProfileByAuthUid(authUid: string): Promise<DriverProfile | null> {
+    return getFirebaseDriverProfileByAuthUid(authUid);
+}
+
+export async function getDriversByAuthUid(authUid: string): Promise<Driver[]> {
+    return getFirebaseDriversByAuthUid(authUid);
 }
 
 export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
     return getFirebaseDriverByRfid(rfid);
 }
 
-export async function getDriver(profileId: string, driverId: string): Promise<Driver | null> {
-    // In the old model, profileId and driverId are the same.
-    return getFirebaseDriverProfile(profileId);
+export async function addOrUpdateDriverInProfile(profileId: string, driver: Omit<Driver, 'id' | 'authUid'> | Driver): Promise<Driver> {
+    return addOrUpdateFirebaseDriverInProfile(profileId, driver);
 }
 
-export async function updateDriver(driver: Driver): Promise<void> {
-    await updateFirebaseDriverProfile(driver);
-}
-
-export async function deleteDriver(id: string): Promise<void> {
-    return deleteFirebaseProfile(id);
+export async function deleteDriverFromProfile(driverId: string): Promise<void> {
+    return deleteFirebaseDriverFromProfile(driverId);
 }

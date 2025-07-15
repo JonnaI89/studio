@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Driver } from "@/lib/types";
+import type { Driver, DriverProfile } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -16,12 +16,14 @@ import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface DriversTableProps {
-  drivers: Driver[];
-  onEdit: (driver: Driver) => void;
+  profiles: DriverProfile[];
+  onEdit: (driver: Driver, profile: DriverProfile) => void;
   onDelete: (driver: Driver) => void;
 }
 
-export function DriversTable({ drivers, onEdit, onDelete }: DriversTableProps) {
+export function DriversTable({ profiles, onEdit, onDelete }: DriversTableProps) {
+  const allDrivers = profiles.flatMap(p => p.drivers ? p.drivers.map(d => ({ driver: d, profile: p })) : []);
+  
   return (
     <ScrollArea className="h-full border rounded-md">
       <Table>
@@ -29,12 +31,12 @@ export function DriversTable({ drivers, onEdit, onDelete }: DriversTableProps) {
           <TableRow>
             <TableHead>Navn</TableHead>
             <TableHead>Klubb</TableHead>
-            <TableHead>E-post</TableHead>
+            <TableHead>E-post (familie)</TableHead>
             <TableHead className="text-right">Handlinger</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {drivers.map((driver) => (
+          {allDrivers.map(({ driver, profile }) => (
             <TableRow key={driver.id}>
               <TableCell className="font-medium">
                 <Link href={`/admin/driver/${driver.id}`} className="hover:underline text-primary">
@@ -43,11 +45,11 @@ export function DriversTable({ drivers, onEdit, onDelete }: DriversTableProps) {
               </TableCell>
               <TableCell>{driver.club}</TableCell>
               <TableCell>
-                 {driver.email}
+                 {profile.email}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => onEdit(driver)}>
+                    <Button variant="outline" size="sm" onClick={() => onEdit(driver, profile)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Rediger
                     </Button>

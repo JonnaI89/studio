@@ -1,5 +1,5 @@
 
-import { getDriverProfile } from '@/services/driver-service';
+import { getDriverProfile, getDriversByAuthUid } from '@/services/driver-service';
 import { getRaces, getRaceSignupsByDriver } from '@/services/race-service';
 import { getTrainingSettings, getTrainingSignupsByDriver } from '@/services/training-service';
 import { DriverProfilePage } from '@/components/kartpass/driver-profile-page';
@@ -9,16 +9,23 @@ import { LogoutButton } from '@/components/auth/logout-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RaceSignupCard } from '@/components/kartpass/race-signup-card';
 import { TrainingSignupCard } from '@/components/kartpass/training-signup-card';
+import { SiblingSwitcher } from '@/components/kartpass/sibling-switcher';
+import type { Driver } from '@/lib/types';
 
 export default async function Page({ params }: { params: { id: string } }) {
     const driverId = params.id;
 
+    // Fetch the specific driver being viewed
     const driver = await getDriverProfile(driverId);
     
-    if (!driver) {
+    if (!driver || !driver.authUid) {
         notFound();
     }
     
+    // Fetch all siblings (including the current driver) connected to the same auth account
+    const siblings = await getDriversByAuthUid(driver.authUid);
+    const currentProfile = siblings.find(s => s.id === driver.authUid);
+
     const [races, driverRaceSignups, trainingSettings, driverTrainingSignups] = await Promise.all([
         getRaces(),
         getRaceSignupsByDriver(driver.id),
@@ -31,6 +38,7 @@ export default async function Page({ params }: { params: { id: string } }) {
             <header className="flex justify-between items-center mb-8">
                  <FoererportalenLogo />
                  <div className="flex items-center gap-4">
+                    {currentProfile && <SiblingSwitcher currentDriverId={driver.id} profile={currentProfile} />}
                     <LogoutButton variant="outline" />
                  </div>
             </header>

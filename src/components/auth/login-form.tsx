@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getDriverProfile } from "@/services/driver-service";
+import { getDriverProfileByAuthUid } from "@/services/driver-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,9 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import type { DriverProfile as AdminProfileType } from '@/lib/types'; // Using old structure for admin check
-import { getFirebaseDriverProfile } from "@/services/firebase-service";
-
+import { setCookie } from 'cookies-next';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -40,16 +38,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      
-      const adminProfile = await getFirebaseDriverProfile(user.uid);
-      
-      if (adminProfile && (adminProfile as any).role === 'admin') {
-          toast({ title: "Admin-innlogging Vellykket" });
-          router.push('/admin');
-          return;
-      }
-
-      const driverProfile = await getDriverProfile(user.uid);
+      const driverProfile = await getDriverProfileByAuthUid(user.uid);
 
       if (!driverProfile) {
         toast({
@@ -61,8 +50,25 @@ export function LoginForm() {
         return; 
       }
       
+      if (driverProfile.role === 'admin') {
+          toast({ title: "Admin-innlogging Vellykket" });
+          router.push('/admin');
+          return;
+      }
+      
       toast({ title: "Innlogging Vellykket" });
-      router.push(`/driver/${driverProfile.id}`);
+
+      if (driverProfile.drivers.length > 1) {
+        router.push('/velg-forer');
+      } else if (driverProfile.drivers.length === 1) {
+        const driverId = driverProfile.drivers[0].id;
+        setCookie('selectedDriverId', driverId, { path: '/' });
+        router.push(`/driver/${driverId}`);
+      } else {
+        // This case should ideally not happen for a driver role.
+        // Maybe redirect to a page to create the first driver?
+        toast({ variant: 'destructive', title: 'Ingen førere funnet', description: 'Denne profilen har ingen førere.' });
+      }
 
     } catch (error) {
       toast({

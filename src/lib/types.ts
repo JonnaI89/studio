@@ -1,4 +1,6 @@
 
+import type { User } from "firebase/auth";
+
 export type Guardian = {
   id: string;
   name: string;
@@ -7,12 +9,13 @@ export type Guardian = {
 }
 
 export type Driver = {
-  id: string; // Firestore doc ID. Should match Firebase Auth UID.
+  id: string; // Unique ID for this specific driver, e.g., a UUID.
+  authUid: string; // The auth UID of the parent/family account.
   rfid: string;
   name: string;
   dob: string; // YYYY-MM-DD, can be empty
   club: string;
-  email: string; // The email used for login.
+  email: string; // The family's login email, denormalized for easier access.
   hasSeasonPass?: boolean;
   klasse?: string;
   startNr?: string;
@@ -26,13 +29,13 @@ export type Driver = {
   guardians?: Guardian[];
 };
 
+// Represents the document stored in the database, linked to a single auth user.
 export type DriverProfile = {
   id: string; // Corresponds to Firebase Auth UID
   email: string;
   role: 'admin' | 'driver';
-  // Note: 'drivers' array is removed. The top-level document IS the driver profile.
+  drivers: Driver[]; // A list of all drivers associated with this account.
 };
-
 
 export type CheckedInEntry = {
   historyId: string;
