@@ -22,7 +22,9 @@ interface DriversTableProps {
 }
 
 export function DriversTable({ profiles, onEdit, onDelete }: DriversTableProps) {
-  const allDrivers = profiles.flatMap(p => p.drivers.map(d => ({ ...d, profileId: p.id, profileEmail: p.email })));
+  const allDrivers = profiles.flatMap(p => 
+    (p.drivers || []).map(d => ({ ...d, profileId: p.id, profileEmail: p.email }))
+  );
   
   return (
     <ScrollArea className="h-full border rounded-md">
