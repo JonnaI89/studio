@@ -45,6 +45,7 @@ const guardianSchema = z.object({
 
 const formSchema = z.object({
     id: z.string().optional(),
+    authUid: z.string().optional(),
     rfid: z.string().min(1, { message: "RFID/ID er påkrevd." }),
     email: z.string().email({ message: "Gyldig e-post er påkrevd." }).optional().or(z.literal('')),
     name: z.string().min(2, { message: "Navn må ha minst 2 tegn." }),
@@ -67,7 +68,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface DriverFormProps {
     driverToEdit?: Driver | null;
-    onSave: (data: Omit<Driver, 'id'>, id?: string) => void;
+    onSave: (data: Omit<Driver, 'id' | 'role' | 'authUid'>, id?: string) => void;
     closeDialog: () => void;
     rfidFromScan?: string;
     isRestrictedView?: boolean;
@@ -129,13 +130,12 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
             return;
         }
 
-        const driverData: Omit<Driver, 'id'> = {
+        const driverData: Omit<Driver, 'id' | 'role' | 'authUid'> = {
             rfid: values.rfid,
             email: values.email || '',
             name: values.name,
             dob: parsedDate ? format(parsedDate, "yyyy-MM-dd") : '',
             club: values.club,
-            role: driverToEdit?.role === 'admin' ? 'admin' : 'driver',
             hasSeasonPass: values.hasSeasonPass,
             klasse: values.klasse,
             startNr: values.startNr,
@@ -212,11 +212,9 @@ export function DriverForm({ driverToEdit, onSave, closeDialog, rfidFromScan, is
                                             className={cn(!!driverToEdit?.email && !isRestrictedView && "cursor-not-allowed opacity-70")}
                                         />
                                     </FormControl>
-                                    {!driverToEdit && (
-                                        <FormDescription>
-                                            Passord settes til det samme som e-posten ved nyregistrering.
-                                        </FormDescription>
-                                    )}
+                                    <FormDescription>
+                                        Søsken som registreres med samme e-post vil bli knyttet til samme innlogging.
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { addFirebaseDriver, deleteFirebaseDriver, updateFirebaseDriver } from "@/services/firebase-service";
+import { addFirebaseDriver, deleteFirebaseDriver, getFirebaseDriverByEmail, updateFirebaseDriver } from "@/services/firebase-service";
 import { signUp, signIn } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -81,7 +81,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     }
   };
 
-  const handleSave = async (driverData: Omit<Driver, 'id' | 'role'>, id?: string) => {
+  const handleSave = async (driverData: Omit<Driver, 'id' | 'role' | 'authUid'>, id?: string) => {
     setIsSaving(true);
     try {
       if (driverToEdit && id) {
@@ -104,46 +104,45 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
             return;
         }
 
-        if (drivers.some(d => d.rfid === driverData.rfid && d.rfid)) {
-          toast({
-            variant: "destructive",
-            title: "RFID Finnes Allerede",
-            description: "En fører med denne RFID-brikken finnes allerede.",
-          });
-          setIsSaving(false);
-          return;
-        }
-        
-        // This is a temporary solution to a complex problem.
-        // It relies on the admin's password being available in a prompt,
-        // which is not ideal but necessary to avoid being logged out.
-        const adminEmail = user?.email;
-        const adminPassword = prompt("For å bekrefte handlingen, vennligst skriv inn ditt administratorpassord:");
+        let authUid: string;
+        const existingDriverWithEmail = await getFirebaseDriverByEmail(driverData.email);
 
-        if (!adminEmail || !adminPassword) {
-            toast({
-                variant: "destructive",
-                title: "Handlingen ble avbrutt",
-                description: "Du må skrive inn administratorpassordet for å opprette en ny fører.",
+        if (existingDriverWithEmail) {
+            // Re-use the authUid for the new sibling driver
+            authUid = existingDriverWithEmail.authUid;
+             toast({
+                title: 'Søsken Lagt Til!',
+                description: `Profil for ${driverData.name} er opprettet og knyttet til ${driverData.email}.`,
             });
-            setIsSaving(false);
-            return;
+        } else {
+            // This is a new user/family. Create a new auth user.
+            const adminEmail = user?.email;
+            const adminPassword = prompt("Ny familie! Skriv inn ditt administratorpassord for å opprette ny bruker:");
+
+            if (!adminEmail || !adminPassword) {
+                toast({
+                    variant: "destructive",
+                    title: "Handlingen ble avbrutt",
+                    description: "Du må skrive inn administratorpassordet for å opprette en ny bruker.",
+                });
+                setIsSaving(false);
+                return;
+            }
+
+            const newUser = await signUp(driverData.email, driverData.email);
+            authUid = newUser.uid;
+            
+            toast({
+                title: 'Fører Opprettet!',
+                description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
+            });
+            
+            // Re-authenticate the admin user to prevent being logged out
+            await signIn(adminEmail, adminPassword);
         }
-
-
-        // 1. Create user on the client-side
-        const newUser = await signUp(driverData.email, driverData.email);
         
-        // 2. Save the profile to the database using the new user's UID
-        await addFirebaseDriver(driverData, newUser.uid);
-        
-        toast({
-            title: 'Fører Opprettet!',
-            description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
-        });
-
-        // 3. Re-authenticate the admin user to prevent being logged out
-        await signIn(adminEmail, adminPassword);
+        // Save the profile to the database with the correct authUid
+        await addFirebaseDriver({ ...driverData, role: 'driver', authUid: authUid });
       }
 
       onDatabaseUpdate();
@@ -158,7 +157,6 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
       } else if (errorMessage.includes("auth/invalid-credential") || errorMessage.includes("auth/wrong-password")) {
         userFriendlyMessage = "Feil administratorpassord. Handlingen ble avbrutt.";
       }
-
 
       toast({
         variant: 'destructive',

@@ -6,13 +6,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getFirebaseDriverById } from "@/services/firebase-service";
+import { getFirebaseDriversByAuthUid } from "@/services/firebase-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, LogIn, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Ugyldig e-postadresse." }),
@@ -22,6 +23,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,9 +37,9 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
-      const driverProfile = await getFirebaseDriverById(user.uid);
+      const driverProfiles = await getFirebaseDriversByAuthUid(user.uid);
 
-      if (!driverProfile) {
+      if (!driverProfiles || driverProfiles.length === 0) {
         toast({
             variant: "destructive",
             title: "Profil Mangler",
@@ -46,12 +48,17 @@ export function LoginForm() {
         return; 
       }
       
-      if (driverProfile.role === 'admin') {
+      if (driverProfiles[0].role === 'admin') {
         toast({ title: "Admin-innlogging Vellykket" });
-        window.location.href = '/admin';
-      } else {
+        router.push('/admin');
+      } else if (driverProfiles.length > 1) {
+        // Multiple drivers associated, redirect to selection page
+        router.push(`/velg-forer?authUid=${user.uid}`);
+      }
+      else {
+        // Single driver, go directly to their profile
         toast({ title: "Innlogging Vellykket" });
-        window.location.href = `/driver/${driverProfile.id}`;
+        router.push(`/driver/${driverProfiles[0].id}`);
       }
 
     } catch (error) {

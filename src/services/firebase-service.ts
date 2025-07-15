@@ -51,6 +51,38 @@ export async function getFirebaseDriverById(id: string): Promise<Driver | null> 
     }
 }
 
+export async function getFirebaseDriverByEmail(email: string): Promise<Driver | null> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const q = query(collection(db, DRIVERS_COLLECTION), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            const docData = querySnapshot.docs[0];
+            return { ...(docData.data() as Omit<Driver, 'id'>), id: docData.id };
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching driver with email ${email} from Firestore: `, error);
+        throw new Error("Kunne ikke hente fører med e-post fra Firebase.");
+    }
+}
+
+export async function getFirebaseDriversByAuthUid(authUid: string): Promise<Driver[]> {
+    try {
+        if (!db) throw new Error("Firestore not initialized");
+        const q = query(collection(db, DRIVERS_COLLECTION), where("authUid", "==", authUid));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs.map(doc => ({ ...(doc.data() as Omit<Driver, 'id'>), id: doc.id }));
+        }
+        return [];
+    } catch (error) {
+        console.error(`Error fetching drivers with authUid ${authUid} from Firestore: `, error);
+        throw new Error("Kunne ikke hente førere med authUid fra Firebase.");
+    }
+}
+
+
 export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | null> {
     try {
         if (!db) throw new Error("Firestore not initialized");
@@ -68,19 +100,21 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
-export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>, id: string): Promise<void> {
+export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>): Promise<void> {
     try {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
         const driverToSave = { ...driverData, rfid: normalizeRfid(driverData.rfid) };
-        const docRef = doc(db, DRIVERS_COLLECTION, id);
-        await setDoc(docRef, driverToSave);
+        // Create a new document with an auto-generated ID
+        const newDocRef = doc(collection(db, DRIVERS_COLLECTION));
+        await setDoc(newDocRef, { ...driverToSave, id: newDocRef.id });
     } catch (error) {
         console.error("Error adding driver to Firestore: ", error);
         throw new Error("Kunne ikke legge til fører i Firebase.");
     }
 }
+
 
 export async function updateFirebaseDriver(driver: Driver): Promise<void> {
     try {
