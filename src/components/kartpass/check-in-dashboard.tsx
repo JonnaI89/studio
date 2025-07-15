@@ -6,7 +6,7 @@ import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry } 
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
-import { getRacesForDate } from "@/services/race-service";
+import { getRacesForDate, getRaceSignupsWithDriverData, type RaceSignupWithDriver } from "@/services/race-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +40,8 @@ import Link from "next/link";
 import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { RaceCheckinDialog } from "./race-checkin-dialog";
+
 
 export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
@@ -61,20 +63,48 @@ export function CheckInDashboard() {
   const [isCheckinsOpen, setIsCheckinsOpen] = useState(false);
   const [checkinToDelete, setCheckinToDelete] = useState<CheckedInEntry | null>(null);
   const [isDeletingCheckin, setIsDeletingCheckin] = useState(false);
+  const [raceSignups, setRaceSignups] = useState<RaceSignupWithDriver[]>([]);
+  const [signupForCheckin, setSignupForCheckin] = useState<RaceSignupWithDriver | null>(null);
 
   const rfidInputBuffer = useRef<string>('');
   const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (todaysRaces.length === 1) {
-      setSelectedEvent(todaysRaces[0]);
-    } else if (todaysRaces.length === 0) {
-      setSelectedEvent('training');
-    } else {
-        // Multiple races, selection screen will be shown
-        setSelectedEvent(null);
+  const fetchTodaysEvents = useCallback(async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const fetchedRaces = await getRacesForDate(today);
+      setTodaysRaces(fetchedRaces);
+
+      if (fetchedRaces.length === 1) {
+        setSelectedEvent(fetchedRaces[0]);
+      } else if (fetchedRaces.length === 0) {
+        setSelectedEvent('training');
+      } else {
+        setSelectedEvent(null); // Show selection screen
+      }
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Feil ved henting av løp', description: (error as Error).message });
     }
-  }, [todaysRaces]);
+  }, [toast]);
+  
+  useEffect(() => {
+    const fetchRaceSignups = async () => {
+      if (selectedEvent && typeof selectedEvent === 'object') {
+        try {
+          const signups = await getRaceSignupsWithDriverData(selectedEvent.id);
+          setRaceSignups(signups);
+        } catch (error) {
+           toast({ variant: 'destructive', title: 'Feil ved henting av påmeldte', description: (error as Error).message });
+           setRaceSignups([]);
+        }
+      } else {
+        setRaceSignups([]);
+      }
+    };
+
+    fetchRaceSignups();
+  }, [selectedEvent, toast]);
+
 
   const mapHistoryToCheckinEntry = (historyEntry: CheckinHistoryEntry, driverProfiles: Driver[]): CheckedInEntry | null => {
     if (historyEntry.paymentStatus === 'one_time_license') {
@@ -131,22 +161,22 @@ export function CheckInDashboard() {
     setIsLoading(true);
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
-      const [fetchedDrivers, fetchedSettings, fetchedCheckins, fetchedRaces] = await Promise.all([
+      const [fetchedDrivers, fetchedSettings, fetchedCheckins] = await Promise.all([
         getDrivers(),
         getSiteSettings(),
         getCheckinsForDate(today),
-        getRacesForDate(today),
       ]);
       
       setDrivers(fetchedDrivers);
       setSiteSettings(fetchedSettings);
-      setTodaysRaces(fetchedRaces);
       
       const reconstructedCheckins = fetchedCheckins
           .map(entry => mapHistoryToCheckinEntry(entry, fetchedDrivers))
           .filter((entry): entry is CheckedInEntry => entry !== null);
           
       setCheckedInDrivers(reconstructedCheckins);
+      
+      await fetchTodaysEvents();
 
     } catch (error) {
       toast({
@@ -158,7 +188,7 @@ export function CheckInDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, fetchTodaysEvents]);
 
   useEffect(() => {
     fetchData();
@@ -168,6 +198,21 @@ export function CheckInDashboard() {
     try {
         const foundDriver = await getDriverByRfid(rfid);
         if (foundDriver) {
+            // Check if it's a race day and the driver is signed up
+            if (selectedEvent && typeof selectedEvent === 'object') {
+                const signup = raceSignups.find(s => s.driverId === foundDriver.id);
+                if (signup) {
+                    setSignupForCheckin(signup);
+                    return; // Open check-in dialog instead of info card
+                } else {
+                    toast({
+                        variant: "destructive",
+                        title: "Ikke Påmeldt",
+                        description: `${foundDriver.name} er ikke påmeldt dette løpet.`
+                    });
+                }
+            }
+            // Default to showing info card for training or if not signed up for race
             setDriver(foundDriver);
         } else {
             setNewRfidId(rfid);
@@ -180,7 +225,7 @@ export function CheckInDashboard() {
         description: (error as Error).message,
       });
     }
-  }, [toast]);
+  }, [toast, selectedEvent, raceSignups]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -402,7 +447,8 @@ export function CheckInDashboard() {
   }
 
   const handleManualSelect = (selectedDriver: Driver) => {
-    setDriver(selectedDriver);
+    // Re-use RFID scan logic to either open race dialog or info card
+    processRfidScan(selectedDriver.rfid);
   };
 
   const handleOpenDeleteDialog = (entry: CheckedInEntry) => {
@@ -431,6 +477,11 @@ export function CheckInDashboard() {
   const handleProfileUpdate = (updatedDriver: Driver) => {
     setDriver(updatedDriver); // Update the state for the info card
     fetchData(); // Refetch all data to ensure lists are up to date
+  };
+
+  const handleRaceCheckinSuccess = () => {
+    setSignupForCheckin(null);
+    fetchData(); // Refresh all data, including checked-in list
   };
 
 
@@ -663,6 +714,13 @@ export function CheckInDashboard() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+        <RaceCheckinDialog
+            isOpen={!!signupForCheckin}
+            onOpenChange={(isOpen) => !isOpen && setSignupForCheckin(null)}
+            signup={signupForCheckin ?? undefined}
+            race={typeof selectedEvent === 'object' ? selectedEvent : null}
+            onCheckinSuccess={handleRaceCheckinSuccess}
+        />
     </div>
   );
 }
