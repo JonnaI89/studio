@@ -164,11 +164,14 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="max-w-xl">
-                 <DialogHeader>
-                    <DialogTitle>{driverToEdit ? 'Rediger Fører' : 'Registrer Ny Fører'}</DialogTitle>
-                    <DialogDescription>
-                        {driverToEdit ? 'Oppdater informasjonen for føreren.' : 'Fyll ut detaljene for den nye føreren.'}
-                    </DialogDescription>
+                 <DialogHeader className="flex flex-row justify-between items-start">
+                    <div>
+                      <DialogTitle>{driverToEdit ? 'Rediger Fører' : 'Registrer Ny Fører'}</DialogTitle>
+                      <DialogDescription>
+                          {driverToEdit ? 'Oppdater informasjonen for føreren.' : 'Fyll ut detaljene for den nye føreren.'}
+                      </DialogDescription>
+                    </div>
+                     {driverToEdit && <Button variant="outline">Legg til søsken</Button>}
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] pr-4">
                   <DriverForm
