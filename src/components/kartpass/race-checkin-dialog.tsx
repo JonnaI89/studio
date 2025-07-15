@@ -9,7 +9,8 @@ import { recordCheckin } from '@/services/checkin-service';
 import { initiateZettlePushPayment } from '@/services/zettle-service';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { LoaderCircle, CreditCard, User, Trophy, Tent, CheckCircle2, XCircle, Wifi, ServerCrash } from 'lucide-react';
+import { LoaderCircle, CreditCard, User, Trophy, Tent, CheckCircle2, XCircle, Wifi, ServerCrash, Pencil } from 'lucide-react';
+import { Input } from '../ui/input';
 
 interface RaceCheckinDialogProps {
   isOpen: boolean;
@@ -28,8 +29,9 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const socketRef = useRef<WebSocket | null>(null);
-  
-  const amount = useMemo(() => {
+  const [isEditingAmount, setIsEditingAmount] = useState(false);
+
+  const calculatedAmount = useMemo(() => {
     if (!signup || !race) return 0;
     
     const getEntryFeeForClass = (race: Race, klasse: string | undefined): number => {
@@ -38,12 +40,19 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
       return classFee ? classFee.fee : (race.entryFee || 0);
     };
 
-    let calculatedAmount = getEntryFeeForClass(race, signup.driverKlasse);
+    let amount = getEntryFeeForClass(race, signup.driverKlasse);
     if (signup.wantsCamping && race.campingFee) {
-      calculatedAmount += race.campingFee;
+      amount += race.campingFee;
     }
-    return calculatedAmount;
+    return amount;
   }, [signup, race]);
+  
+  const [currentAmount, setCurrentAmount] = useState(calculatedAmount);
+
+  useEffect(() => {
+      setCurrentAmount(calculatedAmount);
+  }, [calculatedAmount, isOpen]);
+
 
   const cleanUpSocket = useCallback(() => {
     if (socketRef.current) {
@@ -69,7 +78,7 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         eventType: 'race',
         eventId: race.id,
         eventName: race.name,
-        amountPaid: amount,
+        amountPaid: currentAmount,
       });
 
       toast({
@@ -88,15 +97,15 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         description: `Betalingen var vellykket, men innsjekkingen kunne ikke lagres: ${(error as Error).message}`,
       });
     }
-  }, [signup, race, amount, toast, onCheckinSuccess]);
+  }, [signup, race, currentAmount, toast, onCheckinSuccess]);
 
 
   const startPaymentProcess = useCallback(async () => {
-    if (!signup || !settings?.zettleLinkId || amount === 0) {
-        if(amount === 0) {
+    if (!signup || !settings?.zettleLinkId) {
+        if(currentAmount === 0) {
            await handlePaymentCompleted();
            setStatus("successful");
-        } else {
+        } else if (!settings?.zettleLinkId) {
             setError("Zettle Terminal ID er ikke konfigurert i nettstedinnstillingene.");
             setStatus("failed");
         }
@@ -110,7 +119,7 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
     try {
       const { webSocketUrl, paymentId } = await initiateZettlePushPayment({
         linkId: settings.zettleLinkId,
-        amount: amount * 100,
+        amount: currentAmount * 100,
         reference: `KARTPASS-${signup.driverId.slice(0, 6)}-${Date.now()}`
       });
       
@@ -158,7 +167,7 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
       setStatus("failed");
       setError(errorMessage);
     }
-  }, [signup, settings, amount, cleanUpSocket, status, handlePaymentCompleted, toast]);
+  }, [signup, settings, currentAmount, cleanUpSocket, status, handlePaymentCompleted, toast]);
   
   useEffect(() => {
     if (isOpen && signup) {
@@ -206,7 +215,27 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         </div>
 
         <div className="mt-4 w-full rounded-md border p-4 text-center space-y-2">
-            <p className="font-bold text-xl">Totalbeløp: {amount},- kr</p>
+            {isEditingAmount ? (
+                <div className="flex items-center gap-2 max-w-xs mx-auto">
+                    <Input 
+                        type="number"
+                        value={currentAmount}
+                        onChange={(e) => setCurrentAmount(Number(e.target.value))}
+                        onBlur={() => setIsEditingAmount(false)}
+                        autoFocus
+                        className="text-center font-bold text-xl h-12"
+                    />
+                     <Button size="icon" variant="ghost" onClick={() => setIsEditingAmount(false)}><CheckCircle2 className="h-5 w-5" /></Button>
+                </div>
+            ) : (
+                <div 
+                    className="flex items-center justify-center gap-2 font-bold text-xl cursor-pointer group"
+                    onClick={() => setIsEditingAmount(true)}
+                >
+                    <span>Totalbeløp: {currentAmount},- kr</span>
+                    <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+            )}
             <div className="text-sm text-muted-foreground">
               <div className="flex items-center justify-center gap-2"><Trophy className="h-4 w-4" /> {signup.driverKlasse}</div>
               {signup.wantsCamping && <div className="flex items-center justify-center gap-2"><Tent className="h-4 w-4" /> Inkluderer camping</div>}
@@ -216,7 +245,7 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         {(status === "failed" || status === "cancelled") && (
             <div className="flex justify-center gap-2 pt-4">
                  <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-                 <Button onClick={startPaymentProcess}>Prøv igjen</Button>
+                 <Button onClick={startPaymentProcess} disabled={isEditingAmount}>Prøv igjen</Button>
             </div>
         )}
       </DialogContent>
