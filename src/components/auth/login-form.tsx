@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getFirebaseDriversByAuthUid } from "@/services/firebase-service";
+import { getFirebaseDriversByAuthUid, getFirebaseDriverById } from "@/services/firebase-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -37,6 +37,17 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const user = await signIn(values.email, values.password);
+      
+      // Try fetching profile by user.uid first (for admin accounts)
+      let profile = await getFirebaseDriverById(user.uid);
+
+      if (profile && profile.role === 'admin') {
+          toast({ title: "Admin-innlogging Vellykket" });
+          router.push('/admin');
+          return;
+      }
+      
+      // If not an admin profile, check for driver profiles via authUid
       const driverProfiles = await getFirebaseDriversByAuthUid(user.uid);
 
       if (!driverProfiles || driverProfiles.length === 0) {
@@ -48,14 +59,10 @@ export function LoginForm() {
         return; 
       }
       
-      if (driverProfiles[0].role === 'admin') {
-        toast({ title: "Admin-innlogging Vellykket" });
-        router.push('/admin');
-      } else if (driverProfiles.length > 1) {
+      if (driverProfiles.length > 1) {
         // Multiple drivers associated, redirect to selection page
         router.push(`/velg-forer?authUid=${user.uid}`);
-      }
-      else {
+      } else {
         // Single driver, go directly to their profile
         toast({ title: "Innlogging Vellykket" });
         router.push(`/driver/${driverProfiles[0].id}`);
