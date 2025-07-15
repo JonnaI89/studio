@@ -36,7 +36,7 @@ export function ReportsPage({ allCheckins, allDrivers }: ReportsPageProps) {
     }, [filteredCheckins]);
 
     const driverStats = useMemo(() => {
-        const stats: Record<string, { name: string; club: string; training: number; races: number; }> = {};
+        const stats: Record<string, { name: string; club: string; training: number; races: number; totalPaid: number; }> = {};
 
         allDrivers.forEach(driver => {
             stats[driver.id] = {
@@ -44,6 +44,7 @@ export function ReportsPage({ allCheckins, allDrivers }: ReportsPageProps) {
                 club: driver.club,
                 training: 0,
                 races: 0,
+                totalPaid: 0,
             }
         });
 
@@ -54,25 +55,28 @@ export function ReportsPage({ allCheckins, allDrivers }: ReportsPageProps) {
                 } else if (checkin.eventType === 'race') {
                     stats[checkin.driverId].races += 1;
                 }
+                stats[checkin.driverId].totalPaid += checkin.amountPaid || 0;
+
             } else if (checkin.driverId.startsWith('onetime_')) {
                 // Handle one-time licenses if needed, for now they are ignored in driver-specific stats
             }
         });
         
         return Object.values(stats)
-            .filter(s => s.training > 0 || s.races > 0)
+            .filter(s => s.training > 0 || s.races > 0 || s.totalPaid > 0)
             .sort((a,b) => (b.training + b.races) - (a.training + a.races));
 
     }, [filteredCheckins, allDrivers]);
 
     const handleExport = () => {
-        const headers = ["Navn", "Klubb", "Antall Treninger", "Antall Løp", "Totalt"];
+        const headers = ["Navn", "Klubb", "Antall Treninger", "Antall Løp", "Totalt Oppmøte", "Totalt Innbetalt (kr)"];
         const rows = driverStats.map(d => [
             `"${d.name}"`,
             `"${d.club}"`,
             d.training,
             d.races,
-            d.training + d.races
+            d.training + d.races,
+            d.totalPaid,
         ].join(','));
         
         const csvContent = [headers.join(','), ...rows].join('\n');
@@ -169,6 +173,7 @@ export function ReportsPage({ allCheckins, allDrivers }: ReportsPageProps) {
                                     <TableHead className="text-right">Treninger</TableHead>
                                     <TableHead className="text-right">Løp</TableHead>
                                     <TableHead className="text-right">Totalt</TableHead>
+                                    <TableHead className="text-right">Innbetalt (kr)</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -179,10 +184,11 @@ export function ReportsPage({ allCheckins, allDrivers }: ReportsPageProps) {
                                         <TableCell className="text-right">{stat.training}</TableCell>
                                         <TableCell className="text-right">{stat.races}</TableCell>
                                         <TableCell className="text-right font-semibold">{stat.training + stat.races}</TableCell>
+                                        <TableCell className="text-right font-semibold">{stat.totalPaid.toLocaleString('nb-NO')},-</TableCell>
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                                             Ingen data for valgt år.
                                         </TableCell>
                                     </TableRow>
