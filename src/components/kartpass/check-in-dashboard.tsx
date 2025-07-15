@@ -6,6 +6,7 @@ import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry } 
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
+import { getRacesForDate } from "@/services/race-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -38,12 +39,9 @@ import { TrainingSignupsDialog } from "./training-signups-dialog";
 import Link from "next/link";
 import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
 import { Separator } from "@/components/ui/separator";
+import { format } from "date-fns";
 
-interface CheckInDashboardProps {
-    todaysRaces?: Race[];
-}
-
-export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
+export function CheckInDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
   const { toast } = useToast();
   const [checkedInDrivers, setCheckedInDrivers] = useState<CheckedInEntry[]>([]);
@@ -58,6 +56,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isRfidAlertOpen, setIsRfidAlertOpen] = useState(false);
   const [isOneTimeLicenseOpen, setIsOneTimeLicenseOpen] = useState(false);
+  const [todaysRaces, setTodaysRaces] = useState<Race[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Race | 'training' | null>(null);
   const [isCheckinsOpen, setIsCheckinsOpen] = useState(false);
   const [checkinToDelete, setCheckinToDelete] = useState<CheckedInEntry | null>(null);
@@ -67,10 +66,13 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (todaysRaces && todaysRaces.length === 1) {
+    if (todaysRaces.length === 1) {
       setSelectedEvent(todaysRaces[0]);
-    } else if (!todaysRaces || todaysRaces.length === 0) {
+    } else if (todaysRaces.length === 0) {
       setSelectedEvent('training');
+    } else {
+        // Multiple races, selection screen will be shown
+        setSelectedEvent(null);
     }
   }, [todaysRaces]);
 
@@ -128,15 +130,17 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const [fetchedDrivers, fetchedSettings, fetchedCheckins] = await Promise.all([
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const [fetchedDrivers, fetchedSettings, fetchedCheckins, fetchedRaces] = await Promise.all([
         getDrivers(),
         getSiteSettings(),
         getCheckinsForDate(today),
+        getRacesForDate(today),
       ]);
       
       setDrivers(fetchedDrivers);
       setSiteSettings(fetchedSettings);
+      setTodaysRaces(fetchedRaces);
       
       const reconstructedCheckins = fetchedCheckins
           .map(entry => mapHistoryToCheckinEntry(entry, fetchedDrivers))
@@ -430,7 +434,7 @@ export function CheckInDashboard({ todaysRaces = [] }: CheckInDashboardProps) {
   };
 
 
-  if (todaysRaces && todaysRaces.length > 1 && !selectedEvent) {
+  if (!isLoading && todaysRaces.length > 1 && !selectedEvent) {
     return (
       <div className="w-full flex-1 flex flex-col justify-center items-center p-4 sm:p-8">
         <div className="w-full max-w-lg flex flex-col items-center gap-8 text-center">
