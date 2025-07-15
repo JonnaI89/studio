@@ -15,6 +15,8 @@ import {
     getFirebaseRace,
 } from './firebase-service';
 import type { Race, RaceSignup, Driver } from '@/lib/types';
+import { getDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase-config';
 
 export type RaceSignupWithDriver = RaceSignup & {
     driver: Driver | null;

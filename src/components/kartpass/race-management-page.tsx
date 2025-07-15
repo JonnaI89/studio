@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Race } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,11 @@ import { RacesTable } from "./races-table";
 import { RaceForm } from "./race-form";
 import { RaceSignupsDialog } from "./race-signups-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { db } from "@/lib/firebase-config";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 
-interface RaceManagementPageProps {
-  initialRaces: Race[];
-}
-
-export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
-  const [races, setRaces] = useState<Race[]>(initialRaces.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+export function RaceManagementPage() {
+  const [races, setRaces] = useState<Race[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'form'>('table');
   const [isSignupsOpen, setIsSignupsOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -26,6 +25,22 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
   const [raceToDelete, setRaceToDelete] = useState<Race | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsLoading(true);
+    const racesQuery = query(collection(db, "races"), orderBy("date", "desc"));
+    const unsubscribe = onSnapshot(racesQuery, (snapshot) => {
+        const fetchedRaces = snapshot.docs.map(doc => doc.data() as Race);
+        setRaces(fetchedRaces);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error listening to races:", error);
+        toast({ variant: "destructive", title: "Feil ved henting av løp", description: "Kunne ikke lytte til sanntidsoppdateringer." });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
 
   const handleAddNew = () => {
     setSelectedRace(null);
@@ -55,18 +70,15 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
   const handleSave = async (raceData: Omit<Race, 'id' | 'createdAt' | 'status'>, id?: string) => {
     setIsLoading(true);
     try {
-      let updatedRaces;
       if (id && selectedRace) {
         const raceToUpdate: Race = { ...selectedRace, ...raceData };
         await updateRace(raceToUpdate);
-        updatedRaces = races.map(r => r.id === id ? raceToUpdate : r);
         toast({ title: "Løp oppdatert", description: `${raceData.name} er lagret.` });
       } else {
-        const newRace = await createRace(raceData);
-        updatedRaces = [newRace, ...races];
+        await createRace(raceData);
         toast({ title: "Løp opprettet", description: `${raceData.name} er lagt til.` });
       }
-      setRaces(updatedRaces.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      // Listener will update the state automatically
       handleBackToList();
     } catch (error) {
       toast({ variant: "destructive", title: "Lagring feilet", description: (error as Error).message });
@@ -80,7 +92,6 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
     setIsLoading(true);
     try {
         await deleteRace(raceToDelete.id);
-        setRaces(races.filter(r => r.id !== raceToDelete.id));
         toast({ title: "Løp slettet", description: `${raceToDelete.name} er fjernet.` });
     } catch (error) {
         toast({ variant: "destructive", title: "Sletting feilet", description: (error as Error).message });
@@ -114,12 +125,18 @@ export function RaceManagementPage({ initialRaces }: RaceManagementPageProps) {
                             Opprett nytt løp
                         </Button>
                     </div>
-                    <RacesTable 
-                        races={races} 
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onViewSignups={handleViewSignups}
-                    />
+                    {isLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                            <LoaderCircle className="h-8 w-8 animate-spin" />
+                        </div>
+                    ) : (
+                        <RacesTable 
+                            races={races} 
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onViewSignups={handleViewSignups}
+                        />
+                    )}
                 </div>
             ) : (
                 <RaceForm 

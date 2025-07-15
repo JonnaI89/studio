@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Driver, Guardian, DriverProfile } from "@/lib/types";
+import type { Driver, Guardian } from "@/lib/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
@@ -26,6 +26,7 @@ interface DriverInfoCardProps {
   onProfileUpdate: (updatedDriver: Driver) => void;
   isRaceDay?: boolean;
   isSignedUpForRace?: boolean;
+  onProceedToPayment: () => void;
 }
 
 export function DriverInfoCard({ 
@@ -38,7 +39,8 @@ export function DriverInfoCard({
   paymentStatus, 
   onProfileUpdate,
   isRaceDay = false,
-  isSignedUpForRace = false
+  isSignedUpForRace = false,
+  onProceedToPayment,
 }: DriverInfoCardProps) {
   const isUnderage = age !== null && age < 18;
   const [activeTab, setActiveTab] = useState("info");
@@ -208,7 +210,7 @@ export function DriverInfoCard({
                     Skann neste fører
                 </Button>
                 <Button 
-                onClick={onCheckIn}
+                onClick={onProceedToPayment}
                 disabled={checkinButton.disabled || isUnderageAndMissingInfo}
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
                 >
@@ -258,5 +260,3 @@ function InfoItem({ icon, label, value, children }: InfoItemProps) {
         </div>
     )
 }
-
-    

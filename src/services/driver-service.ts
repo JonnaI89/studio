@@ -7,7 +7,6 @@ import {
     getFirebaseDriver,
     deleteFirebaseDriver,
     addFirebaseDriver,
-    getFirebaseDriverByRfid
 } from './firebase-service';
 import type { DriverProfile, Driver } from '@/lib/types';
 
@@ -17,10 +16,6 @@ export async function getDrivers(): Promise<Driver[]> {
 
 export async function getDriverProfile(id: string): Promise<Driver | null> {
     return getFirebaseDriver(id);
-}
-
-export async function getDriverByRfid(rfid: string): Promise<Driver | null> {
-    return getFirebaseDriverByRfid(rfid);
 }
 
 export async function updateDriver(driver: Driver): Promise<void> {

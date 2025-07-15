@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import type { TrainingSignup, CheckedInEntry } from "@/lib/types";
-import { getSignupsByDate, deleteTrainingSignup } from "@/services/training-service";
+import { deleteTrainingSignup } from "@/services/training-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -21,6 +22,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { LoaderCircle, User, CheckCircle2, Trash2 } from "lucide-react";
+import { db } from "@/lib/firebase-config";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 interface TrainingSignupsDialogProps {
   checkedInEntries: CheckedInEntry[];
@@ -34,29 +37,40 @@ export function TrainingSignupsDialog({ checkedInEntries }: TrainingSignupsDialo
   const [signupToDelete, setSignupToDelete] = useState<TrainingSignup | null>(null);
 
   useEffect(() => {
-    const fetchSignups = async () => {
-      if (!selectedDate) {
-        setSignups([]);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const dateString = format(selectedDate, "yyyy-MM-dd");
-        const fetchedSignups = await getSignupsByDate(dateString);
-        setSignups(fetchedSignups);
-      } catch (error) {
+    if (!selectedDate) {
+      setSignups([]);
+      return;
+    }
+    
+    setIsLoading(true);
+    const dateString = format(selectedDate, "yyyy-MM-dd");
+    const q = query(collection(db, "trainingSignups"), where("trainingDate", "==", dateString));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedSignups = snapshot.docs.map(doc => doc.data() as TrainingSignup);
+      
+      fetchedSignups.sort((a, b) => {
+          const klasseA = a.driverKlasse || "Ukjent Klasse";
+          const klasseB = b.driverKlasse || "Ukjent Klasse";
+          if (klasseA < klasseB) return -1;
+          if (klasseA > klasseB) return 1;
+          return a.driverName.localeCompare(b.driverName);
+      });
+
+      setSignups(fetchedSignups);
+      setIsLoading(false);
+    }, (error) => {
+        console.error("Error listening to training signups:", error);
         toast({
           variant: "destructive",
           title: "Feil ved henting av påmeldinger",
-          description: (error as Error).message || "En ukjent feil oppsto.",
+          description: "Kunne ikke lytte til sanntidsoppdateringer.",
         });
         setSignups([]);
-      } finally {
         setIsLoading(false);
-      }
-    };
+    });
 
-    fetchSignups();
+    return () => unsubscribe();
   }, [selectedDate, toast]);
   
   const checkedInDriverIds = new Set(checkedInEntries.map(entry => entry.driver.id));
@@ -65,7 +79,7 @@ export function TrainingSignupsDialog({ checkedInEntries }: TrainingSignupsDialo
     if (!signupToDelete) return;
     try {
       await deleteTrainingSignup(signupToDelete.id);
-      setSignups(prev => prev.filter(s => s.id !== signupToDelete.id));
+      // Listener will update UI
       toast({
         title: "Påmelding Fjernet",
         description: `Påmeldingen for ${signupToDelete.driverName} er fjernet.`,

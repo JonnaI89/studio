@@ -1,13 +1,11 @@
+
 import { RaceManagementPage } from '@/components/kartpass/race-management-page';
-import { getRaces } from '@/services/race-service';
 import { FoererportalenLogo } from '@/components/icons/kart-pass-logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export default async function RacesPage() {
-    const races = await getRaces();
-
     return (
         <div className="container mx-auto p-4 sm:p-8 md:p-12 max-w-4xl">
             <header className="flex justify-between items-center mb-8">
@@ -20,7 +18,7 @@ export default async function RacesPage() {
                 </Button>
             </header>
             <main>
-                <RaceManagementPage initialRaces={races} />
+                <RaceManagementPage />
             </main>
         </div>
     );

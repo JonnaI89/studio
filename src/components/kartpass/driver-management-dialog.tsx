@@ -32,10 +32,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
-  onDatabaseUpdate: () => void;
 }
 
-export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverManagementDialogProps) {
+export function DriverManagementDialog({ drivers }: DriverManagementDialogProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
@@ -66,7 +65,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         title: "Fører Slettet",
         description: `${driverToDelete.name} har blitt fjernet fra databasen.`,
       });
-      onDatabaseUpdate();
+      // No need for onDatabaseUpdate, listener will catch it.
     } catch (error) {
       toast({
         variant: "destructive",
@@ -121,7 +120,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         });
       }
 
-      onDatabaseUpdate();
+      // No need for onDatabaseUpdate, listener will catch it.
       setIsFormOpen(false);
       setDriverToEdit(null);
 

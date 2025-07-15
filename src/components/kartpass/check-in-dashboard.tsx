@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry, TrainingSignup } from "@/lib/types";
-import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, deleteCheckin } from "@/services/checkin-service";
 import { getRacesForDate, getRaceSignupsWithDriverData, type RaceSignupWithDriver } from "@/services/race-service";
@@ -35,7 +34,7 @@ import { CheckedInTable } from "./checked-in-table";
 import { ManualCheckInForm } from "./manual-check-in-form";
 import { DriverManagementDialog } from "./driver-management-dialog";
 import { PaymentDialog } from "./payment-dialog";
-import { calculateAge } from "@/lib/utils";
+import { calculateAge, normalizeRfid } from "@/lib/utils";
 import { TrainingSignupsDialog } from "./training-signups-dialog";
 import Link from "next/link";
 import { OneTimeLicenseCheckinDialog } from "./one-time-license-checkin-dialog";
@@ -43,7 +42,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { RaceCheckinDialog } from "./race-checkin-dialog";
 import { db } from "@/lib/firebase-config";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
 
 export function CheckInDashboard() {
@@ -178,36 +177,49 @@ export function CheckInDashboard() {
     };
   }
 
-
-  const fetchData = useCallback(async () => {
+  // Initial data fetch for non-realtime data
+  const initialFetch = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [fetchedDrivers, fetchedSettings] = await Promise.all([
-        getDrivers(),
-        getSiteSettings(),
-      ]);
-      
-      setDrivers(fetchedDrivers);
-      setSiteSettings(fetchedSettings);
-      
-      await fetchTodaysEvents();
-
+        const fetchedSettings = await getSiteSettings();
+        setSiteSettings(fetchedSettings);
+        await fetchTodaysEvents();
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Feil ved henting av data',
-        description:
-          (error as Error).message || 'Kunne ikke laste data fra Firebase.',
-      });
+        toast({
+            variant: 'destructive',
+            title: 'Feil ved henting av data',
+            description: (error as Error).message || 'Kunne ikke laste innstillinger.',
+        });
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   }, [toast, fetchTodaysEvents]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    initialFetch();
+  }, [initialFetch]);
 
+
+  // Realtime listener for Drivers
+  useEffect(() => {
+    if (!db) return;
+    const driversQuery = query(collection(db, "drivers"), orderBy("name", "asc"));
+    const unsubscribe = onSnapshot(driversQuery, (querySnapshot) => {
+        const fetchedDrivers = querySnapshot.docs.map(doc => doc.data() as Driver);
+        setDrivers(fetchedDrivers);
+    }, (error) => {
+        console.error("Error listening to drivers:", error);
+        toast({
+            variant: "destructive",
+            title: "Sanntidsoppdatering feilet",
+            description: "Kunne ikke lytte til endringer i førere."
+        });
+    });
+    return () => unsubscribe();
+  }, [toast]);
+
+
+  // Realtime listener for Check-ins
   useEffect(() => {
     if (!db) return;
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -238,22 +250,16 @@ export function CheckInDashboard() {
   }, [drivers, toast]);
 
   const processRfidScan = useCallback(async (rfid: string) => {
-    try {
-        const foundDriver = await getDriverByRfid(rfid);
-        if (foundDriver) {
-            setDriver(foundDriver);
-        } else {
-            setNewRfidId(rfid);
-            setIsRfidAlertOpen(true);
-        }
-    } catch(error) {
-       toast({
-        variant: 'destructive',
-        title: 'Feil ved søk',
-        description: (error as Error).message,
-      });
+    const normalizedRfid = normalizeRfid(rfid);
+    const foundDriver = drivers.find(d => d.rfid === normalizedRfid);
+
+    if (foundDriver) {
+        setDriver(foundDriver);
+    } else {
+        setNewRfidId(rfid);
+        setIsRfidAlertOpen(true);
     }
-  }, [toast]);
+  }, [drivers]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -357,27 +363,8 @@ export function CheckInDashboard() {
   
   const handleCheckIn = () => {
     if (!driver) return;
-
-    if (selectedEvent && typeof selectedEvent === 'object') {
-        const signup = raceSignups.find(s => s.driverId === driver.id);
-        if (signup) {
-            setSignupForCheckin(signup);
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Ikke påmeldt løp",
-                description: `${driver.name} er ikke påmeldt dette løpet.`
-            });
-        }
-        return;
-    }
     
-    if (driver.hasSeasonPass) {
-      handleSeasonPassCheckIn();
-    } else {
-      setDriverForPayment(driver);
-      setIsPaymentOpen(true);
-    }
+    setDriver(driver); // Ensure driver is set before proceeding
   };
   
   const handlePaymentSuccess = async () => {
@@ -484,7 +471,7 @@ export function CheckInDashboard() {
 
   const handleProfileUpdate = (updatedDriver: Driver) => {
     setDriver(updatedDriver); // Update the state for the info card
-    fetchData(); // Refetch all data to ensure lists are up to date
+    // No need to refetch, snapshot listener will handle it.
   };
 
   const handleRaceCheckinSuccess = () => {
@@ -632,6 +619,27 @@ export function CheckInDashboard() {
                     onProfileUpdate={handleProfileUpdate}
                     isRaceDay={isRaceDay}
                     isSignedUpForRace={isSignedUpForRace}
+                    onProceedToPayment={() => {
+                      if (isRaceDay) {
+                         const signup = raceSignups.find(s => s.driverId === driver.id);
+                         if (signup) {
+                            setSignupForCheckin(signup);
+                         } else {
+                            toast({
+                              variant: "destructive",
+                              title: "Ikke påmeldt løp",
+                              description: `${driver.name} er ikke påmeldt dette løpet.`
+                            });
+                         }
+                      } else {
+                        if (driver.hasSeasonPass) {
+                          handleSeasonPassCheckIn();
+                        } else {
+                          setDriverForPayment(driver);
+                          setIsPaymentOpen(true);
+                        }
+                      }
+                    }}
                 />
                 ) : (
                 <Card className="w-full max-w-lg animate-in fade-in-50 shadow-lg">
@@ -699,7 +707,6 @@ export function CheckInDashboard() {
                 </DialogHeader>
                 <DriverManagementDialog 
                     drivers={drivers}
-                    onDatabaseUpdate={fetchData}
                 />
             </DialogContent>
         </Dialog>
@@ -769,7 +776,3 @@ export function CheckInDashboard() {
     </div>
   );
 }
-
-    
-
-    
