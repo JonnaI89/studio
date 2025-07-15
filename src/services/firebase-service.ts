@@ -2,6 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase-config';
+import { authAdmin } from '@/lib/firebase-admin-config';
 import { collection, doc, getDocs, setDoc, query, where, getDoc, writeBatch, orderBy, deleteDoc, addDoc } from 'firebase/firestore';
 import type { Driver, TrainingSignup, TrainingSettings, SiteSettings, Race, RaceSignup, CheckinHistoryEntry } from '@/lib/types';
 import { normalizeRfid } from '@/lib/utils';
@@ -100,18 +101,37 @@ export async function getFirebaseDriverByRfid(rfid: string): Promise<Driver | nu
     }
 }
 
-export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>): Promise<void> {
+export async function createFirebaseUser(email: string, password?: string) {
+    if (!authAdmin) {
+      throw new Error('Auth Admin SDK not initialized.');
+    }
+    try {
+      const userRecord = await authAdmin.createUser({
+        email: email,
+        password: password,
+        emailVerified: true,
+      });
+      return userRecord;
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-exists') {
+        throw new Error('En bruker med denne e-postadressen finnes allerede.');
+      }
+      throw new Error('Kunne ikke opprette bruker i Firebase Authentication.');
+    }
+}
+
+export async function addFirebaseDriver(driverData: Omit<Driver, 'id'>): Promise<string> {
     try {
         if (!db) {
             throw new Error("Firestore is not initialized. Check your Firebase config.");
         }
         const driverToSave = { ...driverData, rfid: normalizeRfid(driverData.rfid) };
-        // Create a new document with an auto-generated ID
         const newDocRef = doc(collection(db, DRIVERS_COLLECTION));
         await setDoc(newDocRef, { ...driverToSave, id: newDocRef.id });
+        return newDocRef.id;
     } catch (error) {
-        console.error("Error adding driver to Firestore: ", error);
-        throw new Error("Kunne ikke legge til fører i Firebase.");
+        console.error("Error adding driver profile to Firestore: ", error);
+        throw new Error("Kunne ikke lagre førerprofilen i databasen.");
     }
 }
 

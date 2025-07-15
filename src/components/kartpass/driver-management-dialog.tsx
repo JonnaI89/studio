@@ -3,8 +3,7 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { addFirebaseDriver, deleteFirebaseDriver, getFirebaseDriverByEmail, updateFirebaseDriver } from "@/services/firebase-service";
-import { signUp, signIn } from "@/services/auth-service";
+import { addFirebaseDriver, deleteFirebaseDriver, getFirebaseDriverByEmail, updateFirebaseDriver, createFirebaseUser } from "@/services/firebase-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,30 +114,14 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
                 description: `Profil for ${driverData.name} er opprettet og knyttet til ${driverData.email}.`,
             });
         } else {
-            // This is a new user/family. Create a new auth user.
-            const adminEmail = user?.email;
-            const adminPassword = prompt("Ny familie! Skriv inn ditt administratorpassord for å opprette ny bruker:");
-
-            if (!adminEmail || !adminPassword) {
-                toast({
-                    variant: "destructive",
-                    title: "Handlingen ble avbrutt",
-                    description: "Du må skrive inn administratorpassordet for å opprette en ny bruker.",
-                });
-                setIsSaving(false);
-                return;
-            }
-
-            const newUser = await signUp(driverData.email, driverData.email);
+            // This is a new user/family. Create a new auth user on the server.
+            const newUser = await createFirebaseUser(driverData.email, driverData.email);
             authUid = newUser.uid;
             
             toast({
                 title: 'Fører Opprettet!',
                 description: `Profil for ${driverData.name} er opprettet. Passord er det samme som e-post.`,
             });
-            
-            // Re-authenticate the admin user to prevent being logged out
-            await signIn(adminEmail, adminPassword);
         }
         
         // Save the profile to the database with the correct authUid
@@ -152,10 +135,8 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     } catch (error) {
       const errorMessage = (error as Error).message;
       let userFriendlyMessage = errorMessage;
-      if (errorMessage.includes("auth/email-already-in-use")) {
-        userFriendlyMessage = "En fører med denne e-postadressen finnes allerede."
-      } else if (errorMessage.includes("auth/invalid-credential") || errorMessage.includes("auth/wrong-password")) {
-        userFriendlyMessage = "Feil administratorpassord. Handlingen ble avbrutt.";
+      if (errorMessage.includes("auth/email-already-exists")) {
+        userFriendlyMessage = "En bruker med denne e-postadressen finnes allerede."
       }
 
       toast({
