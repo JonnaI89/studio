@@ -198,21 +198,6 @@ export function CheckInDashboard() {
     try {
         const foundDriver = await getDriverByRfid(rfid);
         if (foundDriver) {
-            // Check if it's a race day and the driver is signed up
-            if (selectedEvent && typeof selectedEvent === 'object') {
-                const signup = raceSignups.find(s => s.driverId === foundDriver.id);
-                if (signup) {
-                    setSignupForCheckin(signup);
-                    return; // Open check-in dialog instead of info card
-                } else {
-                    toast({
-                        variant: "destructive",
-                        title: "Ikke Påmeldt",
-                        description: `${foundDriver.name} er ikke påmeldt dette løpet.`
-                    });
-                }
-            }
-            // Default to showing info card for training or if not signed up for race
             setDriver(foundDriver);
         } else {
             setNewRfidId(rfid);
@@ -225,7 +210,7 @@ export function CheckInDashboard() {
         description: (error as Error).message,
       });
     }
-  }, [toast, selectedEvent, raceSignups]);
+  }, [toast]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -342,6 +327,20 @@ export function CheckInDashboard() {
   
   const handleCheckIn = () => {
     if (!driver) return;
+
+    if (selectedEvent && typeof selectedEvent === 'object') {
+        const signup = raceSignups.find(s => s.driverId === driver.id);
+        if (signup) {
+            setSignupForCheckin(signup);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Ikke påmeldt løp",
+                description: `${driver.name} er ikke påmeldt dette løpet.`
+            });
+        }
+        return;
+    }
     
     if (driver.hasSeasonPass) {
       handleSeasonPassCheckIn();
@@ -447,8 +446,7 @@ export function CheckInDashboard() {
   }
 
   const handleManualSelect = (selectedDriver: Driver) => {
-    // Re-use RFID scan logic to either open race dialog or info card
-    processRfidScan(selectedDriver.rfid);
+    setDriver(selectedDriver);
   };
 
   const handleOpenDeleteDialog = (entry: CheckedInEntry) => {
@@ -482,6 +480,9 @@ export function CheckInDashboard() {
   const handleRaceCheckinSuccess = () => {
     setSignupForCheckin(null);
     fetchData(); // Refresh all data, including checked-in list
+    if (driver) {
+      resetViewAfterDelay(driver.id);
+    }
   };
 
 
@@ -518,6 +519,9 @@ export function CheckInDashboard() {
   const driverAge = driver ? calculateAge(driver.dob) : null;
   const currentDriverCheckIn = checkedInDrivers.find(entry => entry.driver.id === driver?.id);
   const eventName = selectedEvent === 'training' ? 'dagens trening' : selectedEvent?.name;
+  const isRaceDay = selectedEvent && typeof selectedEvent === 'object';
+  const isSignedUpForRace = driver && isRaceDay && raceSignups.some(s => s.driverId === driver.id);
+
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -588,6 +592,8 @@ export function CheckInDashboard() {
                     checkInTime={currentDriverCheckIn?.checkInTime ?? null}
                     paymentStatus={currentDriverCheckIn?.paymentStatus ?? null}
                     onProfileUpdate={handleProfileUpdate}
+                    isRaceDay={isRaceDay}
+                    isSignedUpForRace={isSignedUpForRace}
                 />
                 ) : (
                 <Card className="w-full max-w-lg animate-in fade-in-50 shadow-lg">
@@ -725,3 +731,5 @@ export function CheckInDashboard() {
     </div>
   );
 }
+
+    

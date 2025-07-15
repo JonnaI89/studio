@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal, Hash, Pencil, Trophy } from "lucide-react";
+import { User, Shield, Users, Calendar, Phone, CheckCircle2, CarFront, UserCheck, CreditCard, Group, Star, Signal, Hash, Pencil, Trophy, Flag, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { DriverForm } from "./driver-form";
 import { useToast } from "@/hooks/use-toast";
@@ -24,9 +24,22 @@ interface DriverInfoCardProps {
   checkInTime: string | null;
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license' | null;
   onProfileUpdate: (updatedDriver: Driver) => void;
+  isRaceDay?: boolean;
+  isSignedUpForRace?: boolean;
 }
 
-export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, checkInTime, paymentStatus, onProfileUpdate }: DriverInfoCardProps) {
+export function DriverInfoCard({ 
+  driver, 
+  age, 
+  onCheckIn, 
+  onReset, 
+  isCheckedIn, 
+  checkInTime, 
+  paymentStatus, 
+  onProfileUpdate,
+  isRaceDay = false,
+  isSignedUpForRace = false
+}: DriverInfoCardProps) {
   const isUnderage = age !== null && age < 18;
   const [activeTab, setActiveTab] = useState("info");
   const [isSaving, setIsSaving] = useState(false);
@@ -64,7 +77,26 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
   };
 
   const hasGuardianInfo = driver.guardians && driver.guardians.length > 0;
-  const checkInDisabled = isCheckedIn || (isUnderage && !hasGuardianInfo && !driver.teamLicense);
+  
+  const getCheckinButtonState = () => {
+    if (isCheckedIn) {
+      return { text: "Innsjekket", icon: <CheckCircle2 className="mr-2 h-6 w-6" />, disabled: true };
+    }
+    if (isRaceDay) {
+      if (!isSignedUpForRace) {
+        return { text: "Ikke påmeldt løp", icon: <AlertTriangle className="mr-2 h-6 w-6" />, disabled: true };
+      }
+      return { text: "Gå til løpsinnsjekk", icon: <Flag className="mr-2 h-6 w-6" />, disabled: false };
+    }
+    if (driver.hasSeasonPass) {
+      return { text: "Sjekk Inn (Årskort)", icon: <UserCheck className="mr-2 h-6 w-6" />, disabled: false };
+    }
+    return { text: "Betal & Sjekk Inn", icon: <CreditCard className="mr-2 h-6 w-6" />, disabled: false };
+  };
+
+  const checkinButton = getCheckinButtonState();
+
+  const isUnderageAndMissingInfo = isUnderage && !hasGuardianInfo && !driver.teamLicense;
   
   return (
     <Card className="w-full max-w-5xl animate-in fade-in zoom-in-95 shadow-xl">
@@ -94,10 +126,16 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
             <CardContent>
                 <TabsContent value="info" className="mt-0">
                     <div className="p-6 border rounded-lg bg-muted/30">
-                        {driver.hasSeasonPass && (
+                        {driver.hasSeasonPass && !isRaceDay && (
                             <div className="p-3 mb-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center gap-2 text-primary">
                                 <Star className="h-5 w-5"/>
                                 <p className="font-semibold">Innehaver av Årskort</p>
+                            </div>
+                        )}
+                         {isRaceDay && !isSignedUpForRace && (
+                            <div className="p-3 mb-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center justify-center gap-2 text-destructive">
+                                <AlertTriangle className="h-5 w-5"/>
+                                <p className="font-semibold">Fører er ikke påmeldt dette løpet</p>
                             </div>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
@@ -159,21 +197,23 @@ export function DriverInfoCard({ driver, age, onCheckIn, onReset, isCheckedIn, c
                     </div>
                 </div>
             )}
+            {isUnderageAndMissingInfo && (
+                <div className="w-full mb-2 p-3 rounded-lg flex items-center justify-center gap-2 animate-in fade-in bg-destructive/10 text-destructive">
+                    <AlertTriangle className="h-5 w-5" />
+                    <p className="font-semibold">Kan ikke sjekke inn: Foresattes informasjon mangler for fører under 18 år.</p>
+                </div>
+            )}
             <div className="w-full flex gap-2">
                 <Button variant="outline" onClick={onReset} className="w-full">
                     Skann neste fører
                 </Button>
                 <Button 
                 onClick={onCheckIn}
-                disabled={checkInDisabled}
+                disabled={checkinButton.disabled || isUnderageAndMissingInfo}
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg py-7 px-8"
                 >
-                {isCheckedIn 
-                    ? <><CheckCircle2 className="mr-2 h-6 w-6" />Innsjekket</>
-                    : driver.hasSeasonPass
-                    ? <><UserCheck className="mr-2 h-6 w-6" />Sjekk Inn (Årskort)</>
-                    : <><CreditCard className="mr-2 h-6 w-6" />Betal & Sjekk Inn</>
-                }
+                    {checkinButton.icon}
+                    {checkinButton.text}
                 </Button>
             </div>
             </CardFooter>
@@ -218,3 +258,5 @@ function InfoItem({ icon, label, value, children }: InfoItemProps) {
         </div>
     )
 }
+
+    
