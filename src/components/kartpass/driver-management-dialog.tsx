@@ -26,10 +26,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DriversTable } from "../drivers-table";
-import { DriverForm } from "../driver-form";
+import { DriversTable } from "./drivers-table";
+import { DriverForm } from "./driver-form";
 import { UserPlus, LoaderCircle, Trash2, ArrowLeft } from "lucide-react";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DriverManagementDialogProps {
   drivers: Driver[];
