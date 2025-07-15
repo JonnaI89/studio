@@ -29,11 +29,7 @@ export default async function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-muted/40">
       <header className="w-full flex justify-end p-4 sm:p-6 absolute top-0">
-        <Button asChild variant="ghost" className="text-muted-foreground">
-          <Link href="/admin">
-            Admin
-          </Link>
-        </Button>
+        
       </header>
       <main className="flex flex-1 flex-col items-center justify-center p-8">
         <div className="flex flex-col items-center gap-8 text-center w-full max-w-md">
