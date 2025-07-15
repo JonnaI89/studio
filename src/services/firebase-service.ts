@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase-config';
@@ -20,7 +21,7 @@ const CHECKIN_HISTORY_COLLECTION = 'checkinHistory';
 export async function getFirebaseDrivers(): Promise<Driver[]> {
     try {
         if (!db) throw new Error("Firestore is not initialized.");
-        const driversQuery = query(collection(db, DRIVERS_COLLECTION));
+        const driversQuery = query(collection(db, DRIVERS_COLLECTION), orderBy("name", "asc"));
         const driversSnapshot = await getDocs(driversQuery);
         return driversSnapshot.docs.map(doc => doc.data() as Driver);
     } catch (error) {
