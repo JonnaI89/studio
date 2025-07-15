@@ -37,6 +37,8 @@ export type CheckedInEntry = {
   checkInTime: string;
   paymentStatus: 'paid' | 'unpaid' | 'season_pass' | 'one_time_license';
   amountPaid?: number;
+  eventType: 'training' | 'race';
+  eventId?: string;
 };
 
 export type CheckinHistoryEntry = {

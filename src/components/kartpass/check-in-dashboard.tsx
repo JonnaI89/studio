@@ -2,11 +2,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry } from "@/lib/types";
+import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry, TrainingSignup } from "@/lib/types";
 import { getDrivers, getDriverByRfid } from "@/services/driver-service";
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, getCheckinsForDate, deleteCheckin } from "@/services/checkin-service";
 import { getRacesForDate, getRaceSignupsWithDriverData, type RaceSignupWithDriver } from "@/services/race-service";
+import { getSignupsByDate as getTrainingSignupsByDate } from "@/services/training-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +65,7 @@ export function CheckInDashboard() {
   const [checkinToDelete, setCheckinToDelete] = useState<CheckedInEntry | null>(null);
   const [isDeletingCheckin, setIsDeletingCheckin] = useState(false);
   const [raceSignups, setRaceSignups] = useState<RaceSignupWithDriver[]>([]);
+  const [trainingSignups, setTrainingSignups] = useState<TrainingSignup[]>([]);
   const [signupForCheckin, setSignupForCheckin] = useState<RaceSignupWithDriver | null>(null);
 
   const rfidInputBuffer = useRef<string>('');
@@ -88,21 +90,33 @@ export function CheckInDashboard() {
   }, [toast]);
   
   useEffect(() => {
-    const fetchRaceSignups = async () => {
+    const fetchSignups = async () => {
+      const today = format(new Date(), 'yyyy-MM-dd');
       if (selectedEvent && typeof selectedEvent === 'object') {
         try {
           const signups = await getRaceSignupsWithDriverData(selectedEvent.id);
           setRaceSignups(signups);
+          setTrainingSignups([]);
         } catch (error) {
-           toast({ variant: 'destructive', title: 'Feil ved henting av påmeldte', description: (error as Error).message });
+           toast({ variant: 'destructive', title: 'Feil ved henting av løpspåmeldte', description: (error as Error).message });
            setRaceSignups([]);
+        }
+      } else if (selectedEvent === 'training') {
+        try {
+            const signups = await getTrainingSignupsByDate(today);
+            setTrainingSignups(signups);
+            setRaceSignups([]);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Feil ved henting av treningspåmeldte', description: (error as Error).message });
+            setTrainingSignups([]);
         }
       } else {
         setRaceSignups([]);
+        setTrainingSignups([]);
       }
     };
 
-    fetchRaceSignups();
+    fetchSignups();
   }, [selectedEvent, toast]);
 
 
@@ -123,7 +137,9 @@ export function CheckInDashboard() {
             },
             checkInTime: historyEntry.checkinTime,
             paymentStatus: historyEntry.paymentStatus,
-            amountPaid: historyEntry.amountPaid
+            amountPaid: historyEntry.amountPaid,
+            eventType: historyEntry.eventType,
+            eventId: historyEntry.eventId,
         };
     }
     
@@ -136,6 +152,8 @@ export function CheckInDashboard() {
             checkInTime: historyEntry.checkinTime,
             paymentStatus: historyEntry.paymentStatus,
             amountPaid: historyEntry.amountPaid,
+            eventType: historyEntry.eventType,
+            eventId: historyEntry.eventId,
         };
     }
 
@@ -152,7 +170,9 @@ export function CheckInDashboard() {
         },
         checkInTime: historyEntry.checkinTime,
         paymentStatus: historyEntry.paymentStatus,
-        amountPaid: historyEntry.amountPaid
+        amountPaid: historyEntry.amountPaid,
+        eventType: historyEntry.eventType,
+        eventId: historyEntry.eventId,
     };
   }
 
@@ -266,7 +286,7 @@ export function CheckInDashboard() {
     if (selectedEvent === 'training') {
         return { eventType: 'training' as const };
     }
-    if (selectedEvent) { 
+    if (selectedEvent && typeof selectedEvent === 'object') { 
         return {
             eventType: 'race' as const,
             eventId: selectedEvent.id,
@@ -485,6 +505,22 @@ export function CheckInDashboard() {
     }
   };
 
+  const getSummaryStats = () => {
+    if (!selectedEvent) {
+      return null;
+    }
+
+    if (typeof selectedEvent === 'object') { // Race
+      const totalSignups = raceSignups.length;
+      const checkedInCount = checkedInDrivers.filter(c => c.eventType === 'race' && c.eventId === selectedEvent.id).length;
+      return `Løp: ${totalSignups} påmeldte, ${checkedInCount} sjekket inn.`;
+    } else { // Training
+      const totalSignups = trainingSignups.length;
+      const checkedInCount = checkedInDrivers.filter(c => c.eventType === 'training').length;
+      return `Trening: ${totalSignups} påmeldte, ${checkedInCount} sjekket inn.`;
+    }
+  };
+
 
   if (!isLoading && todaysRaces.length > 1 && !selectedEvent) {
     return (
@@ -521,7 +557,7 @@ export function CheckInDashboard() {
   const eventName = selectedEvent === 'training' ? 'dagens trening' : selectedEvent?.name;
   const isRaceDay = selectedEvent && typeof selectedEvent === 'object';
   const isSignedUpForRace = driver && isRaceDay && raceSignups.some(s => s.driverId === driver.id);
-
+  const summaryStats = getSummaryStats();
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -580,6 +616,12 @@ export function CheckInDashboard() {
                 </div>
             </div>
         </header>
+        
+        {summaryStats && (
+            <div className="container mx-auto px-4 sm:px-6 md:px-8 py-3 text-center text-sm font-medium text-muted-foreground bg-muted/50 border-b">
+                {summaryStats}
+            </div>
+        )}
 
         <main className="flex-1 flex w-full justify-center">
             <div className="w-full max-w-5xl flex items-center justify-center my-8 px-4">
