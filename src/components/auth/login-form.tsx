@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "@/services/auth-service";
-import { getFirebaseDriversByAuthUid, getFirebaseDriverById } from "@/services/firebase-service";
+import { getFirebaseDriversByAuthUid, getFirebaseDriverById, updateFirebaseDriver } from "@/services/firebase-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -38,17 +38,27 @@ export function LoginForm() {
     try {
       const user = await signIn(values.email, values.password);
       
-      // Try fetching profile by user.uid first (for admin accounts)
-      let profile = await getFirebaseDriverById(user.uid);
-
-      if (profile && profile.role === 'admin') {
+      // First, check for an admin profile (old method)
+      let adminProfile = await getFirebaseDriverById(user.uid);
+      if (adminProfile && adminProfile.role === 'admin') {
           toast({ title: "Admin-innlogging Vellykket" });
           router.push('/admin');
           return;
       }
       
-      // If not an admin profile, check for driver profiles via authUid
-      const driverProfiles = await getFirebaseDriversByAuthUid(user.uid);
+      // If not admin, check for driver profiles using the new authUid method
+      let driverProfiles = await getFirebaseDriversByAuthUid(user.uid);
+
+      // If no profiles found with new method, check the old way (for legacy users)
+      if (!driverProfiles || driverProfiles.length === 0) {
+        const legacyProfile = await getFirebaseDriverById(user.uid);
+        if (legacyProfile) {
+          // Found a legacy profile, upgrade it by adding the authUid
+          legacyProfile.authUid = user.uid;
+          await updateFirebaseDriver(legacyProfile);
+          driverProfiles = [legacyProfile];
+        }
+      }
 
       if (!driverProfiles || driverProfiles.length === 0) {
         toast({
