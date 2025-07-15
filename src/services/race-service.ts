@@ -11,7 +11,7 @@ import {
     deleteFirebaseRaceSignup,
     getFirebaseRaceSignupsByDriver,
     getFirebaseRacesForDate,
-    getFirebaseDriverProfile,
+    getFirebaseDriver,
 } from './firebase-service';
 import type { Race, RaceSignup, Driver } from '@/lib/types';
 
@@ -52,7 +52,7 @@ export async function getRaceSignupsWithDriverData(raceId: string): Promise<Race
     
     const signupsWithDrivers = await Promise.all(
         signups.map(async (signup) => {
-            const driver = await getFirebaseDriverProfile(signup.driverId);
+            const driver = await getFirebaseDriver(signup.driverId);
             return {
                 ...signup,
                 driver: driver,

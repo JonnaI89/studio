@@ -3,8 +3,7 @@
 
 import { useState } from "react";
 import type { Driver } from "@/lib/types";
-import { updateDriver, deleteDriver } from "@/services/driver-service";
-import { addDriverProfile } from "@/services/firebase-service";
+import { updateFirebaseDriver, deleteFirebaseDriver, addFirebaseDriverProfile } from "@/services/firebase-service";
 import { signUp } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -62,7 +61,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
     if (!driverToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteDriver(driverToDelete.id);
+      await deleteFirebaseDriver(driverToDelete.id);
       toast({
         title: "Fører Slettet",
         description: `${driverToDelete.name} har blitt fjernet fra databasen.`,
@@ -86,7 +85,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
       if (driverToEdit && id) {
         // This is an update to an existing driver.
         const driverToUpdate: Driver = { ...driverToEdit, ...driverData, id: id };
-        await updateDriver(driverToUpdate);
+        await updateFirebaseDriver(driverToUpdate);
         toast({
             title: `Fører oppdatert`,
             description: `${driverData.name} er lagret i databasen.`,
@@ -114,7 +113,7 @@ export function DriverManagementDialog({ drivers, onDatabaseUpdate }: DriverMana
         }
 
         const user = await signUp(driverData.email, driverData.email);
-        await addDriverProfile(driverData, user.uid);
+        await addFirebaseDriverProfile(driverData, user.uid);
         
         toast({
             title: 'Fører Opprettet!',
