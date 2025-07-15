@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,25 +17,40 @@ interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
 }
 
+function extractImageUrl(url: string): string {
+    if (!url) return '';
+    try {
+        const urlObject = new URL(url);
+        if (urlObject.hostname === 'www.google.com' && urlObject.pathname === '/imgres') {
+            const imgUrl = urlObject.searchParams.get('imgurl');
+            if (imgUrl) return imgUrl;
+        }
+    } catch (e) {
+        // Not a valid URL, return original string
+        return url;
+    }
+    return url;
+}
+
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [logoUrl, setLogoUrl] = useState(initialSettings.logoUrl || "");
+  const [logoUrlInput, setLogoUrlInput] = useState(initialSettings.logoUrl || "");
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice || 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice || 350);
   const [zettleLinkId, setZettleLinkId] = useState(initialSettings.zettleLinkId || "");
-  const [currentDisplayLogo, setCurrentDisplayLogo] = useState(initialSettings.logoUrl);
+
+  const displayLogoUrl = useMemo(() => extractImageUrl(logoUrlInput), [logoUrlInput]);
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
       await updateSiteSettings({ 
-        logoUrl: logoUrl,
+        logoUrl: logoUrlInput,
         weekdayPrice: Number(weekdayPrice),
         weekendPrice: Number(weekendPrice),
         zettleLinkId: zettleLinkId,
        });
-      setCurrentDisplayLogo(logoUrl);
       toast({
         title: "Innstillinger Oppdatert",
         description: "De nye innstillingene er lagret.",
@@ -116,8 +131,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
             <div className="space-y-2">
                 <Label>Nåværende Logo</Label>
                 <div className="p-4 border rounded-md flex justify-center items-center bg-muted/40 min-h-[100px]">
-                    {currentDisplayLogo ? (
-                        <Image src={currentDisplayLogo} alt="Nåværende logo" width={200} height={100} className="object-contain" />
+                    {displayLogoUrl ? (
+                        <Image src={displayLogoUrl} alt="Nåværende logo" width={200} height={100} className="object-contain" />
                     ) : (
                         <p className="text-sm text-muted-foreground">Ingen logo er angitt.</p>
                     )}
@@ -129,8 +144,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 id="logo-url"
                 type="url"
                 placeholder="https://eksempel.com/logo.png"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
+                value={logoUrlInput}
+                onChange={(e) => setLogoUrlInput(e.target.value)}
                 disabled={isLoading}
               />
             </div>

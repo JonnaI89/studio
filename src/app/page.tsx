@@ -6,8 +6,25 @@ import { User, LogIn } from 'lucide-react';
 import { getSiteSettings } from '@/services/settings-service';
 import Image from 'next/image';
 
+function extractImageUrl(url: string): string {
+    if (!url) return '';
+    try {
+        const urlObject = new URL(url);
+        if (urlObject.hostname === 'www.google.com' && urlObject.pathname === '/imgres') {
+            const imgUrl = urlObject.searchParams.get('imgurl');
+            if (imgUrl) return imgUrl;
+        }
+    } catch (e) {
+        // Not a valid URL, return original string
+        return url;
+    }
+    return url;
+}
+
+
 export default async function LandingPage() {
   const settings = await getSiteSettings();
+  const logoUrl = settings.logoUrl ? extractImageUrl(settings.logoUrl) : null;
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/40">
@@ -40,8 +57,8 @@ export default async function LandingPage() {
       </main>
       <footer className="w-full p-8 flex flex-col items-center justify-center gap-4">
         <p className="text-sm text-muted-foreground">Powered by</p>
-        {settings.logoUrl ? (
-          <Image src={settings.logoUrl} alt="Klubb-logo" width={240} height={120} className="w-48 h-auto object-contain" />
+        {logoUrl ? (
+          <Image src={logoUrl} alt="Klubb-logo" width={240} height={120} className="w-48 h-auto object-contain" />
         ) : (
            <div className="h-12 w-48 flex items-center justify-center">
              {/* Placeholder or nothing if no logo is uploaded */}
