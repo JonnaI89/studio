@@ -6,7 +6,6 @@ import type { Driver, CheckedInEntry, SiteSettings, Race, CheckinHistoryEntry, T
 import { getSiteSettings } from "@/services/settings-service";
 import { recordCheckin, deleteCheckin } from "@/services/checkin-service";
 import { getRacesForDate, getRaceSignupsWithDriverData, type RaceSignupWithDriver } from "@/services/race-service";
-import { getSignupsByDate as getTrainingSignupsByDate } from "@/services/training-service";
 import { FoererportalenLogo } from "@/components/icons/kart-pass-logo";
 import { DriverInfoCard } from "./driver-info-card";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +41,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { RaceCheckinDialog } from "./race-checkin-dialog";
 import { db } from "@/lib/firebase-config";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, getDoc, doc } from "firebase/firestore";
 
 
 export function CheckInDashboard() {
@@ -90,34 +89,50 @@ export function CheckInDashboard() {
     }
   }, [toast]);
   
+  // Real-time listener for Signups (both training and races)
   useEffect(() => {
-    const fetchSignups = async () => {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      if (selectedEvent && typeof selectedEvent === 'object') {
-        try {
-          const signups = await getRaceSignupsWithDriverData(selectedEvent.id);
-          setRaceSignups(signups);
-          setTrainingSignups([]);
-        } catch (error) {
-           toast({ variant: 'destructive', title: 'Feil ved henting av løpspåmeldte', description: (error as Error).message });
-           setRaceSignups([]);
-        }
-      } else if (selectedEvent === 'training') {
-        try {
-            const signups = await getTrainingSignupsByDate(today);
-            setTrainingSignups(signups);
-            setRaceSignups([]);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Feil ved henting av treningspåmeldte', description: (error as Error).message });
-            setTrainingSignups([]);
-        }
-      } else {
+    if (!selectedEvent) {
         setRaceSignups([]);
         setTrainingSignups([]);
-      }
-    };
+        return;
+    }
 
-    fetchSignups();
+    if (typeof selectedEvent === 'object') { // It's a race
+        const q = query(collection(db, "raceSignups"), where("raceId", "==", selectedEvent.id));
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+            const fetchedSignups = snapshot.docs.map(doc => doc.data() as RaceSignupWithDriver);
+            const signupsWithDriverData = await Promise.all(
+                fetchedSignups.map(async (signup) => {
+                    if (signup.driverId) {
+                        const driverDoc = await getDoc(doc(db, 'drivers', signup.driverId));
+                        return { ...signup, driver: driverDoc.exists() ? driverDoc.data() as Driver : null };
+                    }
+                    return signup;
+                })
+            );
+            setRaceSignups(signupsWithDriverData);
+            setTrainingSignups([]); // Clear other type
+        }, (error) => {
+            console.error("Error listening to race signups:", error);
+            toast({ variant: 'destructive', title: 'Feil ved henting av løpspåmeldte', description: "Kunne ikke lytte til sanntidsoppdateringer." });
+        });
+        return () => unsubscribe();
+    } 
+    
+    if (selectedEvent === 'training') {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const q = query(collection(db, "trainingSignups"), where("trainingDate", "==", today));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedSignups = snapshot.docs.map(doc => doc.data() as TrainingSignup);
+            setTrainingSignups(fetchedSignups);
+            setRaceSignups([]); // Clear other type
+        }, (error) => {
+            console.error("Error listening to training signups:", error);
+            toast({ variant: 'destructive', title: 'Feil ved henting av treningspåmeldte', description: "Kunne ikke lytte til sanntidsoppdateringer." });
+        });
+        return () => unsubscribe();
+    }
+
   }, [selectedEvent, toast]);
 
 
