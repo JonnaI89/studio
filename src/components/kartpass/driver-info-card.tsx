@@ -18,7 +18,6 @@ import { format } from "date-fns";
 interface DriverInfoCardProps {
   driver: Driver;
   age: number | null;
-  onCheckIn: () => void;
   onReset: () => void;
   isCheckedIn: boolean;
   checkInTime: string | null;
@@ -32,7 +31,6 @@ interface DriverInfoCardProps {
 export function DriverInfoCard({ 
   driver, 
   age, 
-  onCheckIn, 
   onReset, 
   isCheckedIn, 
   checkInTime, 

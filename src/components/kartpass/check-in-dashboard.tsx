@@ -361,13 +361,30 @@ export function CheckInDashboard() {
     }
   };
   
-  const handleCheckIn = () => {
+  const handleProceedToPayment = () => {
     if (!driver) return;
-    
-    setDriver(driver); // Ensure driver is set before proceeding
+    if (isRaceDay) {
+      const signup = raceSignups.find(s => s.driverId === driver.id);
+      if (signup) {
+         setSignupForCheckin(signup);
+      } else {
+         toast({
+           variant: "destructive",
+           title: "Ikke påmeldt løp",
+           description: `${driver.name} er ikke påmeldt dette løpet.`
+         });
+      }
+    } else {
+      if (driver.hasSeasonPass) {
+        handleSeasonPassCheckIn();
+      } else {
+        setDriverForPayment(driver);
+        setIsPaymentOpen(true);
+      }
+    }
   };
   
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (amountPaid: number) => {
     if (!driverForPayment) return;
     const now = new Date();
     const time = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -382,6 +399,7 @@ export function CheckInDashboard() {
             checkinTime: time,
             paymentStatus: 'paid',
             ...getEventDetails(),
+            amountPaid: amountPaid
         };
 
         await recordCheckin(historyData);
@@ -611,7 +629,6 @@ export function CheckInDashboard() {
                 <DriverInfoCard 
                     driver={driver} 
                     age={driverAge} 
-                    onCheckIn={handleCheckIn} 
                     onReset={handleReset}
                     isCheckedIn={!!currentDriverCheckIn}
                     checkInTime={currentDriverCheckIn?.checkInTime ?? null}
@@ -619,27 +636,7 @@ export function CheckInDashboard() {
                     onProfileUpdate={handleProfileUpdate}
                     isRaceDay={isRaceDay}
                     isSignedUpForRace={isSignedUpForRace}
-                    onProceedToPayment={() => {
-                      if (isRaceDay) {
-                         const signup = raceSignups.find(s => s.driverId === driver.id);
-                         if (signup) {
-                            setSignupForCheckin(signup);
-                         } else {
-                            toast({
-                              variant: "destructive",
-                              title: "Ikke påmeldt løp",
-                              description: `${driver.name} er ikke påmeldt dette løpet.`
-                            });
-                         }
-                      } else {
-                        if (driver.hasSeasonPass) {
-                          handleSeasonPassCheckIn();
-                        } else {
-                          setDriverForPayment(driver);
-                          setIsPaymentOpen(true);
-                        }
-                      }
-                    }}
+                    onProceedToPayment={handleProceedToPayment}
                 />
                 ) : (
                 <Card className="w-full max-w-lg animate-in fade-in-50 shadow-lg">
