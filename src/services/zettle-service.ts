@@ -49,7 +49,7 @@ export async function getAuthorizationUrl(): Promise<{ url: string; state: strin
         response_type: 'code',
         client_id: clientId,
         redirect_uri: REDIRECT_URI,
-        scope: 'READ:USERINFO READ:POS',
+        scope: 'READ:USERINFO READ:PURCHASE',
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
@@ -112,10 +112,15 @@ async function getRefreshedAccessToken(): Promise<string> {
     
     const tokenData = tokenDocSnap.data() as ZettleSecrets;
     const settings = await getFirebaseSiteSettings();
+    const clientId = settings.zettleClientId;
+
+    if (!clientId) {
+        throw new Error("Zettle Client ID mangler i innstillingene.")
+    }
 
     const body = new URLSearchParams({
         grant_type: 'refresh_token',
-        client_id: settings.zettleClientId!,
+        client_id: clientId,
         refresh_token: tokenData.refreshToken,
     });
 
