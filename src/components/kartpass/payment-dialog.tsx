@@ -203,6 +203,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
             <XCircle className="h-16 w-16 text-destructive" />
             <p className="text-lg font-semibold">Betaling Feilet</p>
             <p className="text-destructive-foreground bg-destructive/80 p-3 rounded-md max-w-sm">{errorMessage}</p>
+             <Button onClick={() => onOpenChange(false)}>Lukk</Button>
           </div>
         );
       default:
@@ -224,9 +225,11 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
         <div className="my-8">
             {renderContent()}
         </div>
-        <div className="flex justify-center gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-        </div>
+        {status !== 'error' && (
+            <div className="flex justify-center gap-2 pt-4">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+            </div>
+        )}
       </DialogContent>
     </Dialog>
   );

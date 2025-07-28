@@ -1,5 +1,6 @@
 
 
+
 import type { User } from "firebase/auth";
 
 export type Guardian = {
@@ -79,8 +80,9 @@ export type TrainingSettings = {
 };
 
 export type SiteSettings = {
-  zettleClientId?: string;
   logoUrl?: string;
+  zettleClientId?: string;
+  zettleClientSecret?: string;
 };
 
 export type ClassFee = {
