@@ -69,7 +69,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   };
 
   const handleConnectZettle = () => {
-      const redirectUri = `${window.location.origin}/admin/zettle/callback`;
+      const redirectUri = `https://forerportal--varnacheck.europe-west4.hosted.app/admin/zettle/callback`;
       const state = crypto.randomUUID();
       // Lagre state i localStorage for å verifisere den senere
       localStorage.setItem('zettle_oauth_state', state);
