@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -23,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogClose, DialogTrigger } from "../ui/dialog";
-import { DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
