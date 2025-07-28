@@ -42,6 +42,19 @@ function extractImageUrl(url: string): string {
     return url;
 }
 
+// Helper function for PKCE
+function base64URLEncode(str: Buffer) {
+    return str.toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+}
+function sha256(buffer: string) {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(buffer).digest();
+}
+
+
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -102,9 +115,14 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   };
 
   const handleConnectZettle = () => {
+      const codeVerifier = base64URLEncode(require('crypto').randomBytes(32));
+      const codeChallenge = base64URLEncode(sha256(codeVerifier));
+      
       const redirectUri = 'https://forerportal--varnacheck.europe-west4.hosted.app/admin/zettle/callback';
       const state = crypto.randomUUID();
+
       localStorage.setItem('zettle_oauth_state', state);
+      localStorage.setItem('zettle_code_verifier', codeVerifier);
 
       const params = new URLSearchParams({
           response_type: 'code',
@@ -112,6 +130,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
           redirect_uri: redirectUri,
           scope: 'READ:USERINFO WRITE:PAYMENT',
           state: state,
+          code_challenge: codeChallenge,
+          code_challenge_method: 'S256',
       });
 
       window.location.href = `https://oauth.zettle.com/authorize?${params.toString()}`;

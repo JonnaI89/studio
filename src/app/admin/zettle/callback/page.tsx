@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LoaderCircle, AlertTriangle, CheckCircle } from 'lucide-react';
-import { exchangeCodeForToken } from '@/services/zettle-service';
+import { exchangeCodeForToken } from '@/services/payment-service';
 import { useRouter } from 'next/navigation';
 
 export default function ZettleCallbackPage() {
@@ -18,7 +18,9 @@ export default function ZettleCallbackPage() {
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const errorParam = searchParams.get('error');
+        
         const storedState = localStorage.getItem('zettle_oauth_state');
+        const codeVerifier = localStorage.getItem('zettle_code_verifier');
 
         if (errorParam) {
             setError(`Zettle returnerte en feil: ${errorParam}`);
@@ -33,9 +35,10 @@ export default function ZettleCallbackPage() {
         }
         
         localStorage.removeItem('zettle_oauth_state');
+        localStorage.removeItem('zettle_code_verifier');
 
-        if (code) {
-            exchangeCodeForToken(code).then(success => {
+        if (code && codeVerifier) {
+            exchangeCodeForToken(code, codeVerifier).then(success => {
                 if (success) {
                     setStatus('success');
                      setTimeout(() => {
@@ -47,7 +50,7 @@ export default function ZettleCallbackPage() {
                 }
             });
         } else {
-            setError("Mangler nødvendige parametere (kode) fra Zettle.");
+            setError("Mangler nødvendige parametere (kode eller verifier) fra Zettle-autentiseringen.");
             setStatus('error');
         }
 
