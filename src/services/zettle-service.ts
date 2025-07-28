@@ -16,6 +16,16 @@ export interface ZettleSecrets {
     expiresAt?: string; // ISO 8601 format
 }
 
+export interface ZettleLink {
+    id: string;
+    type: string;
+    claimed: boolean;
+    integratorTags: {
+        linkId: string;
+        deviceName: string;
+    }
+}
+
 /**
  * Retrieves the Zettle secrets (client ID/secret) from Firestore.
  */
@@ -104,4 +114,61 @@ export async function getAccessToken(): Promise<string> {
     await setDoc(secretsDocRef, newSecrets, { merge: true });
     
     return newSecrets.accessToken!;
+}
+
+/**
+ * Fetches the list of already linked/paired card readers from Zettle.
+ */
+export async function getLinkedReaders(): Promise<ZettleLink[]> {
+    const accessToken = await getAccessToken();
+
+    const response = await fetch(`${ZETTLE_READER_API_URL}/links`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        console.error("Get linked readers error:", error);
+        throw new Error(`Kunne ikke hente tilkoblede lesere: ${error.error || 'Ukjent feil'}`);
+    }
+
+    const data = await response.json();
+    return data.links || [];
+}
+
+
+/**
+ * Initiates a payment on a specified reader.
+ */
+export async function startPayment(linkId: string, amount: number): Promise<{ websocketUrl: string }> {
+    const accessToken = await getAccessToken();
+    const idempotencyKey = uuidv4();
+
+    const body = {
+        amount: amount * 100, // Amount in øre/cents
+        currency: 'NOK',
+        reference: `KartPass-${uuidv4().substring(0, 8)}`,
+    };
+
+    const response = await fetch(`${ZETTLE_READER_API_URL}/links/${linkId}/payment`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        console.error("Start payment error:", error);
+        throw new Error(`Kunne ikke starte betaling: ${error.error || 'Ukjent feil'}`);
+    }
+
+    return response.json();
 }
