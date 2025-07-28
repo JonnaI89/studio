@@ -30,7 +30,6 @@ export async function getZettleSecrets(): Promise<ZettleSecrets | null> {
 
 /**
  * Saves the Zettle Client ID and Client Secret to Firestore.
- * This function should be called from the admin settings page.
  */
 export async function saveZettleSecrets(clientId: string, clientSecret: string): Promise<void> {
     if (!clientId || !clientSecret) {
