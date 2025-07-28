@@ -773,5 +773,3 @@ export function CheckInDashboard() {
     </div>
   );
 }
-
-    

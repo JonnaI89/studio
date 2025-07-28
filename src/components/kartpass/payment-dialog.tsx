@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { LoaderCircle, CheckCircle2, XCircle, ChevronDown, Wifi, WifiOff } from "lucide-react";
+import { LoaderCircle, CheckCircle2, XCircle, ChevronDown, Wifi } from "lucide-react";
 import type { Driver, SiteSettings } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getLinkedReaders, type ZettleLink, startPayment } from "@/services/zettle-service";
@@ -129,7 +129,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
   }, [selectedReader, calculatedPrice, toast, driver, onPaymentSuccess, status]);
   
   useEffect(() => {
-    if (selectedReader && status === 'selectingReader' || selectedReader && status === 'fetchingReaders') {
+    if (selectedReader && (status === 'selectingReader' || status === 'fetchingReaders')) {
         initiatePayment();
     }
   }, [selectedReader, status, initiatePayment]);
@@ -231,5 +231,3 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
     </Dialog>
   );
 }
-
-    
