@@ -16,12 +16,12 @@ async function getAccessToken(): Promise<string> {
     const tokenDocSnap = await getDoc(tokenDocRef);
     const settings = await getFirebaseSiteSettings();
     const clientId = settings.zettleClientId;
+    const clientSecret = settings.zettleClientSecret;
 
-    if (!clientId) {
-        throw new Error("Zettle Client ID er ikke konfigurert i systemet.");
+    if (!clientId || !clientSecret) {
+        throw new Error("Zettle Client ID or Client Secret is not configured in the system.");
     }
     
-    // Check if token exists and is not expired
     if (tokenDocSnap.exists()) {
         const tokenData = tokenDocSnap.data();
         const isExpired = new Date() >= new Date(tokenData.expiresAt);
@@ -30,13 +30,13 @@ async function getAccessToken(): Promise<string> {
         }
     }
 
-    // If no token or expired, get a new one using client_credentials
     console.log("Fetching new Zettle access token...");
     
     const body = new URLSearchParams({
         grant_type: 'client_credentials',
         client_id: clientId,
-        scope: 'READ:USERINFO READ:POS WRITE:POS',
+        client_secret: clientSecret,
+        scope: 'READ:USERINFO WRITE:POS',
     });
 
     const response = await fetch(`${ZETTLE_OAUTH_URL}/token`, {
@@ -50,13 +50,12 @@ async function getAccessToken(): Promise<string> {
     if (!response.ok) {
         const error = await response.json();
         console.error("Zettle token fetch error:", error);
-        throw new Error(`Failed to get token: ${error.error_description || 'Unknown error'}`);
+        throw new Error(`Failed to get token: ${error.error_description || 'Client authentication failed (e.g. wrong client secret or unsupported authentication method). If you provided a valid token it may now be consumed.'}`);
     }
 
     const tokens = await response.json();
     const expiryDate = new Date(new Date().getTime() + tokens.expires_in * 1000);
 
-    // Securely store the token in Firestore
     await setDoc(doc(db, "secrets", ZETTLE_SECRETS_DOC), {
         accessToken: tokens.access_token,
         expiresAt: expiryDate.toISOString(),

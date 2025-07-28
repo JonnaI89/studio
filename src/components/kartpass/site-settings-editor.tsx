@@ -43,8 +43,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
   const fetchReaders = useCallback(async () => {
-    // Only fetch if keys are present
-    if (!settings.zettleClientId) {
+    if (!settings.zettleClientId || !settings.zettleClientSecret) {
       setIsFetchingData(false);
       setLinkedReaders([]);
       return;
@@ -58,7 +57,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     } finally {
       setIsFetchingData(false);
     }
-  }, [settings.zettleClientId, toast]);
+  }, [settings.zettleClientId, settings.zettleClientSecret, toast]);
 
 
   useEffect(() => {
@@ -151,7 +150,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
             <div>
               <h3 className="text-lg font-medium">Zettle-integrasjon</h3>
                <p className="text-sm text-muted-foreground">
-                For å ta betalt via Zettle, må du oppgi din Client ID.
+                For å ta betalt via Zettle, må du oppgi din Client ID og Client Secret.
               </p>
             </div>
             <div className="space-y-4">
@@ -163,6 +162,17 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     placeholder="Lim inn din Zettle Client ID her"
                     value={settings.zettleClientId || ""}
                     onChange={(e) => setSettings({ ...settings, zettleClientId: e.target.value })}
+                    disabled={isLoading}
+                  />
+              </div>
+               <div className="space-y-2">
+                  <Label htmlFor="zettle-client-secret">Zettle Client Secret</Label>
+                  <Input
+                    id="zettle-client-secret"
+                    type="password"
+                    placeholder="Lim inn din Zettle Client Secret her"
+                    value={settings.zettleClientSecret || ""}
+                    onChange={(e) => setSettings({ ...settings, zettleClientSecret: e.target.value })}
                     disabled={isLoading}
                   />
               </div>
@@ -185,7 +195,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 </div>
                 <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button variant="outline" disabled={!settings.zettleClientId}>
+                        <Button variant="outline" disabled={!settings.zettleClientId || !settings.zettleClientSecret}>
                             <LinkIcon className="mr-2 h-4 w-4" />
                             Koble til ny leser via kode
                         </Button>
@@ -237,7 +247,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                   ))}
                 </ul>
               ) : (
-                 <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Fyll inn Client ID og lagre for å aktivere.</p>
+                 <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Fyll inn Client ID og Client Secret og lagre for å aktivere.</p>
               )}
           </CardContent>
         </Card>
