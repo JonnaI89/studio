@@ -80,6 +80,7 @@ export type TrainingSettings = {
 
 export type SiteSettings = {
   zettleClientId?: string;
+  logoUrl?: string;
 };
 
 export type ClassFee = {

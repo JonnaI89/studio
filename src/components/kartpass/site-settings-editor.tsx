@@ -51,7 +51,7 @@ async function generateCodeChallenge(verifier: string) {
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
+  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "905349c9-d4f1-40ae-adec-8d110fec2fea");
   
   const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
   const [isFetchingData, setIsFetchingData] = useState(false);
@@ -78,9 +78,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
-      await updateSiteSettings({ 
-        zettleClientId: zettleClientId,
-       });
+      await updateSiteSettings({ zettleClientId });
       toast({
         title: "Innstillinger Oppdatert",
         description: "Client ID er lagret.",
@@ -112,7 +110,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
     // 4. Build the authorization URL
-    const scopes = "READ:USERINFO WRITE:PAYMENT";
+    const scopes = "READ:USERINFO READ:POS";
     const redirectUri = `${window.location.origin}/zettle/callback`;
     const state = generateRandomString(16); // CSRF token
 
@@ -141,7 +139,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Zettle-integrasjon</CardTitle>
+          <CardTitle>Zettle-integrasjon (Reader Connect API)</CardTitle>
           <CardDescription>
             Administrer tilkoblingen til Zettle for betaling med kortleser.
           </CardDescription>
@@ -161,11 +159,11 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
           
             <div className="flex gap-2">
                 <Button onClick={handleSaveSettings} disabled={isLoading}>
-                    {isLoading ? <LoaderCircle className="mr-2" /> : <Save className="mr-2" />}
+                    {isLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {isLoading ? 'Lagrer...' : 'Lagre Client ID'}
                 </Button>
                  <Button onClick={handleZettleConnect} variant="secondary" disabled={isLoading || !zettleClientId}>
-                    <Wifi className="mr-2" />
+                    <Wifi className="mr-2 h-4 w-4" />
                     Koble til Zettle
                 </Button>
             </div>

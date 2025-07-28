@@ -6,7 +6,6 @@ import { db } from '@/lib/firebase-config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
-const ZETTLE_API_URL = "https://pusher.zettle.com"; // Correct API URL for Pusher
 const ZETTLE_READER_API_URL = "https://reader-connect.zettle.com";
 
 interface ZettleTokenResponse {
@@ -180,25 +179,6 @@ export async function deleteLink(linkId: string): Promise<void> {
     if (!response.ok) {
         throw new Error("Kunne ikke koble fra leser.");
     }
-}
-
-// Placeholder for payment initiation. This needs to be implemented fully.
-interface PaymentRequest {
-    amount: number;
-    reference: string;
-    readerId: string;
-}
-
-interface PaymentResponse {
-    status: 'pending' | 'completed' | 'canceled' | 'failed';
-    amount?: number;
-    reference?: string;
-}
-
-export async function initiateZettlePayment(request: PaymentRequest): Promise<PaymentResponse> {
-    // This is a placeholder. Full implementation requires WebSockets.
-    console.log("Placeholder for initiating payment:", request);
-    return { status: 'completed' };
 }
 
     

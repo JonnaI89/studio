@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,22 +13,18 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, CheckCircle2 } from "lucide-react";
 import type { Driver, SiteSettings } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { initiateZettlePayment, getLinkedReaders, type ZettleLink } from "@/services/zettle-service";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { LoaderCircle, Wifi, WifiOff } from 'lucide-react';
 
 interface PaymentDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onPaymentSuccess: (amountPaid: number) => void;
   driver: Driver | null;
+  settings: SiteSettings | null;
 }
 
-export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver }: PaymentDialogProps) {
+export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, settings }: PaymentDialogProps) {
   const { toast } = useToast();
-  const [paymentStatus, setPaymentStatus] = useState("idle");
-  const [paymentMessage, setPaymentMessage] = useState("Vennligst velg en kortleser for å starte.");
-
+  
   // This is a placeholder for a more complex price calculation logic
   const calculatedPrice = 250; 
   

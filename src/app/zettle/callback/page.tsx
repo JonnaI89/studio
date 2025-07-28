@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { exchangeCodeForTokens } from '@/services/zettle-service';
 import { LoaderCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 function ZettleCallback() {
   const searchParams = useSearchParams();
