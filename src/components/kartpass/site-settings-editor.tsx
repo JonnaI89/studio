@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -13,7 +12,7 @@ import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { initiateZettlePairing } from "@/services/zettle-service";
+import { initiateZettlePairing } from "@/services/payment-service";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -163,13 +162,14 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
               <Input
                 id="zettle-link-id"
                 type="text"
-                placeholder="Lim inn 'linkId' fra Postman her"
+                placeholder="Denne fylles ut automatisk etter vellykket paring"
                 value={zettleLinkId}
                 onChange={(e) => setZettleLinkId(e.target.value)}
                 disabled={isLoading}
+                readOnly
               />
               <p className="text-[0.8rem] text-muted-foreground">
-                Denne ID-en som kobler systemet til en spesifikk kortterminal (PayPal Reader).
+                Denne ID-en kobler systemet til en spesifikk kortterminal (PayPal Reader).
               </p>
             </div>
             <Button variant="outline" onClick={() => { setIsPairing(true); startPairing(); }}>

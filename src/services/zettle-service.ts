@@ -1,5 +1,7 @@
-
 "use server";
+
+// This service is obsolete and will be replaced by payment-service.ts
+// It is kept for reference during the refactoring process.
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -52,83 +54,4 @@ async function getZettleAccessToken(): Promise<string> {
 
     const tokenData = await tokenResponse.json();
     return tokenData.access_token;
-}
-
-export async function initiateZettlePairing(): Promise<ZettlePairingResponse> {
-    try {
-        const accessToken = await getZettleAccessToken();
-        const pairingResponse = await fetch(`${ZETTLE_API_URL}/v2/links`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                'X-Idempotency-Key': uuidv4(),
-            },
-            body: JSON.stringify({
-                integratorTags: { createdBy: 'KartPassSystem' }
-            }),
-            cache: 'no-store'
-        });
-
-        if (!pairingResponse.ok) {
-             const errorBody = await pairingResponse.text();
-            console.error("Zettle API Error (Pairing):", pairingResponse.status, errorBody);
-            throw new Error(`Feil fra Zettle API under paring: ${pairingResponse.statusText}. Sjekk server-logger.`);
-        }
-        
-        return await pairingResponse.json() as ZettlePairingResponse;
-
-    } catch (error) {
-        console.error("Failed to initiate Zettle pairing:", error);
-        if (error instanceof Error) {
-            throw error;
-        }
-        throw new Error("Kunne ikke initiere paring med terminal. Sjekk server-logger.");
-    }
-}
-
-
-export async function initiateZettlePushPayment(requestData: ZettlePushRequest): Promise<ZettlePushResponse> {
-    
-    try {
-        const accessToken = await getZettleAccessToken();
-
-        const { linkId, amount, reference } = requestData;
-
-        const payload = {
-            amount: amount,
-            referenceNumber: reference,
-        };
-
-        const pushResponse = await fetch(`${ZETTLE_API_URL}/v2/links/${linkId}/pushes`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                'X-Idempotency-Key': uuidv4(),
-            },
-            body: JSON.stringify(payload),
-            cache: 'no-store'
-        });
-
-        if (!pushResponse.ok) {
-            const errorBody = await pushResponse.text();
-            console.error("Zettle API Error (Push Payment):", pushResponse.status, errorBody);
-            throw new Error(`Feil fra Zettle API: ${pushResponse.statusText}. Sjekk server-logger.`);
-        }
-
-        const data: ZettlePushResponse = await pushResponse.json();
-
-        return {
-            paymentId: data.paymentId,
-            webSocketUrl: data.webSocketUrl,
-        };
-
-    } catch (error) {
-        console.error("Failed to initiate Zettle push payment:", error);
-        if (error instanceof Error) {
-            throw error;
-        }
-        throw new Error("Kunne ikke initiere betaling på terminal. Sjekk server-logger.");
-    }
 }
