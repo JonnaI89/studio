@@ -112,7 +112,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     sessionStorage.setItem('zettle_code_verifier', codeVerifier);
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     
-    const scopes = "READ:USERINFO READ:POS";
+    const scopes = "READ:USERINFO WRITE:PAYMENT";
     const redirectUri = "https://varnacheck.firebaseapp.com/zettle/callback";
     const state = generateRandomString(16); // CSRF token
 
