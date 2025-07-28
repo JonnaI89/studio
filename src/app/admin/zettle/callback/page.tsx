@@ -5,9 +5,12 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LoaderCircle, AlertTriangle, CheckCircle } from 'lucide-react';
+import { exchangeCodeForToken } from '@/services/zettle-service';
+import { useRouter } from 'next/navigation';
 
 export default function ZettleCallbackPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [error, setError] = useState<string | null>(null);
 
@@ -15,6 +18,7 @@ export default function ZettleCallbackPage() {
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const errorParam = searchParams.get('error');
+        const storedState = localStorage.getItem('zettle_oauth_state');
 
         if (errorParam) {
             setError(`Zettle returnerte en feil: ${errorParam}`);
@@ -22,17 +26,32 @@ export default function ZettleCallbackPage() {
             return;
         }
 
-        if (code && state) {
-            // TODO: Send code and state to backend to exchange for an access token
-            console.log("Mottatt autorisasjonskode:", code);
-            console.log("Mottatt state:", state);
-            setStatus('success');
+        if (state !== storedState) {
+            setError("Ugyldig 'state'-parameter. Autentiseringen kan ha blitt utsatt for et sikkerhetsangrep. Vennligst prøv igjen.");
+            setStatus('error');
+            return;
+        }
+        
+        localStorage.removeItem('zettle_oauth_state');
+
+        if (code) {
+            exchangeCodeForToken(code).then(success => {
+                if (success) {
+                    setStatus('success');
+                     setTimeout(() => {
+                        router.push('/admin/site-settings');
+                    }, 2000);
+                } else {
+                    setError("Kunne ikke veksle autorisasjonskode mot en permanent nøkkel.");
+                    setStatus('error');
+                }
+            });
         } else {
-            setError("Mangler nødvendige parametere (kode eller state) fra Zettle.");
+            setError("Mangler nødvendige parametere (kode) fra Zettle.");
             setStatus('error');
         }
 
-    }, [searchParams]);
+    }, [searchParams, router]);
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-muted/40">
@@ -47,7 +66,7 @@ export default function ZettleCallbackPage() {
                     {status === 'loading' && (
                         <>
                             <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
-                            <p>Verifiserer...</p>
+                            <p>Verifiserer og lagrer nøkler...</p>
                         </>
                     )}
                     {status === 'error' && (
@@ -61,7 +80,7 @@ export default function ZettleCallbackPage() {
                         <>
                             <CheckCircle className="h-12 w-12 text-green-600" />
                             <p className="font-semibold">Tilkobling Vellykket!</p>
-                            <p className="text-sm text-muted-foreground">Du kan nå lukke dette vinduet og gå tilbake til Førerportalen.</p>
+                            <p className="text-sm text-muted-foreground">Du kan nå koble til en kortleser. Sender deg tilbake...</p>
                         </>
                     )}
                 </CardContent>
