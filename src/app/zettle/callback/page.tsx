@@ -81,8 +81,6 @@ function ZettleCallback() {
 
 export default function ZettleCallbackPage() {
     return (
-        <Suspense fallback={<div>Laster...</div>}>
-            <ZettleCallback />
-        </Suspense>
+        <ZettleCallback />
     )
 }
