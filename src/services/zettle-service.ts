@@ -190,3 +190,5 @@ export async function startPayment(linkId: string, amount: number): Promise<{pay
 
     return { paymentId, websocketUrl };
 }
+
+    
