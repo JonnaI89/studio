@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Wifi, Trash2, XCircle } from "lucide-react";
+import { LoaderCircle, Save, Wifi, Trash2, XCircle, Link as LinkIcon } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
-import { getLinkedReaders, deleteLink, type ZettleLink } from "@/services/zettle-service";
+import { getLinkedReaders, deleteLink, type ZettleLink, claimLinkOffer } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import {
@@ -22,6 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogClose, DialogFooter, DialogTrigger } from "../ui/dialog";
+import { DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -57,23 +60,27 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [readerToUnlink, setReaderToUnlink] = useState<ZettleLink | null>(null);
   const [isUnlinking, setIsUnlinking] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+  const [deviceName, setDeviceName] = useState('');
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
-  const fetchReaders = async () => {
+  const fetchReaders = useCallback(async () => {
     setIsFetchingData(true);
     try {
       const readers = await getLinkedReaders();
       setLinkedReaders(readers);
     } catch (error) {
-       console.error("Could not fetch readers", error);
-       // Do not toast here as it can be annoying if settings are just not configured yet
+       // This can fail if not authenticated, which is normal initially.
+       console.warn("Could not fetch readers", (error as Error).message);
     } finally {
       setIsFetchingData(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchReaders();
-  }, []);
+  }, [fetchReaders]);
 
   const handleSaveSettings = async () => {
     setIsLoading(true);
@@ -101,22 +108,16 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         return;
     }
     
-    // 1. Create a code verifier
     const codeVerifier = generateRandomString(128);
-    // 2. Store it in sessionStorage
     sessionStorage.setItem('zettle_code_verifier', codeVerifier);
-
-    // 3. Create a code challenge
     const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-    // 4. Build the authorization URL
+    
     const scopes = "READ:USERINFO READ:POS";
     const redirectUri = `${window.location.origin}/zettle/callback`;
     const state = generateRandomString(16); // CSRF token
 
     const authUrl = `https://oauth.zettle.com/authorize?response_type=code&client_id=${zettleClientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
     
-    // 5. Redirect the user
     window.location.href = authUrl;
   };
 
@@ -126,20 +127,40 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     try {
       await deleteLink(readerToUnlink.id);
       toast({ title: 'Leser koblet fra', description: 'Kortleseren er fjernet fra din konto.' });
-      setReaderToUnlink(null);
       await fetchReaders();
     } catch (error) {
        toast({ variant: 'destructive', title: 'Frakobling feilet', description: (error as Error).message });
     } finally {
       setIsUnlinking(false);
+      setReaderToUnlink(null);
     }
   };
+
+  const handleClaimLink = async () => {
+    if (!claimCode || !deviceName) {
+      toast({ variant: 'destructive', title: 'Mangler informasjon', description: "Både kode og navn må fylles ut." });
+      return;
+    }
+    setIsClaiming(true);
+    try {
+      await claimLinkOffer(claimCode, deviceName);
+      toast({ title: 'Leser tilkoblet!', description: `Leseren "${deviceName}" er nå koblet til.`});
+      setClaimCode('');
+      setDeviceName('');
+      await fetchReaders();
+      setIsLinkDialogOpen(false);
+    } catch (error) {
+       toast({ variant: 'destructive', title: 'Tilkobling feilet', description: (error as Error).message });
+    } finally {
+      setIsClaiming(false);
+    }
+  }
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Zettle-integrasjon (Reader Connect API)</CardTitle>
+          <CardTitle>Zettle-integrasjon</CardTitle>
           <CardDescription>
             Administrer tilkoblingen til Zettle for betaling med kortleser.
           </CardDescription>
@@ -164,13 +185,48 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 </Button>
                  <Button onClick={handleZettleConnect} variant="secondary" disabled={isLoading || !zettleClientId}>
                     <Wifi className="mr-2 h-4 w-4" />
-                    Koble til Zettle
+                    Koble til / Autentiser med Zettle
                 </Button>
             </div>
 
           <Separator />
           
-           <h3 className="text-lg font-medium">Tilkoblede Kortlesere</h3>
+            <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Tilkoblede Kortlesere</h3>
+                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline">
+                            <LinkIcon className="mr-2 h-4 w-4" />
+                            Koble til ny leser
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Koble til ny leser</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="claim-code">Kode fra leserskjerm</Label>
+                                <Input id="claim-code" value={claimCode} onChange={(e) => setClaimCode(e.target.value)} placeholder="ABC123DE" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="device-name">Navn på leser</Label>
+                                <Input id="device-name" value={deviceName} onChange={(e) => setDeviceName(e.target.value)} placeholder="F.eks. Kiosk 1" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="ghost">Avbryt</Button>
+                            </DialogClose>
+                            <Button onClick={handleClaimLink} disabled={isClaiming}>
+                                {isClaiming && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                Koble til
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
            <Card>
               <CardContent className="pt-6">
                   {isFetchingData ? (
@@ -192,7 +248,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                       ))}
                     </ul>
                   ) : (
-                     <p className="text-center text-muted-foreground">Ingen kortlesere er koblet til. Lagre din Client ID og trykk "Koble til Zettle".</p>
+                     <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Autentiser med Zettle og koble deretter til en ny leser.</p>
                   )}
               </CardContent>
            </Card>
@@ -204,7 +260,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
           <AlertDialogHeader>
             <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dette vil koble fra leseren <span className="font-bold">{readerToUnlink?.integratorTags?.deviceName}</span>. Du kan koble den til på nytt via Zettle-portalen.
+              Dette vil koble fra leseren <span className="font-bold">{readerToUnlink?.integratorTags?.deviceName}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
