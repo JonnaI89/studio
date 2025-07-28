@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { LoaderCircle, Save, Wifi, Trash2, XCircle, Link2Off, PlusCircle } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
-import { getLinkedReaders, deleteLink, getZettleSecrets, clearZettleSecrets, ZettleSecrets, claimLinkOffer, saveZettleSecrets } from "@/services/zettle-service";
+import { getLinkedReaders, deleteLink, getZettleSecrets, clearZettleSecrets, saveZettleSecrets, claimLinkOffer } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import {
@@ -23,6 +23,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from "../ui/dialog";
+import type { ZettleLink, ZettleSecrets } from "@/services/zettle-service";
+
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -73,6 +75,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     try {
       if (!settings.zettleClientId || !settings.zettleClientSecret) {
         toast({ variant: 'destructive', title: 'Mangler info', description: 'Både Client ID og Client Secret må fylles ut.'});
+        setIsLoading(false);
         return;
       }
       await saveZettleSecrets(settings.zettleClientId, settings.zettleClientSecret);
