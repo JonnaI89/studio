@@ -35,16 +35,16 @@ export async function saveZettleSecrets(clientId: string, clientSecret: string):
     if (!clientId || !clientSecret) {
         throw new Error("Både Client ID og Client Secret må oppgis.");
     }
-    await setDoc(doc(db, "secrets", ZETTLE_SECRETS_DOC), { clientId, clientSecret }, { merge: true });
+    // Set document with new credentials, clearing any old token data.
+    await setDoc(doc(db, "secrets", ZETTLE_SECRETS_DOC), { clientId, clientSecret });
 }
 
 /**
- * Clears the stored Zettle secrets from a Firestore.
+ * Clears the stored Zettle secrets from Firestore.
  */
 export async function clearZettleSecrets(): Promise<void> {
     await deleteDoc(doc(db, "secrets", ZETTLE_SECRETS_DOC));
 }
-
 
 /**
  * Gets a valid access token. If the stored token is missing or expired,
@@ -88,9 +88,8 @@ export async function getAccessToken(): Promise<string> {
     if (!response.ok) {
         const error = await response.json();
         console.error("Zettle token fetch error:", error);
-        // Clear bad credentials to allow user to re-enter
-        await clearZettleSecrets();
-        throw new Error(`Klarte ikke å hente Zettle-token: ${error.error_description || 'Ugyldig Client ID eller Secret'}. Legitimasjon er nullstilt. Vennligst prøv å lagre på nytt.`);
+        // Do not clear credentials automatically, let the user decide.
+        throw new Error(`Klarte ikke å hente Zettle-token: ${error.error_description || 'Ugyldig Client ID eller Secret'}. Sjekk at legitimasjonen er korrekt.`);
     }
 
     const newTokens = await response.json();
@@ -105,115 +104,4 @@ export async function getAccessToken(): Promise<string> {
     await setDoc(secretsDocRef, newSecrets, { merge: true });
     
     return newSecrets.accessToken!;
-}
-
-
-// --- Reader Connect API Functions ---
-
-export interface ZettleLink {
-    id: string;
-    organizationUuid: string;
-    readerTags: {
-        model?: string;
-        serialNumber?: string;
-    };
-    integratorTags: {
-        deviceName: string;
-    };
-    websocket: {
-        url: string;
-    };
-}
-
-/**
- * Fetches all card readers linked to the Zettle organization.
- */
-export async function getLinkedReaders(): Promise<ZettleLink[]> {
-    const accessToken = await getAccessToken();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/links`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        cache: 'no-store',
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error fetching linked readers:", errorText);
-        throw new Error(`Kunne ikke hente tilkoblede lesere. Status: ${response.status}`);
-    }
-    const data = await response.json();
-    return data.links || [];
-}
-
-/**
- * Claims a link offer from a reader, pairing it with the organization.
- */
-export async function claimLinkOffer(code: string, deviceName: string): Promise<void> {
-    const accessToken = await getAccessToken();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/links`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-            'Idempotency-Key': uuidv4(),
-        },
-        body: JSON.stringify({
-            code: code.trim(),
-            integratorTags: { deviceName },
-        }),
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        console.error('Error claiming link offer:', error);
-        throw new Error(`Kunne ikke koble til leser: ${error.developerMessage || response.statusText}`);
-    }
-}
-
-/**
- * Deletes a link, unpairing a reader from the organization.
- */
-export async function deleteLink(linkId: string): Promise<void> {
-    const accessToken = await getAccessToken();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/links/${linkId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-
-    if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Failed to delete link:", errorData);
-        throw new Error("Kunne ikke koble fra leser.");
-    }
-}
-
-/**
- * Initiates a payment on a specific reader.
- * Returns the paymentId and a temporary WebSocket URL for this transaction.
- */
-export async function startPayment(linkId: string, amount: number): Promise<{paymentId: string; websocketUrl: string}> {
-    const accessToken = await getAccessToken();
-    const paymentId = uuidv4();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/links/${linkId}/payments`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-            'Idempotency-Key': uuidv4(),
-        },
-        body: JSON.stringify({
-            paymentId: paymentId,
-            amount: Math.round(amount * 100), // Amount in the smallest currency unit (øre)
-            currency: 'NOK',
-        }),
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        console.error("Error starting payment:", error);
-        throw new Error(`Kunne ikke starte betaling: ${error.developerMessage || response.statusText}`);
-    }
-    
-    const { websocketUrl } = await response.json();
-
-    return { paymentId, websocketUrl };
 }
