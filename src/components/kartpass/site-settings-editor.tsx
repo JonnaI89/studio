@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Wifi, Trash2, XCircle, Link as LinkIcon } from "lucide-react";
+import { LoaderCircle, Save, Wifi, Trash2, XCircle, Link2Off } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
-import { getLinkedReaders, deleteLink, claimLinkOffer, type ZettleLink } from "@/services/zettle-service";
+import { getLinkedReaders, deleteLink, getAuthorizationUrl, ZettleLink, getZettleSecrets, clearZettleSecrets, ZettleSecrets } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import {
@@ -21,48 +21,50 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogClose, DialogTrigger } from "../ui/dialog";
-import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
+import { useRouter } from "next/navigation";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
 }
 
+export const ZETTLE_LS_STATE_KEY = 'zettle-oauth-state';
+export const ZETTLE_LS_VERIFIER_KEY = 'zettle-pkce-verifier';
+
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState<SiteSettings>(initialSettings);
   
   const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
+  const [zettleSecrets, setZettleSecrets] = useState<ZettleSecrets | null>(null);
   const [isFetchingData, setIsFetchingData] = useState(true);
   const [readerToUnlink, setReaderToUnlink] = useState<ZettleLink | null>(null);
   const [isUnlinking, setIsUnlinking] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [claimCode, setClaimCode] = useState('');
-  const [deviceName, setDeviceName] = useState('');
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
-  const fetchReaders = useCallback(async () => {
-    if (!settings.zettleClientId || !settings.zettleClientSecret) {
-      setIsFetchingData(false);
-      setLinkedReaders([]);
-      return;
-    };
+  const fetchData = useCallback(async () => {
     setIsFetchingData(true);
     try {
-      const readers = await getLinkedReaders();
-      setLinkedReaders(readers);
+      const secrets = await getZettleSecrets();
+      setZettleSecrets(secrets);
+      if (secrets?.accessToken) {
+        const readers = await getLinkedReaders();
+        setLinkedReaders(readers);
+      } else {
+        setLinkedReaders([]);
+      }
     } catch (error) {
-       toast({ variant: 'destructive', title: 'Kunne ikke hente lesere', description: (error as Error).message });
+       toast({ variant: 'destructive', title: 'Kunne ikke hente Zettle-data', description: (error as Error).message });
+       setLinkedReaders([]);
     } finally {
       setIsFetchingData(false);
     }
-  }, [settings.zettleClientId, settings.zettleClientSecret, toast]);
+  }, [toast]);
 
 
   useEffect(() => {
-    fetchReaders();
-  }, [fetchReaders]);
+    fetchData();
+  }, [fetchData]);
 
   const handleSaveSettings = async () => {
     setIsLoading(true);
@@ -72,8 +74,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         title: "Innstillinger Lagret",
         description: "Dine innstillinger er lagret.",
       });
-      // After saving new settings, we might need to re-fetch readers
-      await fetchReaders();
+      await fetchData();
     } catch (error) {
       console.error("Settings save failed:", error);
       toast({
@@ -92,7 +93,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     try {
       await deleteLink(readerToUnlink.id);
       toast({ title: 'Leser koblet fra', description: 'Kortleseren er fjernet fra din konto.' });
-      await fetchReaders();
+      await fetchData();
     } catch (error) {
        toast({ variant: 'destructive', title: 'Frakobling feilet', description: (error as Error).message });
     } finally {
@@ -101,25 +102,34 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     }
   };
 
-  const handleClaimLink = async () => {
-    if (!claimCode || !deviceName) {
-      toast({ variant: 'destructive', title: 'Mangler informasjon', description: "Både kode og navn må fylles ut." });
-      return;
-    }
-    setIsClaiming(true);
+  const handleInitiateZettleAuth = async () => {
+    setIsLoading(true);
     try {
-      await claimLinkOffer(claimCode, deviceName);
-      toast({ title: 'Leser tilkoblet!', description: `Leseren "${deviceName}" er nå koblet til.`});
-      setClaimCode('');
-      setDeviceName('');
-      await fetchReaders();
-      setIsLinkDialogOpen(false);
+        const { url, state, codeVerifier } = await getAuthorizationUrl();
+        localStorage.setItem(ZETTLE_LS_STATE_KEY, state);
+        localStorage.setItem(ZETTLE_LS_VERIFIER_KEY, codeVerifier);
+        router.push(url);
     } catch (error) {
-       toast({ variant: 'destructive', title: 'Tilkobling feilet', description: (error as Error).message });
-    } finally {
-      setIsClaiming(false);
+        toast({ variant: 'destructive', title: 'Kunne ikke starte Zettle-tilkobling', description: (error as Error).message });
+        setIsLoading(false);
     }
   }
+
+  const handleDisconnectZettle = async () => {
+    setIsLoading(true);
+    try {
+        await clearZettleSecrets();
+        setZettleSecrets(null);
+        setLinkedReaders([]);
+        toast({ title: "Zettle frakoblet", description: "Tilkoblingen til Zettle er fjernet." });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Frakobling feilet', description: (error as Error).message });
+    } finally {
+        setIsLoading(false);
+    }
+  }
+  
+  const isZettleConnected = !!zettleSecrets?.accessToken;
 
   return (
     <>
@@ -150,7 +160,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
             <div>
               <h3 className="text-lg font-medium">Zettle-integrasjon</h3>
                <p className="text-sm text-muted-foreground">
-                For å ta betalt via Zettle, må du oppgi din Client ID og Client Secret.
+                For å ta betalt via Zettle, må du koble til din Zettle-konto.
               </p>
             </div>
             <div className="space-y-4">
@@ -162,18 +172,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     placeholder="Lim inn din Zettle Client ID her"
                     value={settings.zettleClientId || ""}
                     onChange={(e) => setSettings({ ...settings, zettleClientId: e.target.value })}
-                    disabled={isLoading}
-                  />
-              </div>
-               <div className="space-y-2">
-                  <Label htmlFor="zettle-client-secret">Zettle Client Secret</Label>
-                  <Input
-                    id="zettle-client-secret"
-                    type="password"
-                    placeholder="Lim inn din Zettle Client Secret her"
-                    value={settings.zettleClientSecret || ""}
-                    onChange={(e) => setSettings({ ...settings, zettleClientSecret: e.target.value })}
-                    disabled={isLoading}
+                    disabled={isLoading || isZettleConnected}
                   />
               </div>
             </div>
@@ -182,6 +181,17 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     {isLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {isLoading ? 'Lagrer...' : 'Lagre Innstillinger'}
                 </Button>
+                {!isZettleConnected ? (
+                    <Button onClick={handleInitiateZettleAuth} disabled={isLoading || !settings.zettleClientId}>
+                        {isLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Wifi className="mr-2 h-4 w-4" />}
+                        Koble til Zettle
+                    </Button>
+                ) : (
+                    <Button variant="destructive" onClick={handleDisconnectZettle} disabled={isLoading}>
+                         {isLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Link2Off className="mr-2 h-4 w-4" />}
+                        Koble fra Zettle
+                    </Button>
+                )}
              </div>
           </CardContent>
         </Card>
@@ -193,38 +203,6 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     <CardTitle>Tilkoblede Kortlesere</CardTitle>
                     <CardDescription>Administrer kortlesere som er koblet til systemet.</CardDescription>
                 </div>
-                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" disabled={!settings.zettleClientId || !settings.zettleClientSecret}>
-                            <LinkIcon className="mr-2 h-4 w-4" />
-                            Koble til ny leser via kode
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Koble til ny leser</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="claim-code">Kode fra leserskjerm</Label>
-                                <Input id="claim-code" value={claimCode} onChange={(e) => setClaimCode(e.target.value)} placeholder="ABC123DE" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="device-name">Navn på leser</Label>
-                                <Input id="device-name" value={deviceName} onChange={(e) => setDeviceName(e.target.value)} placeholder="F.eks. Kiosk 1" />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button type="button" variant="ghost">Avbryt</Button>
-                            </DialogClose>
-                            <Button onClick={handleClaimLink} disabled={isClaiming}>
-                                {isClaiming && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                Koble til
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
             </div>
           </CardHeader>
           <CardContent>
@@ -246,8 +224,10 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     </li>
                   ))}
                 </ul>
+              ) : isZettleConnected ? (
+                 <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Du kan koble til en leser i Zettle-appen.</p>
               ) : (
-                 <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Fyll inn Client ID og Client Secret og lagre for å aktivere.</p>
+                <p className="text-center text-muted-foreground py-4">Koble til Zettle over for å se og administrere lesere.</p>
               )}
           </CardContent>
         </Card>
