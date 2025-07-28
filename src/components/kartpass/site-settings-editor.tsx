@@ -12,6 +12,7 @@ import { updateSiteSettings } from "@/services/settings-service";
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
+import React from "react";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -38,7 +39,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [logoUrlInput, setLogoUrlInput] = useState(initialSettings.logoUrl || "");
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice || 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice || 350);
-  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "905349c9-d4f1-40ae-adec-8d110fec2fea");
+  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
 
 
   const displayLogoUrl = useMemo(() => extractImageUrl(logoUrlInput), [logoUrlInput]);
@@ -69,6 +70,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   };
 
   const handleConnectZettle = () => {
+      // Hardkodet redirect URI for å matche det som er registrert i Zettle Developer Portal
       const redirectUri = `https://forerportal--varnacheck.europe-west4.hosted.app/admin/zettle/callback`;
       const state = crypto.randomUUID();
       // Lagre state i localStorage for å verifisere den senere
@@ -110,7 +112,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 Denne ID-en henter du fra Zettle Developer Portal.
               </p>
             </div>
-            <Button onClick={handleConnectZettle}>
+            <Button onClick={handleConnectZettle} disabled={!zettleClientId}>
                 <Wifi className="mr-2 h-4 w-4" />
                 Koble til Zettle
             </Button>
