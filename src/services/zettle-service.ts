@@ -75,17 +75,19 @@ export async function getAccessToken(): Promise<string> {
         throw new Error("Client ID eller Client Secret mangler i databasen.");
     }
 
-    const authHeader = 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const body = new URLSearchParams({ grant_type: 'client_credentials' });
+    const body = new URLSearchParams({
+        grant_type: 'client_credentials', // This is what Reader Connect API expects
+        client_id: clientId,
+        client_secret: clientSecret,
+    });
 
     const response = await fetch(`${ZETTLE_OAUTH_URL}/token`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': authHeader,
         },
         body: body.toString(),
-        cache: 'no-store', // Ensure we always get a fresh response
+        cache: 'no-store',
     });
 
     if (!response.ok) {
