@@ -79,7 +79,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       const readers = await getLinkedReaders();
       setLinkedReaders(readers);
     } catch (error) {
-       // Silently fail if not authenticated
+       console.error("Could not fetch readers", error);
+       // Silently fail if not authenticated, as it might just mean we need to re-auth
     } finally {
       setIsFetchingReaders(false);
     }
@@ -118,7 +119,12 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       const codeVerifier = base64URLEncode(require('crypto').randomBytes(32));
       const codeChallenge = base64URLEncode(sha256(codeVerifier));
       
-      const redirectUri = 'https://forerportal--varnacheck.europe-west4.hosted.app/admin/zettle/callback';
+      const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/admin/zettle/callback` : '';
+      if (!redirectUri) {
+          toast({ variant: 'destructive', title: 'Feil', description: 'Kunne ikke bestemme redirect URI.' });
+          return;
+      }
+      
       const state = crypto.randomUUID();
 
       localStorage.setItem('zettle_oauth_state', state);
@@ -219,7 +225,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                             <p className="font-semibold">{reader.integratorTags?.deviceName || 'Ukjent Enhet'}</p>
                             <p className="text-sm text-muted-foreground">{reader.readerTags?.model} - S/N: {reader.readerTags?.serialNumber}</p>
                           </div>
-                          <Button variant="ghost" size="icon" onClick={() => setReaderToUnlink(reader)}>
+                          <Button variant="ghost" size="icon" onClick={() => setReaderToUnlink(reader)} disabled={isUnlinking}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </li>
@@ -241,7 +247,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     onChange={e => setClaimCode(e.target.value)}
                     disabled={isClaiming}
                 />
-                <Button onClick={handleClaimReader} disabled={isClaiming}>
+                <Button onClick={handleClaimReader} disabled={isClaiming || !claimCode}>
                     {isClaiming ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                     Koble til
                 </Button>

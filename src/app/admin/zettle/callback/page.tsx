@@ -35,7 +35,7 @@ export default function ZettleCallbackPage() {
         }
         
         localStorage.removeItem('zettle_oauth_state');
-        localStorage.removeItem('zettle_code_verifier');
+        // Do NOT remove the code verifier yet, it's needed for the token exchange
 
         if (code && codeVerifier) {
             exchangeCodeForToken(code, codeVerifier).then(success => {
@@ -45,9 +45,14 @@ export default function ZettleCallbackPage() {
                         router.push('/admin/site-settings');
                     }, 2000);
                 } else {
-                    setError("Kunne ikke veksle autorisasjonskode mot en permanent nøkkel.");
+                    setError("Kunne ikke veksle autorisasjonskode mot en permanent nøkkel. Sjekk at Client ID er korrekt og at applikasjonen har de nødvendige tillatelsene i Zettle-portalen.");
                     setStatus('error');
                 }
+            }).catch(err => {
+                 setError((err as Error).message || "En ukjent feil oppsto under utveksling av nøkkel.");
+                 setStatus('error');
+            }).finally(() => {
+                localStorage.removeItem('zettle_code_verifier');
             });
         } else {
             setError("Mangler nødvendige parametere (kode eller verifier) fra Zettle-autentiseringen.");

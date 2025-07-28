@@ -29,9 +29,9 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
             console.error("Zettle Client ID is not configured.");
             throw new Error("Zettle Client ID is not configured.");
         }
-
-        const redirectUri = 'https://forerportal--varnacheck.europe-west4.hosted.app/admin/zettle/callback';
-
+        
+        const redirectUri = process.env.NEXT_PUBLIC_ZETTLE_REDIRECT_URI || 'https://forerportal-azgs.br-dev.site/admin/zettle/callback';
+        
         const body = new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
@@ -74,3 +74,4 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
         return false;
     }
 }
+
