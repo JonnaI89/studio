@@ -28,7 +28,7 @@ function ZettleCallback() {
       }
       
       try {
-        const redirectUri = `${window.location.origin}/zettle/callback`;
+        const redirectUri = "https://varnacheck.firebaseapp.com/zettle/callback";
         await exchangeCodeForTokens(code, codeVerifier, redirectUri);
         setStatus('success');
         
@@ -87,5 +87,3 @@ export default function ZettleCallbackPage() {
         </Suspense>
     )
 }
-
-    

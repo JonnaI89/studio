@@ -113,7 +113,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     
     const scopes = "READ:USERINFO READ:POS";
-    const redirectUri = `${window.location.origin}/zettle/callback`;
+    const redirectUri = "https://varnacheck.firebaseapp.com/zettle/callback";
     const state = generateRandomString(16); // CSRF token
 
     const authUrl = `https://oauth.zettle.com/authorize?response_type=code&client_id=${zettleClientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
