@@ -81,7 +81,7 @@ export type SiteSettings = {
   logoUrl?: string;
   weekdayPrice?: number;
   weekendPrice?: number;
-  zettleLinkId?: string;
+  zettleClientId?: string;
 };
 
 export type ClassFee = {

@@ -1,25 +1,22 @@
+
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Wifi, CheckCircle2, XCircle, ServerCrash } from "lucide-react";
+import { LoaderCircle, Save, Wifi } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { initiateZettlePairing } from "@/services/payment-service";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
 }
-
-type PairingStatus = "idle" | "initializing" | "waiting_for_code" | "successful" | "failed";
 
 function extractImageUrl(url: string): string {
     if (!url) return '';
@@ -42,13 +39,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [logoUrlInput, setLogoUrlInput] = useState(initialSettings.logoUrl || "");
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice || 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice || 350);
-  const [zettleLinkId, setZettleLinkId] = useState(initialSettings.zettleLinkId || "");
+  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
 
-  const [isPairing, setIsPairing] = useState(false);
-  const [pairingStatus, setPairingStatus] = useState<PairingStatus>("idle");
-  const [pairingError, setPairingError] = useState<string | null>(null);
-  const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const socketRef = React.useRef<WebSocket | null>(null);
 
   const displayLogoUrl = useMemo(() => extractImageUrl(logoUrlInput), [logoUrlInput]);
 
@@ -59,7 +51,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         logoUrl: logoUrlInput,
         weekdayPrice: Number(weekdayPrice),
         weekendPrice: Number(weekendPrice),
-        zettleLinkId: zettleLinkId,
+        zettleClientId: zettleClientId,
        });
       toast({
         title: "Innstillinger Oppdatert",
@@ -76,78 +68,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       setIsLoading(false);
     }
   };
-  
-  const cleanUpSocket = useCallback(() => {
-    if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-    }
-  }, []);
-
-  const startPairing = async () => {
-    setIsPairing(true);
-    setPairingStatus("initializing");
-    setPairingCode(null);
-    setPairingError(null);
-    cleanUpSocket();
-
-    try {
-        const response = await initiateZettlePairing();
-        if (response.pairingCode && response.webSocketUrl) {
-            setPairingCode(response.pairingCode);
-            setPairingStatus("waiting_for_code");
-
-            const socket = new WebSocket(response.webSocketUrl);
-            socketRef.current = socket;
-
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.eventName === "LINK_COMPLETED" && data.payload.linkId) {
-                    setZettleLinkId(data.payload.linkId);
-                    setPairingStatus("successful");
-                    toast({ title: "Paring Vellykket!", description: "Ny terminal er nå koblet til." });
-                    cleanUpSocket();
-                }
-            };
-            socket.onerror = () => {
-                 setPairingError("Tilkoblingsfeil under paring.");
-                 setPairingStatus("failed");
-            };
-            socket.onclose = () => {
-                 if (pairingStatus !== 'successful') {
-                    setPairingError("Tilkoblingen for paring ble brutt.");
-                    setPairingStatus("failed");
-                 }
-            };
-        } else {
-            setPairingError(response.status || "Kunne ikke hente paringskode.");
-            setPairingStatus("failed");
-        }
-    } catch (error) {
-        setPairingError((error as Error).message);
-        setPairingStatus("failed");
-    }
-  };
-
-  const getPairingStatusContent = () => {
-    switch(pairingStatus) {
-        case "initializing":
-            return { icon: <LoaderCircle className="h-16 w-16 text-primary animate-spin" />, title: "Starter paring...", description: "Kontakter Zettle for å generere kode." };
-        case "waiting_for_code":
-            return { icon: <Wifi className="h-16 w-16 text-primary animate-pulse" />, title: "Klar for paring", description: "Tast inn koden under på kortterminalen." };
-        case "successful":
-            return { icon: <CheckCircle2 className="h-16 w-16 text-green-600" />, title: "Paring Vellykket!", description: "Ny Terminal ID er lagret. Husk å trykke lagre." };
-        case "failed":
-            return { icon: <ServerCrash className="h-16 w-16 text-destructive" />, title: "Paring Feilet", description: pairingError };
-        default: return null;
-    }
-  }
-  
-  const pairingStatusContent = getPairingStatusContent();
-
 
   return (
-    <>
     <Card>
       <CardHeader>
         <CardTitle>Nettstedinnstillinger</CardTitle>
@@ -157,25 +79,24 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-            <h3 className="text-lg font-medium">Zettle Betalingsterminal</h3>
+            <h3 className="text-lg font-medium">Zettle Betalingsintegrasjon</h3>
              <div className="space-y-2">
-              <Label htmlFor="zettle-link-id">Aktiv Zettle Terminal ID</Label>
+              <Label htmlFor="zettle-client-id">Zettle Client ID</Label>
               <Input
-                id="zettle-link-id"
+                id="zettle-client-id"
                 type="text"
-                placeholder="Denne fylles ut automatisk etter vellykket paring"
-                value={zettleLinkId}
-                onChange={(e) => setZettleLinkId(e.target.value)}
+                placeholder="Lim inn Client ID her"
+                value={zettleClientId}
+                onChange={(e) => setZettleClientId(e.target.value)}
                 disabled={isLoading}
-                readOnly
               />
               <p className="text-[0.8rem] text-muted-foreground">
-                Denne ID-en kobler systemet til en spesifikk kortterminal (PayPal Reader).
+                Denne ID-en henter du fra Zettle Developer Portal under "Public API credentials".
               </p>
             </div>
-            <Button variant="outline" onClick={() => { setIsPairing(true); startPairing(); }}>
+            <Button variant="outline" disabled>
                 <Wifi className="mr-2 h-4 w-4" />
-                Start paring med ny terminal
+                Koble til Zettle (kommer snart)
             </Button>
         </div>
 
@@ -246,39 +167,5 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         </Button>
       </CardContent>
     </Card>
-
-    <Dialog open={isPairing} onOpenChange={setIsPairing}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Par ny Zettle Terminal</DialogTitle>
-                <DialogDescription>
-                    Følg instruksjonene for å koble en ny kortleser til systemet.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="my-8 flex flex-col items-center gap-4 text-center">
-                 {pairingStatusContent && (
-                    <>
-                        {pairingStatusContent.icon}
-                        <p className="text-lg font-semibold">{pairingStatusContent.title}</p>
-                        <p className="text-sm text-muted-foreground h-4">{pairingStatusContent.description}</p>
-                    </>
-                 )}
-                 {pairingStatus === 'waiting_for_code' && pairingCode && (
-                    <div className="mt-4 text-4xl font-mono tracking-widest bg-muted p-4 rounded-lg">
-                        {pairingCode}
-                    </div>
-                 )}
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="outline">Lukk</Button>
-                </DialogClose>
-                 {(pairingStatus === 'failed') && (
-                    <Button onClick={startPairing}>Prøv igjen</Button>
-                 )}
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-    </>
   );
 }
