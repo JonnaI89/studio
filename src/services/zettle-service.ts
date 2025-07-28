@@ -33,11 +33,12 @@ export async function getAccessToken(): Promise<string> {
     }
     
     let tokenData = tokenDocSnap.data() as Partial<ZettleSecrets>;
-    const isExpired = !tokenData.expiresAt || new Date() >= new Date(tokenData.expiresAt);
+    const hasToken = tokenData.accessToken && tokenData.expiresAt;
+    const isExpired = hasToken && new Date() >= new Date(tokenData.expiresAt!);
 
-    if (isExpired) {
+    if (!hasToken || isExpired) {
         if (!tokenData.clientId || !tokenData.clientSecret) {
-            throw new Error("Mangler Client ID eller Secret. Kan ikke fornye token.");
+            throw new Error("Mangler Client ID eller Secret. Kan ikke hente token.");
         }
         
         const body = new URLSearchParams({ grant_type: 'client_credentials' });
@@ -54,9 +55,10 @@ export async function getAccessToken(): Promise<string> {
         
         if (!response.ok) {
             const error = await response.json();
-            console.error("Zettle token fetch/refresh error:", error);
+            console.error("Zettle token fetch error:", error);
+            // Clear bad credentials to allow user to re-enter
             await clearZettleSecrets(); 
-            throw new Error(`Klarte ikke å hente/fornye Zettle-token: ${error.error_description || 'Ukjent feil'}. Prøv å lagre legitimasjon på nytt.`);
+            throw new Error(`Klarte ikke å hente Zettle-token: ${error.error_description || 'Ugyldig Client ID eller Secret'}. Legitimasjon er nullstilt. Vennligst prøv å lagre på nytt.`);
         }
         
         const newTokens = await response.json();
@@ -65,7 +67,6 @@ export async function getAccessToken(): Promise<string> {
         tokenData = {
             ...tokenData,
             accessToken: newTokens.access_token,
-            refreshToken: newTokens.refresh_token,
             expiresAt: expiryDate.toISOString(),
         };
 
