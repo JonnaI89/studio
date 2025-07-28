@@ -1,4 +1,5 @@
 
+
 import type { User } from "firebase/auth";
 
 export type Guardian = {
@@ -78,11 +79,7 @@ export type TrainingSettings = {
 };
 
 export type SiteSettings = {
-  logoUrl?: string;
-  weekdayPrice?: number;
-  weekendPrice?: number;
   zettleClientId?: string;
-  zettleApiKey?: string;
 };
 
 export type ClassFee = {
@@ -113,3 +110,5 @@ export type RaceSignup = {
   signedUpAt: string; // ISO string
   wantsCamping: boolean;
 };
+
+    

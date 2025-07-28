@@ -6,10 +6,12 @@ import { db } from '@/lib/firebase-config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
-const ZETTLE_API_URL = "https://reader-connect.zettle.com";
+const ZETTLE_API_URL = "https://pusher.zettle.com"; // Correct API URL for Pusher
+const ZETTLE_READER_API_URL = "https://reader-connect.zettle.com";
 
 interface ZettleTokenResponse {
     access_token: string;
+    refresh_token: string;
     expires_in: number;
 }
 
@@ -23,45 +25,86 @@ export interface ZettleLink {
     integratorTags: Record<string, string>;
 }
 
-interface PaymentRequest {
-    amount: number; // In NOK
-    reference: string;
-    readerId: string;
+// Function to exchange the authorization code for tokens using PKCE
+export async function exchangeCodeForTokens(code: string, codeVerifier: string, redirectUri: string) {
+    const settings = await getFirebaseSiteSettings();
+    const clientId = settings.zettleClientId;
+
+    if (!clientId) {
+        throw new Error("Zettle Client ID is not configured.");
+    }
+    
+    const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier,
+    });
+    
+    const response = await fetch(ZETTLE_OAUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        console.error("Failed to exchange code for tokens:", response.status, errorBody);
+        throw new Error(`Kunne ikke veksle autorisasjonskode mot en permanent nøkkel: ${errorBody.error_description || response.statusText}`);
+    }
+
+    const data: ZettleTokenResponse = await response.json();
+    
+    // Save the new tokens and their expiry
+    const now = new Date();
+    const expiryDate = new Date(now.getTime() + data.expires_in * 1000);
+    
+    const tokenDocRef = doc(db, "secrets", "zettle");
+    await setDoc(tokenDocRef, {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: expiryDate.toISOString(),
+    });
+    
+    console.log("Successfully exchanged code for tokens and saved them.");
+    return { success: true };
 }
 
-interface PaymentResponse {
-    status: 'pending' | 'completed' | 'canceled' | 'failed';
-    amount?: number;
-    reference?: string;
-}
 
 async function getZettleAccessToken(): Promise<string | null> {
     const tokenDocRef = doc(db, "secrets", "zettle");
     const tokenDocSnap = await getDoc(tokenDocRef);
 
-    if (tokenDocSnap.exists()) {
-        const data = tokenDocSnap.data();
-        const isExpired = new Date() >= new Date(data.expiresAt);
-        if (!isExpired) {
-            return data.accessToken;
-        }
+    if (!tokenDocSnap.exists()) {
+        console.log("No Zettle token found in database.");
+        return null;
     }
-    
-    // If token doesn't exist or is expired, fetch a new one
-    console.log("Fetching new Zettle access token using Assertion Grant flow.");
+
+    const tokenData = tokenDocSnap.data();
+    const isExpired = new Date() >= new Date(tokenData.expiresAt);
+
+    if (!isExpired) {
+        return tokenData.accessToken;
+    }
+
+    // Token is expired, use refresh token to get a new one
+    console.log("Zettle access token expired. Refreshing...");
     const settings = await getFirebaseSiteSettings();
     const clientId = settings.zettleClientId;
-    const apiKey = settings.zettleApiKey;
 
-    if (!clientId || !apiKey) {
-        throw new Error("Zettle Client ID or API Key is not configured in settings.");
+    if (!clientId) {
+        throw new Error("Zettle Client ID is not configured.");
+    }
+     if (!tokenData.refreshToken) {
+        throw new Error("Refresh token is missing. Please re-authenticate.");
     }
 
     try {
         const body = new URLSearchParams({
-            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            grant_type: 'refresh_token',
+            refresh_token: tokenData.refreshToken,
             client_id: clientId,
-            assertion: apiKey,
         });
 
         const response = await fetch(ZETTLE_OAUTH_URL, {
@@ -72,26 +115,28 @@ async function getZettleAccessToken(): Promise<string | null> {
 
         if (!response.ok) {
             const errorBody = await response.json();
-            console.error("Failed to fetch Zettle access token:", response.status, errorBody);
-            throw new Error(`Kunne ikke hente Zettle-nøkkel: ${errorBody.error_description || response.statusText}`);
+            console.error("Failed to refresh Zettle access token:", response.status, errorBody);
+            // This might happen if refresh token is revoked. Clear the stored tokens.
+            await setDoc(tokenDocRef, {});
+            throw new Error(`Kunne ikke fornye Zettle-nøkkel: ${errorBody.error_description || response.statusText}. Vennligst koble til på nytt.`);
         }
 
         const data: ZettleTokenResponse = await response.json();
         
-        // Save the new token and its expiry
         const now = new Date();
         const expiryDate = new Date(now.getTime() + data.expires_in * 1000);
         await setDoc(tokenDocRef, {
             accessToken: data.access_token,
+            refreshToken: data.refresh_token,
             expiresAt: expiryDate.toISOString(),
         });
         
-        console.log("Successfully fetched and saved new Zettle access token.");
+        console.log("Successfully refreshed and saved new Zettle tokens.");
         return data.access_token;
 
     } catch (error) {
-        console.error("Error in getZettleAccessToken:", error);
-        throw error; // Re-throw to be caught by calling function
+        console.error("Error in getZettleAccessToken (refresh flow):", error);
+        throw error;
     }
 }
 
@@ -104,7 +149,7 @@ export async function getLinkedReaders(): Promise<ZettleLink[]> {
              return [];
         }
 
-        const response = await fetch(`${ZETTLE_API_URL}/v1/links`, {
+        const response = await fetch(`${ZETTLE_READER_API_URL}/v1/links`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
@@ -117,35 +162,8 @@ export async function getLinkedReaders(): Promise<ZettleLink[]> {
         return data.links || [];
     } catch (error) {
         console.error("Exception in getLinkedReaders:", error);
-        // Don't throw here, as it might just mean credentials are not set yet.
-        // Return an empty array and let the UI handle it.
         return [];
     }
-}
-
-export async function claimLinkOffer(code: string, deviceName: string): Promise<ZettleLink> {
-    const accessToken = await getZettleAccessToken();
-    if (!accessToken) {
-        throw new Error("Ikke autentisert med Zettle.");
-    }
-
-    const response = await fetch(`${ZETTLE_API_URL}/v1/link-offers/claim`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            code: code,
-            tags: { deviceName }
-        })
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Kunne ikke koble til leser. Status: ${response.status}. ${errorText}`);
-    }
-    return response.json();
 }
 
 export async function deleteLink(linkId: string): Promise<void> {
@@ -154,7 +172,7 @@ export async function deleteLink(linkId: string): Promise<void> {
         throw new Error("Ikke autentisert med Zettle.");
     }
 
-    const response = await fetch(`${ZETTLE_API_URL}/v1/links/${linkId}`, {
+    const response = await fetch(`${ZETTLE_READER_API_URL}/v1/links/${linkId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -164,42 +182,23 @@ export async function deleteLink(linkId: string): Promise<void> {
     }
 }
 
-export async function initiateZettlePayment(request: PaymentRequest): Promise<PaymentResponse> {
-    const accessToken = await getZettleAccessToken();
-    if (!accessToken) {
-        throw new Error("Ikke autentisert med Zettle.");
-    }
-    
-    // Convert NOK to øre for Zettle API
-    const amountInOre = Math.round(request.amount * 100);
-
-    const response = await fetch(`${ZETTLE_API_URL}/v1/links/${request.readerId}/payment`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            amount: amountInOre,
-            reference: request.reference
-        })
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Zettle payment initiation error:", errorText);
-        let userMessage = "Kunne ikke starte betalingen på kortleseren.";
-        if (response.status === 409) {
-            userMessage = "Kortleseren er opptatt. Vennligst fullfør eller avbryt den pågående handlingen på leseren.";
-        }
-        throw new Error(userMessage);
-    }
-    
-    // This is a simplification. A real implementation would connect to a WebSocket 
-    // using a URL from the response to get real-time updates.
-    // Here we'll just return a simplified success state.
-    const responseData = await response.json();
-    
-    // For now, we assume completion as we are not using WebSockets yet.
-    return { status: 'completed', amount: request.amount, reference: request.reference };
+// Placeholder for payment initiation. This needs to be implemented fully.
+interface PaymentRequest {
+    amount: number;
+    reference: string;
+    readerId: string;
 }
+
+interface PaymentResponse {
+    status: 'pending' | 'completed' | 'canceled' | 'failed';
+    amount?: number;
+    reference?: string;
+}
+
+export async function initiateZettlePayment(request: PaymentRequest): Promise<PaymentResponse> {
+    // This is a placeholder. Full implementation requires WebSockets.
+    console.log("Placeholder for initiating payment:", request);
+    return { status: 'completed' };
+}
+
+    

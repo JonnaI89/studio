@@ -1,19 +1,17 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Wifi, Link2, Trash2, XCircle } from "lucide-react";
+import { LoaderCircle, Save, Wifi, Trash2, XCircle } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
-import { getLinkedReaders, claimLinkOffer, deleteLink, type ZettleLink } from "@/services/zettle-service";
-import Image from "next/image";
+import { getLinkedReaders, deleteLink, type ZettleLink } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
-import { Textarea } from "../ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,75 +27,64 @@ interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
 }
 
-function extractImageUrl(url: string): string {
-    if (!url) return '';
-    try {
-        const urlObject = new URL(url);
-        if (urlObject.hostname === 'www.google.com' && urlObject.pathname === '/imgres') {
-            const imgUrl = urlObject.searchParams.get('imgurl');
-            if (imgUrl) return imgUrl;
-        }
-    } catch (e) {
-        return url;
+// Helper function to generate a random string for PKCE
+function generateRandomString(length: number) {
+    let text = "";
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    for (let i = 0; i < length; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
-    return url;
+    return text;
+}
+
+// Helper function to create a SHA-256 hash then base64url encode it
+async function generateCodeChallenge(verifier: string) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const digest = await window.crypto.subtle.digest('SHA-256', data);
+    return window.btoa(String.fromCharCode(...new Uint8Array(digest)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
 }
 
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [logoUrlInput, setLogoUrlInput] = useState(initialSettings.logoUrl || "");
-  const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice ?? 250);
-  const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice ?? 350);
   const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
-  const [zettleApiKey, setZettleApiKey] = useState(initialSettings.zettleApiKey || "");
   
   const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
-  const [isFetchingReaders, setIsFetchingReaders] = useState(false);
-  const [claimCode, setClaimCode] = useState("");
-  const [isClaiming, setIsClaiming] = useState(false);
+  const [isFetchingData, setIsFetchingData] = useState(false);
   const [readerToUnlink, setReaderToUnlink] = useState<ZettleLink | null>(null);
   const [isUnlinking, setIsUnlinking] = useState(false);
 
-
-  const displayLogoUrl = useMemo(() => extractImageUrl(logoUrlInput), [logoUrlInput]);
-
   const fetchReaders = async () => {
-    setIsFetchingReaders(true);
+    setIsFetchingData(true);
     try {
       const readers = await getLinkedReaders();
       setLinkedReaders(readers);
     } catch (error) {
        console.error("Could not fetch readers", error);
-       toast({ variant: 'destructive', title: 'Kunne ikke hente lesere', description: (error as Error).message });
+       // Do not toast here as it can be annoying if settings are just not configured yet
     } finally {
-      setIsFetchingReaders(false);
+      setIsFetchingData(false);
     }
   };
 
   useEffect(() => {
-    // Fetch readers only if credentials are provided
-    if (initialSettings.zettleClientId && initialSettings.zettleApiKey) {
-        fetchReaders();
-    }
-  }, [initialSettings.zettleClientId, initialSettings.zettleApiKey]);
+    fetchReaders();
+  }, []);
 
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
       await updateSiteSettings({ 
-        logoUrl: logoUrlInput,
-        weekdayPrice: Number(weekdayPrice),
-        weekendPrice: Number(weekendPrice),
         zettleClientId: zettleClientId,
-        zettleApiKey: zettleApiKey,
        });
       toast({
         title: "Innstillinger Oppdatert",
-        description: "De nye innstillingene er lagret.",
+        description: "Client ID er lagret.",
       });
-      // After saving new credentials, try fetching readers again
-      await fetchReaders();
     } catch (error) {
       console.error("Settings save failed:", error);
       toast({
@@ -110,22 +97,29 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     }
   };
 
-  const handleClaimReader = async () => {
-    if (!claimCode) {
-      toast({ variant: 'destructive', title: 'Kode mangler', description: 'Du må skrive inn koden fra kortleseren.' });
-      return;
+  const handleZettleConnect = async () => {
+    if (!zettleClientId) {
+        toast({ variant: 'destructive', title: 'Client ID mangler', description: 'Du må lagre en Zettle Client ID før du kan koble til.' });
+        return;
     }
-    setIsClaiming(true);
-    try {
-      await claimLinkOffer(claimCode, `Forerportalen-Leser-${Math.floor(Math.random() * 1000)}`);
-      toast({ title: 'Leser koblet til!', description: 'Den nye kortleseren er nå klar til bruk.' });
-      setClaimCode("");
-      await fetchReaders();
-    } catch (error) {
-       toast({ variant: 'destructive', title: 'Tilkobling feilet', description: (error as Error).message });
-    } finally {
-      setIsClaiming(false);
-    }
+    
+    // 1. Create a code verifier
+    const codeVerifier = generateRandomString(128);
+    // 2. Store it in sessionStorage
+    sessionStorage.setItem('zettle_code_verifier', codeVerifier);
+
+    // 3. Create a code challenge
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+    // 4. Build the authorization URL
+    const scopes = "READ:USERINFO WRITE:PAYMENT";
+    const redirectUri = `${window.location.origin}/zettle/callback`;
+    const state = generateRandomString(16); // CSRF token
+
+    const authUrl = `https://oauth.zettle.com/authorize?response_type=code&client_id=${zettleClientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+    
+    // 5. Redirect the user
+    window.location.href = authUrl;
   };
 
   const handleUnlinkReader = async () => {
@@ -147,9 +141,9 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Nettstedinnstillinger</CardTitle>
+          <CardTitle>Zettle-integrasjon</CardTitle>
           <CardDescription>
-            Administrer generelle innstillinger for nettstedet, som priser, Zettle-terminal og klubblogo.
+            Administrer tilkoblingen til Zettle for betaling med kortleser.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -158,25 +152,22 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 <Input
                   id="zettle-client-id"
                   type="text"
-                  placeholder="Lim inn Client ID her"
+                  placeholder="Lim inn din Zettle Client ID her"
                   value={zettleClientId}
                   onChange={(e) => setZettleClientId(e.target.value)}
                   disabled={isLoading}
                 />
             </div>
-             <div className="space-y-2">
-                <Label htmlFor="zettle-api-key">Zettle API Key (JWT)</Label>
-                 <Textarea
-                    id="zettle-api-key"
-                    placeholder="Lim inn din API-nøkkel (JWT) her"
-                    value={zettleApiKey}
-                    onChange={(e) => setZettleApiKey(e.target.value)}
-                    disabled={isLoading}
-                    className="min-h-[120px] font-mono text-xs"
-                />
-                <p className="text-[0.8rem] text-muted-foreground">
-                    Dette er en lang tekst (JSON Web Token) som du genererer i Zettle Developer Portal.
-                </p>
+          
+            <div className="flex gap-2">
+                <Button onClick={handleSaveSettings} disabled={isLoading}>
+                    {isLoading ? <LoaderCircle className="mr-2" /> : <Save className="mr-2" />}
+                    {isLoading ? 'Lagrer...' : 'Lagre Client ID'}
+                </Button>
+                 <Button onClick={handleZettleConnect} variant="secondary" disabled={isLoading || !zettleClientId}>
+                    <Wifi className="mr-2" />
+                    Koble til Zettle
+                </Button>
             </div>
 
           <Separator />
@@ -184,7 +175,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
            <h3 className="text-lg font-medium">Tilkoblede Kortlesere</h3>
            <Card>
               <CardContent className="pt-6">
-                  {isFetchingReaders ? (
+                  {isFetchingData ? (
                     <div className="flex items-center justify-center h-24">
                       <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
@@ -203,93 +194,10 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                       ))}
                     </ul>
                   ) : (
-                     <p className="text-center text-muted-foreground">Ingen kortlesere er koblet til. Fyll inn Client ID og API Key og lagre for å hente.</p>
+                     <p className="text-center text-muted-foreground">Ingen kortlesere er koblet til. Lagre din Client ID og trykk "Koble til Zettle".</p>
                   )}
               </CardContent>
            </Card>
-
-           <div className="space-y-2">
-              <Label htmlFor="claim-code">Koble til ny leser</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                    id="claim-code"
-                    placeholder="Kode fra leserskjerm"
-                    value={claimCode}
-                    onChange={e => setClaimCode(e.target.value)}
-                    disabled={isClaiming}
-                />
-                <Button onClick={handleClaimReader} disabled={isClaiming || !claimCode}>
-                    {isClaiming ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                    Koble til
-                </Button>
-              </div>
-           </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-              <h3 className="text-lg font-medium">Priser for dagspass</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="weekday-price">Pris Hverdag (kr)</Label>
-                      <Input
-                          id="weekday-price"
-                          type="number"
-                          placeholder="250"
-                          value={weekdayPrice}
-                          onChange={(e) => setWeekdayPrice(Number(e.target.value))}
-                          disabled={isLoading}
-                      />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="weekend-price">Pris Helg (kr)</Label>
-                      <Input
-                          id="weekend-price"
-                          type="number"
-                          placeholder="350"
-                          value={weekendPrice}
-                          onChange={(e) => setWeekendPrice(Number(e.target.value))}
-                          disabled={isLoading}
-                      />
-                  </div>
-              </div>
-          </div>
-          
-          <Separator />
-
-          <div className="space-y-4">
-              <h3 className="text-lg font-medium">Klubblogo</h3>
-              <div className="space-y-2">
-                  <Label>Nåværende Logo</Label>
-                  <div className="p-4 border rounded-md flex justify-center items-center bg-muted/40 min-h-[100px]">
-                      {displayLogoUrl ? (
-                          <Image src={displayLogoUrl} alt="Nåværende logo" width={200} height={100} className="object-contain" />
-                      ) : (
-                          <p className="text-sm text-muted-foreground">Ingen logo er angitt.</p>
-                      )}
-                  </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="logo-url">Logo URL</Label>
-                <Input
-                  id="logo-url"
-                  type="url"
-                  placeholder="https://eksempel.com/logo.png"
-                  value={logoUrlInput}
-                  onChange={(e) => setLogoUrlInput(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-          </div>
-
-          <Button onClick={handleSaveSettings} disabled={isLoading}>
-            {isLoading ? (
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {isLoading ? 'Lagrer...' : 'Lagre Innstillinger'}
-          </Button>
         </CardContent>
       </Card>
       
@@ -298,7 +206,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
           <AlertDialogHeader>
             <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dette vil koble fra leseren <span className="font-bold">{readerToUnlink?.integratorTags?.deviceName}</span>. Du må pare den på nytt for å bruke den igjen.
+              Dette vil koble fra leseren <span className="font-bold">{readerToUnlink?.integratorTags?.deviceName}</span>. Du kan koble den til på nytt via Zettle-portalen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -317,3 +225,5 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     </>
   );
 }
+
+    
