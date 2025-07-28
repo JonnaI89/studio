@@ -12,7 +12,6 @@ import { updateSiteSettings } from "@/services/settings-service";
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -39,7 +38,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [logoUrlInput, setLogoUrlInput] = useState(initialSettings.logoUrl || "");
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice || 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice || 350);
-  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
+  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "905349c9-d4f1-40ae-adec-8d110fec2fea");
 
 
   const displayLogoUrl = useMemo(() => extractImageUrl(logoUrlInput), [logoUrlInput]);
@@ -69,6 +68,23 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     }
   };
 
+  const handleConnectZettle = () => {
+      const redirectUri = `${window.location.origin}/admin/zettle/callback`;
+      const state = crypto.randomUUID();
+      // Lagre state i localStorage for å verifisere den senere
+      localStorage.setItem('zettle_oauth_state', state);
+
+      const params = new URLSearchParams({
+          response_type: 'code',
+          client_id: zettleClientId,
+          redirect_uri: redirectUri,
+          scope: 'READ:USERINFO WRITE:USERINFO READ:PAYMENT WRITE:PAYMENT',
+          state: state,
+      });
+
+      window.location.href = `https://oauth.zettle.com/authorize?${params.toString()}`;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -91,13 +107,16 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 disabled={isLoading}
               />
               <p className="text-[0.8rem] text-muted-foreground">
-                Denne ID-en henter du fra Zettle Developer Portal under "Public API credentials".
+                Denne ID-en henter du fra Zettle Developer Portal.
               </p>
             </div>
-            <Button variant="outline" disabled>
+            <Button onClick={handleConnectZettle}>
                 <Wifi className="mr-2 h-4 w-4" />
-                Koble til Zettle (kommer snart)
+                Koble til Zettle
             </Button>
+             <p className="text-[0.8rem] text-muted-foreground">
+                Trykk her for å (re)autentisere applikasjonen mot Zettle. Du vil bli sendt til Zettle for innlogging.
+              </p>
         </div>
 
         <Separator />
