@@ -82,7 +82,7 @@ export type SiteSettings = {
   weekdayPrice?: number;
   weekendPrice?: number;
   zettleClientId?: string;
-  zettleClientSecret?: string;
+  zettleApiKey?: string;
 };
 
 export type ClassFee = {

@@ -11,7 +11,6 @@ const ZETTLE_API_URL = "https://reader-connect.zettle.com";
 interface ZettleTokenResponse {
     access_token: string;
     expires_in: number;
-    refresh_token?: string;
 }
 
 export interface ZettleLink {
@@ -36,40 +35,33 @@ interface PaymentResponse {
     reference?: string;
 }
 
-async function getZettleTokens(): Promise<{ accessToken: string | null; refreshToken: string | null }> {
-    const docRef = doc(db, "secrets", "zettle");
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        const data = docSnap.data();
+async function getZettleAccessToken(): Promise<string | null> {
+    const tokenDocRef = doc(db, "secrets", "zettle");
+    const tokenDocSnap = await getDoc(tokenDocRef);
+
+    if (tokenDocSnap.exists()) {
+        const data = tokenDocSnap.data();
         const isExpired = new Date() >= new Date(data.expiresAt);
-
-        if (isExpired) {
-            console.log("Zettle token is expired. Attempting to refresh...");
-            const settings = await getFirebaseSiteSettings();
-            const clientId = settings.zettleClientId;
-            const clientSecret = settings.zettleClientSecret;
-            if (!clientId || !clientSecret) {
-                console.error("Cannot refresh token: Zettle Client ID or Secret is not configured.");
-                throw new Error("Zettle Client ID eller Secret mangler i konfigurasjonen.");
-            }
-             if (!data.refreshToken) {
-                console.error("Cannot refresh token: Refresh token is missing.");
-                throw new Error("Mangler refresh token. Vennligst autentiser på nytt.");
-            }
-            return refreshZettleToken(data.refreshToken, clientId, clientSecret);
+        if (!isExpired) {
+            return data.accessToken;
         }
-        return { accessToken: data.accessToken, refreshToken: data.refreshToken };
     }
-    return { accessToken: null, refreshToken: null };
-}
+    
+    // If token doesn't exist or is expired, fetch a new one
+    console.log("Fetching new Zettle access token using Assertion Grant flow.");
+    const settings = await getFirebaseSiteSettings();
+    const clientId = settings.zettleClientId;
+    const apiKey = settings.zettleApiKey;
 
-async function refreshZettleToken(refreshToken: string, clientId: string, clientSecret: string): Promise<{ accessToken: string | null; refreshToken: string | null }> {
+    if (!clientId || !apiKey) {
+        throw new Error("Zettle Client ID or API Key is not configured in settings.");
+    }
+
     try {
         const body = new URLSearchParams({
-            grant_type: 'refresh_token',
+            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             client_id: clientId,
-            client_secret: clientSecret,
-            refresh_token: refreshToken,
+            assertion: apiKey,
         });
 
         const response = await fetch(ZETTLE_OAUTH_URL, {
@@ -80,42 +72,33 @@ async function refreshZettleToken(refreshToken: string, clientId: string, client
 
         if (!response.ok) {
             const errorBody = await response.json();
-            console.error("Failed to refresh Zettle token:", response.status, errorBody);
-            await setDoc(doc(db, "secrets", "zettle"), { accessToken: null, refreshToken: null, expiresAt: null }, { merge: true });
-            throw new Error(`Kunne ikke fornye Zettle-nøkkel: ${errorBody.error_description || response.statusText}`);
+            console.error("Failed to fetch Zettle access token:", response.status, errorBody);
+            throw new Error(`Kunne ikke hente Zettle-nøkkel: ${errorBody.error_description || response.statusText}`);
         }
 
         const data: ZettleTokenResponse = await response.json();
-        await saveZettleTokens(data.access_token, data.refresh_token || refreshToken, data.expires_in);
-        console.log("Successfully refreshed Zettle token.");
-        return { accessToken: data.access_token, refreshToken: data.refresh_token || refreshToken };
+        
+        // Save the new token and its expiry
+        const now = new Date();
+        const expiryDate = new Date(now.getTime() + data.expires_in * 1000);
+        await setDoc(tokenDocRef, {
+            accessToken: data.access_token,
+            expiresAt: expiryDate.toISOString(),
+        });
+        
+        console.log("Successfully fetched and saved new Zettle access token.");
+        return data.access_token;
+
     } catch (error) {
-        console.error("Error in refreshZettleToken:", error);
-        throw error;
+        console.error("Error in getZettleAccessToken:", error);
+        throw error; // Re-throw to be caught by calling function
     }
 }
 
-
-async function saveZettleTokens(accessToken: string, refreshToken: string | undefined, expiresIn: number): Promise<void> {
-    const docRef = doc(db, "secrets", "zettle");
-    const now = new Date();
-    const expiryDate = new Date(now.getTime() + expiresIn * 1000);
-
-    const tokenData: any = {
-        accessToken,
-        expiresAt: expiryDate.toISOString(),
-    };
-
-    if (refreshToken) {
-        tokenData.refreshToken = refreshToken;
-    }
-
-    await setDoc(docRef, tokenData, { merge: true });
-}
 
 export async function getLinkedReaders(): Promise<ZettleLink[]> {
     try {
-        const { accessToken } = await getZettleTokens();
+        const accessToken = await getZettleAccessToken();
         if (!accessToken) {
              console.log("Not authenticated with Zettle, cannot fetch readers.");
              return [];
@@ -134,12 +117,14 @@ export async function getLinkedReaders(): Promise<ZettleLink[]> {
         return data.links || [];
     } catch (error) {
         console.error("Exception in getLinkedReaders:", error);
-        throw error;
+        // Don't throw here, as it might just mean credentials are not set yet.
+        // Return an empty array and let the UI handle it.
+        return [];
     }
 }
 
 export async function claimLinkOffer(code: string, deviceName: string): Promise<ZettleLink> {
-    const { accessToken } = await getZettleTokens();
+    const accessToken = await getZettleAccessToken();
     if (!accessToken) {
         throw new Error("Ikke autentisert med Zettle.");
     }
@@ -164,7 +149,7 @@ export async function claimLinkOffer(code: string, deviceName: string): Promise<
 }
 
 export async function deleteLink(linkId: string): Promise<void> {
-    const { accessToken } = await getZettleTokens();
+    const accessToken = await getZettleAccessToken();
     if (!accessToken) {
         throw new Error("Ikke autentisert med Zettle.");
     }
@@ -180,7 +165,7 @@ export async function deleteLink(linkId: string): Promise<void> {
 }
 
 export async function initiateZettlePayment(request: PaymentRequest): Promise<PaymentResponse> {
-    const { accessToken } = await getZettleTokens();
+    const accessToken = await getZettleAccessToken();
     if (!accessToken) {
         throw new Error("Ikke autentisert med Zettle.");
     }
@@ -215,5 +200,6 @@ export async function initiateZettlePayment(request: PaymentRequest): Promise<Pa
     // Here we'll just return a simplified success state.
     const responseData = await response.json();
     
+    // For now, we assume completion as we are not using WebSockets yet.
     return { status: 'completed', amount: request.amount, reference: request.reference };
 }

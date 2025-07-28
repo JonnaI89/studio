@@ -13,6 +13,7 @@ import { getLinkedReaders, claimLinkOffer, deleteLink, type ZettleLink } from "@
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
+import { Textarea } from "../ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +50,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice ?? 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice ?? 350);
   const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
-  const [zettleClientSecret, setZettleClientSecret] = useState(initialSettings.zettleClientSecret || "");
+  const [zettleApiKey, setZettleApiKey] = useState(initialSettings.zettleApiKey || "");
   
   const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
   const [isFetchingReaders, setIsFetchingReaders] = useState(false);
@@ -68,15 +69,18 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       setLinkedReaders(readers);
     } catch (error) {
        console.error("Could not fetch readers", error);
-       // Silently fail if not authenticated, as it might just mean we need to re-auth
+       toast({ variant: 'destructive', title: 'Kunne ikke hente lesere', description: (error as Error).message });
     } finally {
       setIsFetchingReaders(false);
     }
   };
 
   useEffect(() => {
-    fetchReaders();
-  }, []);
+    // Fetch readers only if credentials are provided
+    if (initialSettings.zettleClientId && initialSettings.zettleApiKey) {
+        fetchReaders();
+    }
+  }, [initialSettings.zettleClientId, initialSettings.zettleApiKey]);
 
   const handleSaveSettings = async () => {
     setIsLoading(true);
@@ -86,12 +90,14 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         weekdayPrice: Number(weekdayPrice),
         weekendPrice: Number(weekendPrice),
         zettleClientId: zettleClientId,
-        zettleClientSecret: zettleClientSecret,
+        zettleApiKey: zettleApiKey,
        });
       toast({
         title: "Innstillinger Oppdatert",
         description: "De nye innstillingene er lagret.",
       });
+      // After saving new credentials, try fetching readers again
+      await fetchReaders();
     } catch (error) {
       console.error("Settings save failed:", error);
       toast({
@@ -102,27 +108,6 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleConnectZettle = () => {
-      const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/admin/zettle/callback` : '';
-      if (!redirectUri) {
-          toast({ variant: 'destructive', title: 'Feil', description: 'Kunne ikke bestemme redirect URI.' });
-          return;
-      }
-      
-      const state = crypto.randomUUID();
-      localStorage.setItem('zettle_oauth_state', state);
-      
-      const params = new URLSearchParams({
-          response_type: 'code',
-          client_id: zettleClientId,
-          redirect_uri: redirectUri,
-          scope: 'READ:USERINFO WRITE:PAYMENT',
-          state: state,
-      });
-
-      window.location.href = `https://oauth.zettle.com/authorize?${params.toString()}`;
   };
 
   const handleClaimReader = async () => {
@@ -180,24 +165,19 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="zettle-client-secret">Zettle Client Secret</Label>
-                <Input
-                  id="zettle-client-secret"
-                  type="password"
-                  placeholder="Lim inn Client Secret her"
-                  value={zettleClientSecret}
-                  onChange={(e) => setZettleClientSecret(e.target.value)}
-                  disabled={isLoading}
+                <Label htmlFor="zettle-api-key">Zettle API Key (JWT)</Label>
+                 <Textarea
+                    id="zettle-api-key"
+                    placeholder="Lim inn din API-nøkkel (JWT) her"
+                    value={zettleApiKey}
+                    onChange={(e) => setZettleApiKey(e.target.value)}
+                    disabled={isLoading}
+                    className="min-h-[120px] font-mono text-xs"
                 />
+                <p className="text-[0.8rem] text-muted-foreground">
+                    Dette er en lang tekst (JSON Web Token) som du genererer i Zettle Developer Portal.
+                </p>
             </div>
-
-            <Button onClick={handleConnectZettle} disabled={!zettleClientId || !zettleClientSecret || isLoading}>
-                <Wifi className="mr-2 h-4 w-4" />
-                Koble til Zettle
-            </Button>
-            <p className="text-[0.8rem] text-muted-foreground">
-                Trykk her for å (re)autentisere applikasjonen mot Zettle. Du vil bli sendt til Zettle for innlogging.
-            </p>
 
           <Separator />
           
@@ -223,7 +203,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                       ))}
                     </ul>
                   ) : (
-                     <p className="text-center text-muted-foreground">Ingen kortlesere er koblet til.</p>
+                     <p className="text-center text-muted-foreground">Ingen kortlesere er koblet til. Fyll inn Client ID og API Key og lagre for å hente.</p>
                   )}
               </CardContent>
            </Card>
