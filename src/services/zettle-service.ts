@@ -57,6 +57,7 @@ export async function exchangeCodeForToken(code: string): Promise<boolean> {
         const clientSecret = "IZSEC3ad1f975-7fd8-463e-b641-8504d2681fec";
 
         if (!clientId || !clientSecret) {
+            console.error("Zettle Client ID eller Secret mangler i konfigurasjonen.");
             throw new Error("Mangler Zettle Client ID eller Secret i konfigurasjonen.");
         }
 
@@ -79,9 +80,9 @@ export async function exchangeCodeForToken(code: string): Promise<boolean> {
         });
 
         if (!response.ok) {
-            const errorBody = await response.text();
+            const errorBody = await response.json();
             console.error("Zettle token exchange error:", response.status, errorBody);
-            throw new Error(`Feil ved utveksling av kode: ${response.statusText}`);
+            throw new Error(`Feil ved utveksling av kode: ${errorBody.error_description || response.statusText}`);
         }
 
         const data: ZettleTokenResponse = await response.json();

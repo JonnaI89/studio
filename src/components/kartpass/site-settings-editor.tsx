@@ -78,7 +78,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
           response_type: 'code',
           client_id: zettleClientId,
           redirect_uri: redirectUri,
-          scope: 'READ:USERINFO WRITE:USERINFO READ:PAYMENT WRITE:PAYMENT',
+          scope: 'READ:USERINFO WRITE:PAYMENT',
           state: state,
       });
 
