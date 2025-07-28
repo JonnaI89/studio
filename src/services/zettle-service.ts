@@ -76,9 +76,10 @@ export async function getAccessToken(): Promise<string> {
     }
 
     const body = new URLSearchParams({
-        grant_type: 'client_credentials', // This is what Reader Connect API expects
+        grant_type: 'client_credentials',
         client_id: clientId,
         client_secret: clientSecret,
+        scope: 'READ:PURCHASE WRITE:PURCHASE'
     });
 
     const response = await fetch(`${ZETTLE_OAUTH_URL}/token`, {
