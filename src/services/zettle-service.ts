@@ -57,8 +57,7 @@ export async function clearZettleSecrets(): Promise<void> {
 }
 
 /**
- * Gets a valid access token. If the stored token is missing or expired,
- * it fetches a new one using the client_credentials grant type.
+ * Gets a valid access token. It fetches a new one using the client_credentials grant type.
  * This is the core authentication function for server-to-server communication.
  */
 export async function getAccessToken(): Promise<string> {
@@ -70,14 +69,8 @@ export async function getAccessToken(): Promise<string> {
     }
 
     const secrets = docSnap.data() as ZettleSecrets;
-    const { accessToken, expiresAt, clientId, clientSecret } = secrets;
+    const { clientId, clientSecret } = secrets;
 
-    // Check if token exists and is not expired (with a 60-second buffer)
-    if (accessToken && expiresAt && new Date().getTime() < new Date(expiresAt).getTime() - 60000) {
-        return accessToken;
-    }
-
-    // --- Token is missing or expired, fetch a new one ---
     if (!clientId || !clientSecret) {
         throw new Error("Client ID eller Client Secret mangler i databasen.");
     }
@@ -98,7 +91,6 @@ export async function getAccessToken(): Promise<string> {
     if (!response.ok) {
         const error = await response.json();
         console.error("Zettle token fetch error:", error);
-        // Do not clear credentials automatically, let the user decide.
         throw new Error(`Klarte ikke å hente Zettle-token: ${error.error_description || 'Ugyldig Client ID eller Secret'}. Sjekk at legitimasjonen er korrekt.`);
     }
 
