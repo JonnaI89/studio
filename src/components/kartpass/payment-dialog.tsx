@@ -50,6 +50,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
       setReaders(fetchedReaders);
       if (fetchedReaders.length === 1) {
         setSelectedReader(fetchedReaders[0]);
+        setStatus("selectingReader"); // Go to next step automatically
       } else {
         setStatus("selectingReader");
       }
@@ -114,7 +115,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
 
       ws.onclose = (event) => {
         console.log("WebSocket connection closed:", event.reason, event.code);
-        if (status !== 'success' && status !== 'error') {
+         if (statusRef.current !== 'success' && statusRef.current !== 'error') {
             // Only show error if it wasn't closed intentionally after success/error
             setErrorMessage("Tilkoblingen til kortleseren ble brutt.");
             setStatus("error");
@@ -126,10 +127,16 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
       setStatus("error");
     }
 
-  }, [selectedReader, calculatedPrice, toast, driver, onPaymentSuccess, status]);
+  }, [selectedReader, calculatedPrice, toast, driver, onPaymentSuccess]);
   
+  const statusRef = React.useRef(status);
   useEffect(() => {
-    if (selectedReader && (status === 'selectingReader' || status === 'fetchingReaders')) {
+    statusRef.current = status;
+  }, [status]);
+
+
+  useEffect(() => {
+    if (selectedReader && status === 'selectingReader') {
         initiatePayment();
     }
   }, [selectedReader, status, initiatePayment]);
@@ -225,7 +232,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
         <div className="my-8">
             {renderContent()}
         </div>
-        {status !== 'error' && (
+        {status !== 'error' && status !== 'success' && (
             <div className="flex justify-center gap-2 pt-4">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
             </div>

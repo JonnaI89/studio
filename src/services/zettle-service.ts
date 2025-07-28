@@ -12,9 +12,9 @@ const ZETTLE_SECRETS_DOC = 'zettle-secrets';
 export interface ZettleSecrets {
     clientId: string;
     clientSecret: string;
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: string;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: string;
 }
 
 export async function saveZettleSecrets(clientId: string, clientSecret: string): Promise<void> {
@@ -39,14 +39,8 @@ export async function getAccessToken(): Promise<string> {
         if (!tokenData.clientId || !tokenData.clientSecret) {
             throw new Error("Mangler Client ID eller Secret. Kan ikke fornye token.");
         }
-
-        const grantType = tokenData.refreshToken ? 'refresh_token' : 'client_credentials';
-        const body = new URLSearchParams({ grant_type });
         
-        if (grantType === 'refresh_token') {
-            body.append('refresh_token', tokenData.refreshToken!);
-        }
-        
+        const body = new URLSearchParams({ grant_type: 'client_credentials' });
         const authHeader = 'Basic ' + Buffer.from(`${tokenData.clientId}:${tokenData.clientSecret}`).toString('base64');
 
         const response = await fetch(`${ZETTLE_OAUTH_URL}/token`, {
@@ -61,7 +55,7 @@ export async function getAccessToken(): Promise<string> {
         if (!response.ok) {
             const error = await response.json();
             console.error("Zettle token fetch/refresh error:", error);
-            await clearZettleSecrets(); // Clear secrets if refresh fails
+            await clearZettleSecrets(); 
             throw new Error(`Klarte ikke å hente/fornye Zettle-token: ${error.error_description || 'Ukjent feil'}. Prøv å lagre legitimasjon på nytt.`);
         }
         
@@ -144,7 +138,7 @@ export async function claimLinkOffer(code: string, deviceName: string): Promise<
     if (!response.ok) {
         const error = await response.json();
         console.error('Error claiming link offer:', error);
-        throw new Error(`Kunne ikke koble til leser: ${error.message || response.statusText}`);
+        throw new Error(`Kunne ikke koble til leser: ${error.error || response.statusText}`);
     }
 }
 

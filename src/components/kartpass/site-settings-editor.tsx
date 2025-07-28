@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Wifi, Trash2, XCircle, Link2Off, PlusCircle } from "lucide-react";
+import { LoaderCircle, Save, Trash2, PlusCircle, Link2Off } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
 import { getLinkedReaders, deleteLink, getZettleSecrets, clearZettleSecrets, saveZettleSecrets, claimLinkOffer } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
@@ -313,7 +313,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
               disabled={isUnlinking}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isUnlinking ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+              {isUnlinking ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               Ja, koble fra
             </AlertDialogAction>
           </AlertDialogFooter>
