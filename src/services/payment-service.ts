@@ -3,7 +3,7 @@
 
 import { getFirebaseSiteSettings } from './firebase-service';
 import { db } from '@/lib/firebase-config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
 
@@ -15,19 +15,19 @@ interface ZettleTokenResponse {
 
 /**
  * Exchanges an authorization code from Zettle for a long-lived access and refresh token
- * using the PKCE flow.
+ * using the standard Code Grant flow.
  * @param code The temporary authorization code received from Zettle.
- * @param codeVerifier The original code verifier used to generate the code challenge.
  * @returns A boolean indicating if the token exchange was successful.
  */
-export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<boolean> {
+export async function exchangeCodeForToken(code: string): Promise<boolean> {
     try {
         const settings = await getFirebaseSiteSettings();
         const clientId = settings.zettleClientId;
+        const clientSecret = settings.zettleClientSecret;
 
-        if (!clientId) {
-            console.error("Zettle Client ID is not configured.");
-            throw new Error("Zettle Client ID is not configured.");
+        if (!clientId || !clientSecret) {
+            console.error("Zettle Client ID or Client Secret is not configured.");
+            throw new Error("Zettle Client ID or Client Secret is not configured.");
         }
         
         const redirectUri = process.env.NEXT_PUBLIC_ZETTLE_REDIRECT_URI || 'https://forerportal-azgs.br-dev.site/admin/zettle/callback';
@@ -36,8 +36,8 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
             grant_type: 'authorization_code',
             code: code,
             client_id: clientId,
+            client_secret: clientSecret,
             redirect_uri: redirectUri,
-            code_verifier: codeVerifier,
         });
 
         const response = await fetch(ZETTLE_OAUTH_URL, {
@@ -66,7 +66,7 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
             expiresAt: expiryDate.toISOString(),
         }, { merge: true });
 
-        console.log("Successfully exchanged code for Zettle tokens using PKCE.");
+        console.log("Successfully exchanged code for Zettle tokens using Code Grant flow.");
         return true;
 
     } catch (error) {
@@ -74,4 +74,3 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
         return false;
     }
 }
-

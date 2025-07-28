@@ -20,7 +20,6 @@ export default function ZettleCallbackPage() {
         const errorParam = searchParams.get('error');
         
         const storedState = localStorage.getItem('zettle_oauth_state');
-        const codeVerifier = localStorage.getItem('zettle_code_verifier');
 
         if (errorParam) {
             setError(`Zettle returnerte en feil: ${errorParam}`);
@@ -35,27 +34,24 @@ export default function ZettleCallbackPage() {
         }
         
         localStorage.removeItem('zettle_oauth_state');
-        // Do NOT remove the code verifier yet, it's needed for the token exchange
 
-        if (code && codeVerifier) {
-            exchangeCodeForToken(code, codeVerifier).then(success => {
+        if (code) {
+            exchangeCodeForToken(code).then(success => {
                 if (success) {
                     setStatus('success');
                      setTimeout(() => {
                         router.push('/admin/site-settings');
                     }, 2000);
                 } else {
-                    setError("Kunne ikke veksle autorisasjonskode mot en permanent nøkkel. Sjekk at Client ID er korrekt og at applikasjonen har de nødvendige tillatelsene i Zettle-portalen.");
+                    setError("Kunne ikke veksle autorisasjonskode mot en permanent nøkkel. Sjekk at Client ID og Client Secret er korrekte, og at applikasjonen har de nødvendige tillatelsene i Zettle-portalen.");
                     setStatus('error');
                 }
             }).catch(err => {
                  setError((err as Error).message || "En ukjent feil oppsto under utveksling av nøkkel.");
                  setStatus('error');
-            }).finally(() => {
-                localStorage.removeItem('zettle_code_verifier');
             });
         } else {
-            setError("Mangler nødvendige parametere (kode eller verifier) fra Zettle-autentiseringen.");
+            setError("Mangler nødvendig autorisasjonskode fra Zettle-autentiseringen.");
             setStatus('error');
         }
 

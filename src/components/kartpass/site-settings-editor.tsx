@@ -42,19 +42,6 @@ function extractImageUrl(url: string): string {
     return url;
 }
 
-// Helper function for PKCE
-function base64URLEncode(str: Buffer) {
-    return str.toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-}
-function sha256(buffer: string) {
-    const crypto = require('crypto');
-    return crypto.createHash('sha256').update(buffer).digest();
-}
-
-
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +49,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice ?? 250);
   const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice ?? 350);
   const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
+  const [zettleClientSecret, setZettleClientSecret] = useState(initialSettings.zettleClientSecret || "");
   
   const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
   const [isFetchingReaders, setIsFetchingReaders] = useState(false);
@@ -98,6 +86,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
         weekdayPrice: Number(weekdayPrice),
         weekendPrice: Number(weekendPrice),
         zettleClientId: zettleClientId,
+        zettleClientSecret: zettleClientSecret,
        });
       toast({
         title: "Innstillinger Oppdatert",
@@ -116,9 +105,6 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   };
 
   const handleConnectZettle = () => {
-      const codeVerifier = base64URLEncode(require('crypto').randomBytes(32));
-      const codeChallenge = base64URLEncode(sha256(codeVerifier));
-      
       const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/admin/zettle/callback` : '';
       if (!redirectUri) {
           toast({ variant: 'destructive', title: 'Feil', description: 'Kunne ikke bestemme redirect URI.' });
@@ -126,18 +112,14 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       }
       
       const state = crypto.randomUUID();
-
       localStorage.setItem('zettle_oauth_state', state);
-      localStorage.setItem('zettle_code_verifier', codeVerifier);
-
+      
       const params = new URLSearchParams({
           response_type: 'code',
           client_id: zettleClientId,
           redirect_uri: redirectUri,
           scope: 'READ:USERINFO WRITE:PAYMENT',
           state: state,
-          code_challenge: codeChallenge,
-          code_challenge_method: 'S256',
       });
 
       window.location.href = `https://oauth.zettle.com/authorize?${params.toString()}`;
@@ -196,17 +178,26 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                   onChange={(e) => setZettleClientId(e.target.value)}
                   disabled={isLoading}
                 />
-                <p className="text-[0.8rem] text-muted-foreground">
-                  Denne ID-en henter du fra Zettle Developer Portal.
-                </p>
-              </div>
-              <Button onClick={handleConnectZettle} disabled={!zettleClientId || isLoading}>
-                  <Wifi className="mr-2 h-4 w-4" />
-                  Koble til Zettle
-              </Button>
-               <p className="text-[0.8rem] text-muted-foreground">
-                  Trykk her for å (re)autentisere applikasjonen mot Zettle. Du vil bli sendt til Zettle for innlogging.
-                </p>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="zettle-client-secret">Zettle Client Secret</Label>
+                <Input
+                  id="zettle-client-secret"
+                  type="password"
+                  placeholder="Lim inn Client Secret her"
+                  value={zettleClientSecret}
+                  onChange={(e) => setZettleClientSecret(e.target.value)}
+                  disabled={isLoading}
+                />
+            </div>
+
+            <Button onClick={handleConnectZettle} disabled={!zettleClientId || !zettleClientSecret || isLoading}>
+                <Wifi className="mr-2 h-4 w-4" />
+                Koble til Zettle
+            </Button>
+            <p className="text-[0.8rem] text-muted-foreground">
+                Trykk her for å (re)autentisere applikasjonen mot Zettle. Du vil bli sendt til Zettle for innlogging.
+            </p>
 
           <Separator />
           
