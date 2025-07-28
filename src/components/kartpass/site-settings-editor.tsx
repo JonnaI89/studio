@@ -311,7 +311,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
               disabled={isUnlinking}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isUnlinking ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+              {isUnlinking ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
               Ja, koble fra
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -320,5 +320,3 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     </>
   );
 }
-
-    
