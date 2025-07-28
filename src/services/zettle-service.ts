@@ -7,7 +7,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 const ZETTLE_OAUTH_URL = "https://oauth.zettle.com/token";
-const ZETTLE_READER_API_URL = "https://reader-connect.zettle.com";
+const ZETTLE_READER_API_URL = "https://reader-connect.zettle.com/v1/integrator";
 
 interface ZettleTokenResponse {
     access_token: string;
@@ -133,7 +133,7 @@ async function getZettleAccessToken(): Promise<string> {
 
 export async function getLinkedReaders(): Promise<ZettleLink[]> {
     const accessToken = await getZettleAccessToken();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/v1/links`, {
+    const response = await fetch(`${ZETTLE_READER_API_URL}/links`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 
@@ -148,7 +148,7 @@ export async function getLinkedReaders(): Promise<ZettleLink[]> {
 
 export async function claimLinkOffer(code: string, deviceName: string): Promise<void> {
     const accessToken = await getZettleAccessToken();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/v1/link-offers/claim`, {
+    const response = await fetch(`${ZETTLE_READER_API_URL}/link-offers/claim`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -170,7 +170,7 @@ export async function claimLinkOffer(code: string, deviceName: string): Promise<
 
 export async function deleteLink(linkId: string): Promise<void> {
     const accessToken = await getZettleAccessToken();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/v1/links/${linkId}`, {
+    const response = await fetch(`${ZETTLE_READER_API_URL}/links/${linkId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -184,7 +184,7 @@ export async function deleteLink(linkId: string): Promise<void> {
 export async function startPayment(linkId: string, amount: number): Promise<{paymentId: string; websocketUrl: string}> {
     const accessToken = await getZettleAccessToken();
     const paymentId = uuidv4();
-    const response = await fetch(`${ZETTLE_READER_API_URL}/v1/links/${linkId}/payments`, {
+    const response = await fetch(`${ZETTLE_READER_API_URL}/links/${linkId}/payments`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
