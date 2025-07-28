@@ -52,7 +52,9 @@ export async function exchangeCodeForToken(code: string): Promise<boolean> {
     try {
         const settings = await getFirebaseSiteSettings();
         const clientId = settings.zettleClientId;
-        const clientSecret = process.env.ZETTLE_CLIENT_SECRET;
+        // Dette er en server-side hemmelighet. Den skal ikke eksponeres på klienten.
+        // I et produksjonsmiljø hentes denne fra en sikker konfigurasjon (f.eks. environment variable).
+        const clientSecret = "IZSEC3ad1f975-7fd8-463e-b641-8504d2681fec";
 
         if (!clientId || !clientSecret) {
             throw new Error("Mangler Zettle Client ID eller Secret i konfigurasjonen.");
