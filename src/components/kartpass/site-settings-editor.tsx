@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { LoaderCircle, Save, Wifi, Trash2, XCircle, Link as LinkIcon } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
-import { getLinkedReaders, deleteLink, claimLinkOffer, getOauthUrl } from "@/services/zettle-service";
+import { getLinkedReaders, deleteLink, claimLinkOffer, type ZettleLink } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import {
@@ -22,13 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogClose, DialogFooter, DialogTrigger } from "../ui/dialog";
+import { Dialog, DialogClose, DialogTrigger } from "../ui/dialog";
 import { DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Textarea } from "../ui/textarea";
-
-const ZETTLE_LS_STATE_KEY = 'zettle-oauth-state';
-const ZETTLE_LS_VERIFIER_KEY = 'zettle-pkce-verifier';
-
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -37,7 +32,7 @@ interface SiteSettingsEditorProps {
 export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
+  const [settings, setSettings] = useState<SiteSettings>(initialSettings);
   
   const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
   const [isFetchingData, setIsFetchingData] = useState(true);
@@ -48,11 +43,9 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const [deviceName, setDeviceName] = useState('');
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
-  const [isConnecting, setIsConnecting] = useState(false);
-
   const fetchReaders = useCallback(async () => {
     // Only fetch if keys are present
-    if (!zettleClientId) {
+    if (!settings.zettleClientId) {
       setIsFetchingData(false);
       setLinkedReaders([]);
       return;
@@ -66,39 +59,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     } finally {
       setIsFetchingData(false);
     }
-  }, [zettleClientId, toast]);
-
-  // This effect runs on page load to handle the redirect from Zettle
-  useEffect(() => {
-    const handleZettleCallback = async () => {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        const state = params.get('state');
-        const savedState = window.localStorage.getItem(ZETTLE_LS_STATE_KEY);
-
-        if (code && state && state === savedState) {
-            setIsConnecting(true);
-            toast({ title: 'Behandler Zettle-tilkobling...', description: 'Et øyeblikk...' });
-
-            try {
-                // This function should be defined in zettle-service and be a server action
-                // It's not available in the provided code, so assuming it would exist
-                // await exchangeCodeForToken(code, zettleClientId);
-                toast({ title: 'Tilkobling Vellykket!', description: 'Zettle er nå koblet til.'});
-                await fetchReaders();
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Tilkobling Feilet', description: (error as Error).message });
-            } finally {
-                window.localStorage.removeItem(ZETTLE_LS_STATE_KEY);
-                window.localStorage.removeItem(ZETTLE_LS_VERIFIER_KEY);
-                // Clean up URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-                setIsConnecting(false);
-            }
-        }
-    };
-    handleZettleCallback();
-  }, [zettleClientId, toast, fetchReaders]);
+  }, [settings.zettleClientId, toast]);
 
 
   useEffect(() => {
@@ -108,13 +69,12 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
-      await updateSiteSettings({ zettleClientId });
+      await updateSiteSettings(settings);
       toast({
         title: "Innstillinger Lagret",
         description: "Dine innstillinger er lagret.",
       });
       // After saving new settings, we might need to re-fetch readers
-      // if the client ID changed.
       await fetchReaders();
     } catch (error) {
       console.error("Settings save failed:", error);
@@ -126,17 +86,6 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleStartConnection = async () => {
-    if (!zettleClientId) {
-        toast({ variant: 'destructive', title: 'Client ID Mangler', description: 'Du må lagre en Zettle Client ID før du kan koble til.' });
-        return;
-    }
-    const { oauthUrl, state, verifier } = await getOauthUrl(zettleClientId);
-    window.localStorage.setItem(ZETTLE_LS_STATE_KEY, state);
-    window.localStorage.setItem(ZETTLE_LS_VERIFIER_KEY, verifier);
-    window.location.href = oauthUrl;
   };
 
   const handleUnlinkReader = async () => {
@@ -191,8 +140,8 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     id="logo-url"
                     type="text"
                     placeholder="https://.../logo.png"
-                    value={initialSettings.logoUrl || ""}
-                    onChange={(e) => updateSiteSettings({ ...initialSettings, logoUrl: e.target.value })}
+                    value={settings.logoUrl || ""}
+                    onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
                     disabled={isLoading}
                   />
                   <p className="text-sm text-muted-foreground">
@@ -203,7 +152,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
             <div>
               <h3 className="text-lg font-medium">Zettle-integrasjon</h3>
                <p className="text-sm text-muted-foreground">
-                For å ta betalt via Zettle, må du oppgi din Client ID og autorisere tilkoblingen.
+                For å ta betalt via Zettle, må du oppgi din Client ID.
               </p>
             </div>
             <div className="space-y-4">
@@ -213,20 +162,16 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     id="zettle-client-id"
                     type="text"
                     placeholder="Lim inn din Zettle Client ID her"
-                    value={zettleClientId}
-                    onChange={(e) => setZettleClientId(e.target.value)}
+                    value={settings.zettleClientId || ""}
+                    onChange={(e) => setSettings({ ...settings, zettleClientId: e.target.value })}
                     disabled={isLoading}
                   />
               </div>
             </div>
              <div className="flex gap-2">
-                <Button onClick={handleSaveSettings} disabled={isLoading || isConnecting}>
+                <Button onClick={handleSaveSettings} disabled={isLoading}>
                     {isLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {isLoading ? 'Lagrer...' : 'Lagre Innstillinger'}
-                </Button>
-                <Button onClick={handleStartConnection} disabled={isLoading || isConnecting || !zettleClientId} variant="secondary">
-                   {isConnecting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
-                   Koble til Zettle
                 </Button>
              </div>
           </CardContent>
@@ -241,7 +186,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                 </div>
                 <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button variant="outline" disabled={!zettleClientId}>
+                        <Button variant="outline" disabled={!settings.zettleClientId}>
                             <LinkIcon className="mr-2 h-4 w-4" />
                             Koble til ny leser via kode
                         </Button>
@@ -293,7 +238,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                   ))}
                 </ul>
               ) : (
-                 <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Fyll inn Client ID og autoriser for å aktivere.</p>
+                 <p className="text-center text-muted-foreground py-4">Ingen kortlesere er koblet til. Fyll inn Client ID og lagre for å aktivere.</p>
               )}
           </CardContent>
         </Card>
