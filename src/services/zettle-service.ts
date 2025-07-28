@@ -47,7 +47,11 @@ async function getZettleTokens(): Promise<{ accessToken: string | null; refreshT
 
         if (isExpired && data.refreshToken) {
             console.log("Zettle token is expired. Refreshing...");
-            return refreshZettleToken(data.refreshToken);
+            const settings = await getFirebaseSiteSettings();
+            if (!settings.zettleClientId) {
+                throw new Error("Zettle Client ID is not configured. Cannot refresh token.");
+            }
+            return refreshZettleToken(data.refreshToken, settings.zettleClientId);
         }
 
         return { accessToken: data.accessToken, refreshToken: data.refreshToken };
@@ -55,15 +59,13 @@ async function getZettleTokens(): Promise<{ accessToken: string | null; refreshT
     return { accessToken: null, refreshToken: null };
 }
 
-async function refreshZettleToken(refreshToken: string): Promise<{ accessToken: string | null; refreshToken: string | null }> {
+async function refreshZettleToken(refreshToken: string, clientId: string): Promise<{ accessToken: string | null; refreshToken: string | null }> {
     try {
-        const settings = await getFirebaseSiteSettings();
-        const clientId = settings.zettleClientId;
-        const clientSecret = "IZSEC3ad1f975-7fd8-463e-b641-8504d2681fec"; // This should be a secret
+        const clientSecret = "IZSEC3ad1f975-7fd8-463e-b641-8504d2681fec";
 
         const body = new URLSearchParams({
             grant_type: 'refresh_token',
-            client_id: clientId!,
+            client_id: clientId,
             client_secret: clientSecret,
             refresh_token: refreshToken,
         });
