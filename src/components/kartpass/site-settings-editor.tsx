@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Trash2, PlusCircle, Link2Off } from "lucide-react";
+import { LoaderCircle, Save, Trash2, Link2Off, PlusCircle } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
-import { getLinkedReaders, deleteLink, getZettleSecrets, clearZettleSecrets, saveZettleSecrets, claimLinkOffer } from "@/services/zettle-service";
+import { getLinkedReaders, getZettleSecrets, clearZettleSecrets, saveZettleSecrets, claimLinkOffer } from "@/services/zettle-service";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import {
@@ -221,7 +221,7 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
                     <CardDescription>Administrer kortlesere som er koblet til systemet.</CardDescription>
                 </div>
                 {isZettleConnected && (
-                    <Button variant="outline" onClick={() => setIsClaimLinkOpen(true)}>
+                    <Button variant="outline" onClick={() => setIsClaimLinkOpen(true)} disabled={isLoading}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Koble til ny leser
                     </Button>
@@ -322,5 +322,3 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
     </>
   );
 }
-
-    

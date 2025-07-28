@@ -82,7 +82,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
     setErrorMessage(null);
 
     try {
-      const { paymentId, websocketUrl } = await startPayment(selectedReader.id, calculatedPrice);
+      const { websocketUrl } = await startPayment(selectedReader.id, calculatedPrice);
 
       const ws = new WebSocket(websocketUrl);
       setWebSocket(ws);
@@ -242,5 +242,3 @@ export function PaymentDialog({ isOpen, onOpenChange, onPaymentSuccess, driver, 
     </Dialog>
   );
 }
-
-    

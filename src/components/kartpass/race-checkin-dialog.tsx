@@ -7,9 +7,11 @@ import type { Race, SiteSettings } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { recordCheckin } from '@/services/checkin-service';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { CreditCard, Trophy, Tent, CheckCircle2, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { CreditCard, Trophy, Tent, CheckCircle2, Pencil, LoaderCircle } from 'lucide-react';
 import { Input } from '../ui/input';
+import { PaymentDialog } from './payment-dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 interface RaceCheckinDialogProps {
   isOpen: boolean;
@@ -23,6 +25,10 @@ interface RaceCheckinDialogProps {
 export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings, onCheckinSuccess }: RaceCheckinDialogProps) {
   const { toast } = useToast();
   const [isEditingAmount, setIsEditingAmount] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { profile } = useAuth();
+
 
   const calculatedAmount = useMemo(() => {
     if (!signup || !race) return 0;
@@ -46,9 +52,30 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
       setCurrentAmount(calculatedAmount);
   }, [calculatedAmount, isOpen]);
 
-  const handleConfirmPayment = async () => {
+  const handleManualCheckin = async () => {
     if (!signup || !race) return;
-     try {
+    setIsSubmitting(true);
+    try {
+      await performCheckin(currentAmount);
+      toast({
+        title: 'Innsjekk Vellykket (Manuell)',
+        description: `${signup.driverName} er nå sjekket inn for ${race.name}.`,
+      });
+      onCheckinSuccess();
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'Innsjekk Feilet',
+        description: `Betalingen ble bekreftet, men innsjekkingen kunne ikke lagres: ${(error as Error).message}`,
+      });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  const performCheckin = async (amount: number) => {
+      if (!signup || !race) throw new Error("Mangler påmelding- eller løpsdata.");
+      
       const now = new Date();
       const time = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const date = now.toISOString().split('T')[0];
@@ -63,42 +90,36 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         eventType: 'race',
         eventId: race.id,
         eventName: race.name,
-        amountPaid: currentAmount,
+        amountPaid: amount,
       });
+  }
 
-      toast({
-        title: 'Innsjekk Vellykket',
-        description: `${signup.driverName} er nå sjekket inn for ${race.name}.`,
-      });
-
-      onCheckinSuccess();
-
+  const handlePaymentSuccess = async (amountPaid: number) => {
+    setIsPaymentDialogOpen(false);
+    try {
+        await performCheckin(amountPaid);
+        onCheckinSuccess();
     } catch (error) {
-      toast({
+       toast({
         variant: 'destructive',
         title: 'Innsjekk Feilet',
-        description: `Betalingen ble bekreftet, men innsjekkingen kunne ikke lagres: ${(error as Error).message}`,
+        description: `Betalingen via Zettle var vellykket, men innsjekkingen kunne ikke lagres i systemet: ${(error as Error).message}`,
       });
     }
-  };
+  }
 
   if (!isOpen || !signup || !race) return null;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Løpsinnsjekk: {race.name}</DialogTitle>
           <DialogDescription>
-             Manuell betaling og innsjekk for {signup.driverName}
+             Betaling og innsjekk for {signup.driverName}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="my-8 flex flex-col items-center gap-4 text-center">
-            <CreditCard className="h-16 w-16 text-primary" />
-            <p className="text-lg font-semibold">Klar for betaling</p>
-            <p className="text-sm text-muted-foreground">Bruk kortterminalen til å ta betalt beløpet under. Trykk bekreft når betalingen er fullført.</p>
-        </div>
 
         <div className="mt-4 w-full rounded-md border p-4 text-center space-y-2">
             {isEditingAmount ? (
@@ -128,14 +149,28 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
             </div>
         </div>
         
-        <div className="flex justify-center gap-2 pt-4">
-             <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-             <Button onClick={handleConfirmPayment} disabled={isEditingAmount}>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Bekreft Betaling & Sjekk inn
-            </Button>
-        </div>
+        <DialogFooter className="grid grid-cols-2 gap-2 pt-4">
+             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Avbryt</Button>
+             <div className="space-y-2">
+                <Button onClick={() => setIsPaymentDialogOpen(true)} className="w-full" disabled={isSubmitting}>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Betal med Zettle
+                </Button>
+                 <Button onClick={handleManualCheckin} className="w-full" variant="secondary" disabled={isSubmitting}>
+                    {isSubmitting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                    Bekreft Manuell Betaling
+                </Button>
+             </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
+    <PaymentDialog 
+        isOpen={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        onPaymentSuccess={handlePaymentSuccess}
+        driver={profile}
+        settings={settings}
+    />
+    </>
   );
 }

@@ -13,7 +13,6 @@ export interface ZettleSecrets {
     clientId: string;
     clientSecret: string;
     accessToken?: string;
-    refreshToken?: string;
     expiresAt?: string;
 }
 
@@ -32,7 +31,7 @@ export async function getAccessToken(): Promise<string> {
         throw new Error("Zettle-legitimasjon ikke funnet. Vennligst lagre Client ID og Secret i innstillingene.");
     }
     
-    let tokenData = tokenDocSnap.data() as Partial<ZettleSecrets>;
+    const tokenData = tokenDocSnap.data() as Partial<ZettleSecrets>;
     const hasToken = tokenData.accessToken && tokenData.expiresAt;
     const isExpired = hasToken && new Date() >= new Date(tokenData.expiresAt!);
 
@@ -64,13 +63,14 @@ export async function getAccessToken(): Promise<string> {
         const newTokens = await response.json();
         const expiryDate = new Date(new Date().getTime() + newTokens.expires_in * 1000);
 
-        tokenData = {
-            ...tokenData,
+        const newTokenData: ZettleSecrets = {
+            clientId: tokenData.clientId,
+            clientSecret: tokenData.clientSecret,
             accessToken: newTokens.access_token,
             expiresAt: expiryDate.toISOString(),
         };
 
-        await setDoc(tokenDocRef, tokenData, { merge: true });
+        await setDoc(tokenDocRef, newTokenData, { merge: true });
         return newTokens.access_token;
     }
     
