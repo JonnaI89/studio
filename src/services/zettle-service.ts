@@ -59,11 +59,12 @@ async function refreshZettleToken(refreshToken: string): Promise<{ accessToken: 
     try {
         const settings = await getFirebaseSiteSettings();
         const clientId = settings.zettleClientId;
-        const clientSecret = "IZSEC3ad1f975-7fd8-463e-b641-8504d2681fec";
+        const clientSecret = "IZSEC3ad1f975-7fd8-463e-b641-8504d2681fec"; // This should be a secret
 
         const body = new URLSearchParams({
             grant_type: 'refresh_token',
             client_id: clientId!,
+            client_secret: clientSecret,
             refresh_token: refreshToken,
         });
 
@@ -71,7 +72,6 @@ async function refreshZettleToken(refreshToken: string): Promise<{ accessToken: 
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
             },
             body: body.toString(),
         });
