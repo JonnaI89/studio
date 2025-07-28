@@ -1,17 +1,28 @@
+
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { LoaderCircle, Save, Wifi } from "lucide-react";
+import { LoaderCircle, Save, Wifi, Link2, Trash2, XCircle } from "lucide-react";
 import { updateSiteSettings } from "@/services/settings-service";
+import { getLinkedReaders, claimLinkOffer, deleteLink, type ZettleLink } from "@/services/zettle-service";
 import Image from "next/image";
 import type { SiteSettings } from "@/lib/types";
 import { Separator } from "../ui/separator";
-import React from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SiteSettingsEditorProps {
   initialSettings: SiteSettings;
@@ -26,7 +37,6 @@ function extractImageUrl(url: string): string {
             if (imgUrl) return imgUrl;
         }
     } catch (e) {
-        // Not a valid URL, return original string
         return url;
     }
     return url;
@@ -36,14 +46,37 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [logoUrlInput, setLogoUrlInput] = useState(initialSettings.logoUrl || "");
-  const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice || 250);
-  const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice || 350);
+  const [weekdayPrice, setWeekdayPrice] = useState(initialSettings.weekdayPrice ?? 250);
+  const [weekendPrice, setWeekendPrice] = useState(initialSettings.weekendPrice ?? 350);
   const [zettleClientId, setZettleClientId] = useState(initialSettings.zettleClientId || "");
+  
+  const [linkedReaders, setLinkedReaders] = useState<ZettleLink[]>([]);
+  const [isFetchingReaders, setIsFetchingReaders] = useState(false);
+  const [claimCode, setClaimCode] = useState("");
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [readerToUnlink, setReaderToUnlink] = useState<ZettleLink | null>(null);
+  const [isUnlinking, setIsUnlinking] = useState(false);
 
 
   const displayLogoUrl = useMemo(() => extractImageUrl(logoUrlInput), [logoUrlInput]);
 
-  const handleSave = async () => {
+  const fetchReaders = async () => {
+    setIsFetchingReaders(true);
+    try {
+      const readers = await getLinkedReaders();
+      setLinkedReaders(readers);
+    } catch (error) {
+       // Silently fail if not authenticated
+    } finally {
+      setIsFetchingReaders(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReaders();
+  }, []);
+
+  const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
       await updateSiteSettings({ 
@@ -71,7 +104,6 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
   const handleConnectZettle = () => {
       const redirectUri = 'https://forerportal--varnacheck.europe-west4.hosted.app/admin/zettle/callback';
       const state = crypto.randomUUID();
-      // Lagre state i localStorage for å verifisere den senere
       localStorage.setItem('zettle_oauth_state', state);
 
       const params = new URLSearchParams({
@@ -85,106 +117,208 @@ export function SiteSettingsEditor({ initialSettings }: SiteSettingsEditorProps)
       window.location.href = `https://oauth.zettle.com/authorize?${params.toString()}`;
   };
 
+  const handleClaimReader = async () => {
+    if (!claimCode) {
+      toast({ variant: 'destructive', title: 'Kode mangler', description: 'Du må skrive inn koden fra kortleseren.' });
+      return;
+    }
+    setIsClaiming(true);
+    try {
+      await claimLinkOffer(claimCode, `Forerportalen-Leser-${Math.floor(Math.random() * 1000)}`);
+      toast({ title: 'Leser koblet til!', description: 'Den nye kortleseren er nå klar til bruk.' });
+      setClaimCode("");
+      await fetchReaders();
+    } catch (error) {
+       toast({ variant: 'destructive', title: 'Tilkobling feilet', description: (error as Error).message });
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
+  const handleUnlinkReader = async () => {
+    if (!readerToUnlink) return;
+    setIsUnlinking(true);
+    try {
+      await deleteLink(readerToUnlink.id);
+      toast({ title: 'Leser koblet fra', description: 'Kortleseren er fjernet fra din konto.' });
+      setReaderToUnlink(null);
+      await fetchReaders();
+    } catch (error) {
+       toast({ variant: 'destructive', title: 'Frakobling feilet', description: (error as Error).message });
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Nettstedinnstillinger</CardTitle>
-        <CardDescription>
-          Administrer generelle innstillinger for nettstedet, som priser, Zettle-terminal og klubblogo.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-            <h3 className="text-lg font-medium">Zettle Betalingsintegrasjon</h3>
-             <div className="space-y-2">
-              <Label htmlFor="zettle-client-id">Zettle Client ID</Label>
-              <Input
-                id="zettle-client-id"
-                type="text"
-                placeholder="Lim inn Client ID her"
-                value={zettleClientId}
-                onChange={(e) => setZettleClientId(e.target.value)}
-                disabled={isLoading}
-              />
-              <p className="text-[0.8rem] text-muted-foreground">
-                Denne ID-en henter du fra Zettle Developer Portal.
-              </p>
-            </div>
-            <Button onClick={handleConnectZettle} disabled={!zettleClientId}>
-                <Wifi className="mr-2 h-4 w-4" />
-                Koble til Zettle
-            </Button>
-             <p className="text-[0.8rem] text-muted-foreground">
-                Trykk her for å (re)autentisere applikasjonen mot Zettle. Du vil bli sendt til Zettle for innlogging.
-              </p>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-4">
-            <h3 className="text-lg font-medium">Priser for dagspass</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="weekday-price">Pris Hverdag (kr)</Label>
-                    <Input
-                        id="weekday-price"
-                        type="number"
-                        placeholder="250"
-                        value={weekdayPrice}
-                        onChange={(e) => setWeekdayPrice(Number(e.target.value))}
-                        disabled={isLoading}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="weekend-price">Pris Helg (kr)</Label>
-                    <Input
-                        id="weekend-price"
-                        type="number"
-                        placeholder="350"
-                        value={weekendPrice}
-                        onChange={(e) => setWeekendPrice(Number(e.target.value))}
-                        disabled={isLoading}
-                    />
-                </div>
-            </div>
-        </div>
-        
-        <Separator />
-
-        <div className="space-y-4">
-            <h3 className="text-lg font-medium">Klubblogo</h3>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Nettstedinnstillinger</CardTitle>
+          <CardDescription>
+            Administrer generelle innstillinger for nettstedet, som priser, Zettle-terminal og klubblogo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
             <div className="space-y-2">
-                <Label>Nåværende Logo</Label>
-                <div className="p-4 border rounded-md flex justify-center items-center bg-muted/40 min-h-[100px]">
-                    {displayLogoUrl ? (
-                        <Image src={displayLogoUrl} alt="Nåværende logo" width={200} height={100} className="object-contain" />
-                    ) : (
-                        <p className="text-sm text-muted-foreground">Ingen logo er angitt.</p>
-                    )}
-                </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="logo-url">Logo URL</Label>
-              <Input
-                id="logo-url"
-                type="url"
-                placeholder="https://eksempel.com/logo.png"
-                value={logoUrlInput}
-                onChange={(e) => setLogoUrlInput(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-        </div>
+                <Label htmlFor="zettle-client-id">Zettle Client ID</Label>
+                <Input
+                  id="zettle-client-id"
+                  type="text"
+                  placeholder="Lim inn Client ID her"
+                  value={zettleClientId}
+                  onChange={(e) => setZettleClientId(e.target.value)}
+                  disabled={isLoading}
+                />
+                <p className="text-[0.8rem] text-muted-foreground">
+                  Denne ID-en henter du fra Zettle Developer Portal.
+                </p>
+              </div>
+              <Button onClick={handleConnectZettle} disabled={!zettleClientId || isLoading}>
+                  <Wifi className="mr-2 h-4 w-4" />
+                  Koble til Zettle
+              </Button>
+               <p className="text-[0.8rem] text-muted-foreground">
+                  Trykk her for å (re)autentisere applikasjonen mot Zettle. Du vil bli sendt til Zettle for innlogging.
+                </p>
 
-        <Button onClick={handleSave} disabled={isLoading}>
-          {isLoading ? (
-            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          {isLoading ? 'Lagrer...' : 'Lagre Innstillinger'}
-        </Button>
-      </CardContent>
-    </Card>
+          <Separator />
+          
+           <h3 className="text-lg font-medium">Tilkoblede Kortlesere</h3>
+           <Card>
+              <CardContent className="pt-6">
+                  {isFetchingReaders ? (
+                    <div className="flex items-center justify-center h-24">
+                      <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : linkedReaders.length > 0 ? (
+                    <ul className="space-y-3">
+                      {linkedReaders.map(reader => (
+                        <li key={reader.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
+                          <div>
+                            <p className="font-semibold">{reader.integratorTags?.deviceName || 'Ukjent Enhet'}</p>
+                            <p className="text-sm text-muted-foreground">{reader.readerTags?.model} - S/N: {reader.readerTags?.serialNumber}</p>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => setReaderToUnlink(reader)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                     <p className="text-center text-muted-foreground">Ingen kortlesere er koblet til.</p>
+                  )}
+              </CardContent>
+           </Card>
+
+           <div className="space-y-2">
+              <Label htmlFor="claim-code">Koble til ny leser</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                    id="claim-code"
+                    placeholder="Kode fra leserskjerm"
+                    value={claimCode}
+                    onChange={e => setClaimCode(e.target.value)}
+                    disabled={isClaiming}
+                />
+                <Button onClick={handleClaimReader} disabled={isClaiming}>
+                    {isClaiming ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                    Koble til
+                </Button>
+              </div>
+           </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+              <h3 className="text-lg font-medium">Priser for dagspass</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="weekday-price">Pris Hverdag (kr)</Label>
+                      <Input
+                          id="weekday-price"
+                          type="number"
+                          placeholder="250"
+                          value={weekdayPrice}
+                          onChange={(e) => setWeekdayPrice(Number(e.target.value))}
+                          disabled={isLoading}
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="weekend-price">Pris Helg (kr)</Label>
+                      <Input
+                          id="weekend-price"
+                          type="number"
+                          placeholder="350"
+                          value={weekendPrice}
+                          onChange={(e) => setWeekendPrice(Number(e.target.value))}
+                          disabled={isLoading}
+                      />
+                  </div>
+              </div>
+          </div>
+          
+          <Separator />
+
+          <div className="space-y-4">
+              <h3 className="text-lg font-medium">Klubblogo</h3>
+              <div className="space-y-2">
+                  <Label>Nåværende Logo</Label>
+                  <div className="p-4 border rounded-md flex justify-center items-center bg-muted/40 min-h-[100px]">
+                      {displayLogoUrl ? (
+                          <Image src={displayLogoUrl} alt="Nåværende logo" width={200} height={100} className="object-contain" />
+                      ) : (
+                          <p className="text-sm text-muted-foreground">Ingen logo er angitt.</p>
+                      )}
+                  </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="logo-url">Logo URL</Label>
+                <Input
+                  id="logo-url"
+                  type="url"
+                  placeholder="https://eksempel.com/logo.png"
+                  value={logoUrlInput}
+                  onChange={(e) => setLogoUrlInput(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+          </div>
+
+          <Button onClick={handleSaveSettings} disabled={isLoading}>
+            {isLoading ? (
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            {isLoading ? 'Lagrer...' : 'Lagre Innstillinger'}
+          </Button>
+        </CardContent>
+      </Card>
+      
+      <AlertDialog open={!!readerToUnlink} onOpenChange={(isOpen) => !isOpen && setReaderToUnlink(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dette vil koble fra leseren <span className="font-bold">{readerToUnlink?.integratorTags?.deviceName}</span>. Du må pare den på nytt for å bruke den igjen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnlinking}>Avbryt</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleUnlinkReader} 
+              disabled={isUnlinking}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isUnlinking ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+              Ja, koble fra
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
+
+    
