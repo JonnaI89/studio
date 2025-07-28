@@ -69,7 +69,6 @@ export function CheckInDashboard() {
   const [signupForCheckin, setSignupForCheckin] = useState<RaceSignupWithDriver | null>(null);
 
   const rfidInputBuffer = useRef<string>('');
-  const rfidTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTodaysEvents = useCallback(async () => {
     try {
@@ -282,10 +281,6 @@ export function CheckInDashboard() {
           return;
       }
       
-      if (rfidTimeoutRef.current) {
-        clearTimeout(rfidTimeoutRef.current);
-      }
-
       if (event.key === 'Enter') {
         if (rfidInputBuffer.current.length > 3) {
           processRfidScan(rfidInputBuffer.current);
@@ -297,21 +292,11 @@ export function CheckInDashboard() {
       if (event.key.length === 1) {
          rfidInputBuffer.current += event.key;
       }
-
-      rfidTimeoutRef.current = setTimeout(() => {
-        if (rfidInputBuffer.current.length > 3) {
-          processRfidScan(rfidInputBuffer.current);
-        }
-        rfidInputBuffer.current = '';
-      }, 200);
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
-      if (rfidTimeoutRef.current) {
-        clearTimeout(rfidTimeoutRef.current);
-      }
     };
   }, [processRfidScan]);
 
@@ -788,3 +773,5 @@ export function CheckInDashboard() {
     </div>
   );
 }
+
+    
