@@ -1,15 +1,14 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { RaceSignupWithDriver } from '@/services/race-service';
 import type { Race, SiteSettings } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { recordCheckin } from '@/services/checkin-service';
-import { initiateZettlePushPayment } from '@/services/zettle-service';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { LoaderCircle, CreditCard, User, Trophy, Tent, CheckCircle2, XCircle, Wifi, ServerCrash, Pencil } from 'lucide-react';
+import { CreditCard, Trophy, Tent, CheckCircle2, Pencil } from 'lucide-react';
 import { Input } from '../ui/input';
 
 interface RaceCheckinDialogProps {
@@ -21,14 +20,8 @@ interface RaceCheckinDialogProps {
   onCheckinSuccess: () => void;
 }
 
-type PaymentStatus = "idle" | "initializing" | "connecting_ws" | "waiting_for_reader" | "waiting_for_payment" | "successful" | "failed" | "cancelled";
-
-
 export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings, onCheckinSuccess }: RaceCheckinDialogProps) {
-  const [status, setStatus] = useState<PaymentStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const socketRef = useRef<WebSocket | null>(null);
   const [isEditingAmount, setIsEditingAmount] = useState(false);
 
   const calculatedAmount = useMemo(() => {
@@ -51,19 +44,9 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
 
   useEffect(() => {
       setCurrentAmount(calculatedAmount);
-      setStatus("idle");
-      setError(null);
   }, [calculatedAmount, isOpen]);
 
-
-  const cleanUpSocket = useCallback(() => {
-    if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-    }
-  }, []);
-
-  const handlePaymentCompleted = useCallback(async () => {
+  const handleConfirmPayment = async () => {
     if (!signup || !race) return;
      try {
       const now = new Date();
@@ -88,116 +71,16 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         description: `${signup.driverName} er nå sjekket inn for ${race.name}.`,
       });
 
-      setTimeout(() => {
-          onCheckinSuccess();
-      }, 1500);
+      onCheckinSuccess();
 
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Innsjekk Feilet',
-        description: `Betalingen var vellykket, men innsjekkingen kunne ikke lagres: ${(error as Error).message}`,
+        description: `Betalingen ble bekreftet, men innsjekkingen kunne ikke lagres: ${(error as Error).message}`,
       });
-    }
-  }, [signup, race, currentAmount, toast, onCheckinSuccess]);
-
-
-  const startPaymentProcess = useCallback(async () => {
-    if (!signup) return;
-    
-    if (currentAmount === 0) {
-        await handlePaymentCompleted();
-        setStatus("successful");
-        return;
-    }
-
-    if (!settings?.zettleLinkId) {
-        setError("Zettle Terminal ID er ikke konfigurert i nettstedinnstillingene.");
-        setStatus("failed");
-        return;
-    }
-    
-    setStatus("initializing");
-    setError(null);
-    cleanUpSocket();
-
-    try {
-      const { webSocketUrl, paymentId } = await initiateZettlePushPayment({
-        linkId: settings.zettleLinkId,
-        amount: currentAmount * 100,
-        reference: `KARTPASS-${signup.driverId.slice(0, 6)}-${Date.now()}`
-      });
-      
-      setStatus("connecting_ws");
-      const socket = new WebSocket(webSocketUrl);
-      socketRef.current = socket;
-
-      socket.onopen = () => setStatus("waiting_for_reader");
-
-      socket.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          switch(data.eventName) {
-              case "PAYMENT_IN_PROGRESS":
-                  setStatus("waiting_for_payment");
-                  break;
-              case "PAYMENT_COMPLETED":
-                  setStatus("successful");
-                  handlePaymentCompleted();
-                  break;
-              case "PAYMENT_CANCELLED":
-                  setStatus("cancelled");
-                  setError("Betalingen ble avbrutt på terminalen.");
-                  break;
-          }
-      };
-
-      socket.onerror = (err) => {
-          console.error("WebSocket Error:", err);
-          setError("Tilkoblingsfeil til betalingsterminalen. Prøv igjen.");
-          setStatus("failed");
-          cleanUpSocket();
-      };
-      
-      socket.onclose = () => {
-        if(status !== 'successful' && status !== 'cancelled' && status !== 'failed') {
-           setError("Tilkoblingen til terminalen ble brutt.");
-           setStatus("failed");
-        }
-      };
-
-    } catch (err) {
-      const errorMessage = (err as Error).message;
-      console.error("Error starting payment process:", errorMessage);
-      toast({ variant: "destructive", title: "Betalingsfeil", description: errorMessage });
-      setStatus("failed");
-      setError(errorMessage);
-    }
-  }, [signup, settings, currentAmount, cleanUpSocket, status, handlePaymentCompleted, toast]);
-  
-  useEffect(() => {
-    // Only cleanup on unmount or when isOpen changes to false
-    return () => {
-        if (!isOpen) {
-            cleanUpSocket();
-        }
-    };
-  }, [isOpen, cleanUpSocket]);
-
-  const getStatusContent = () => {
-    switch (status) {
-      case "idle": return null; // Don't show status when idle
-      case "initializing": return { icon: <LoaderCircle className="h-16 w-16 text-primary animate-spin" />, title: "Initialiserer betaling...", description: "Klargjør sikker forespørsel." };
-      case "connecting_ws": return { icon: <Wifi className="h-16 w-16 text-primary animate-pulse" />, title: "Kobler til terminal...", description: "Etablerer sanntids-kobling." };
-      case "waiting_for_reader": return { icon: <CreditCard className="h-16 w-16 text-primary" />, title: "Venter på terminal", description: "Sendt forespørsel. Sjekk terminal-skjermen." };
-      case "waiting_for_payment": return { icon: <CreditCard className="h-16 w-16 text-accent animate-pulse" />, title: "Klar for betaling", description: "Fullfør betalingen på kortterminalen." };
-      case "successful": return { icon: <CheckCircle2 className="h-16 w-16 text-green-600" />, title: "Betaling Bekreftet!", description: "Innsjekking fullført. Lukker vindu..." };
-      case "cancelled": return { icon: <XCircle className="h-16 w-16 text-amber-600" />, title: "Betaling Avbrutt", description: error || "Handlingen ble avbrutt på terminalen." };
-      case "failed": return { icon: <ServerCrash className="h-16 w-16 text-destructive" />, title: "Betaling Mislyktes", description: error || "En ukjent feil oppstod." };
-      default: return { icon: <LoaderCircle className="h-16 w-16 text-muted-foreground" />, title: "Laster...", description: "Vennligst vent." };
     }
   };
-
-  const statusContent = getStatusContent();
 
   if (!isOpen || !signup || !race) return null;
 
@@ -207,17 +90,15 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
         <DialogHeader>
           <DialogTitle>Løpsinnsjekk: {race.name}</DialogTitle>
           <DialogDescription>
-             Betaling og innsjekk for {signup.driverName}
+             Manuell betaling og innsjekk for {signup.driverName}
           </DialogDescription>
         </DialogHeader>
 
-        {statusContent && (
-            <div className="my-8 flex flex-col items-center gap-4 text-center">
-                {statusContent.icon}
-                <p className="text-lg font-semibold">{statusContent.title}</p>
-                <p className="text-sm text-muted-foreground h-4">{statusContent.description}</p>
-            </div>
-        )}
+        <div className="my-8 flex flex-col items-center gap-4 text-center">
+            <CreditCard className="h-16 w-16 text-primary" />
+            <p className="text-lg font-semibold">Klar for betaling</p>
+            <p className="text-sm text-muted-foreground">Bruk kortterminalen til å ta betalt beløpet under. Trykk bekreft når betalingen er fullført.</p>
+        </div>
 
         <div className="mt-4 w-full rounded-md border p-4 text-center space-y-2">
             {isEditingAmount ? (
@@ -247,18 +128,13 @@ export function RaceCheckinDialog({ isOpen, onOpenChange, signup, race, settings
             </div>
         </div>
         
-        {status === "idle" && (
-            <div className="flex justify-center gap-2 pt-4">
-                 <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-                 <Button onClick={startPaymentProcess} disabled={isEditingAmount}>Start Betaling & Sjekk inn</Button>
-            </div>
-        )}
-        {(status === "failed" || status === "cancelled") && (
-            <div className="flex justify-center gap-2 pt-4">
-                 <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-                 <Button onClick={startPaymentProcess} disabled={isEditingAmount}>Prøv igjen</Button>
-            </div>
-        )}
+        <div className="flex justify-center gap-2 pt-4">
+             <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+             <Button onClick={handleConfirmPayment} disabled={isEditingAmount}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Bekreft Betaling & Sjekk inn
+            </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
